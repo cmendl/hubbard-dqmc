@@ -1,0 +1,3 @@
+# treat Mathematica notebooks as text files
+*.nb  text
+*.cdf text

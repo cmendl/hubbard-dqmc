@@ -1,0 +1,264 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 10.0' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      7427,        255]
+NotebookOptionsPosition[      6773,        229]
+NotebookOutlinePosition[      7116,        244]
+CellTagsIndexPosition[      7073,        241]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", " ", 
+   RowBox[{"Eq", " ", 
+    RowBox[{"(", "15", ")"}]}], " ", "*)"}], "\n", 
+  RowBox[{
+   RowBox[{"GreenSpinFlipUpdate", "[", 
+    RowBox[{"i_", ",", "\[Delta]_", ",", "G_"}], "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"c", "=", 
+       RowBox[{"\[Delta]", 
+        RowBox[{"(", 
+         RowBox[{
+          RowBox[{"UnitVector", "[", 
+           RowBox[{
+            RowBox[{"Length", "[", "G", "]"}], ",", "i"}], "]"}], "-", 
+          RowBox[{
+          "G", "\[LeftDoubleBracket]", "i", "\[RightDoubleBracket]"}]}], 
+         ")"}]}]}], "}"}], ",", 
+     RowBox[{"G", "-", 
+      RowBox[{"KroneckerProduct", "[", 
+       RowBox[{
+        RowBox[{
+         RowBox[{"G", "\[LeftDoubleBracket]", 
+          RowBox[{";;", ",", "i"}], "\[RightDoubleBracket]"}], "/", 
+         RowBox[{"(", 
+          RowBox[{"1", "+", 
+           RowBox[{
+           "c", "\[LeftDoubleBracket]", "i", "\[RightDoubleBracket]"}]}], 
+          ")"}]}], ",", "c"}], "]"}]}]}], "]"}]}]}]], "Input"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   SubscriptBox["\[Delta]", "val"], "=", 
+   RowBox[{"1", "/", "7"}]}], ";"}]], "Input"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   SubscriptBox["n", "sites"], "=", "24"}], ";"}]], "Input"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", " ", 
+   RowBox[{"initial", " ", 
+    RowBox[{"Green", "'"}], "s", " ", "function", " ", "matrix"}], " ", 
+   "*)"}], "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"SeedRandom", "[", "42", "]"}], ";"}], "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{
+     SubscriptBox["G", "0"], "=", 
+     RowBox[{"Table", "[", 
+      RowBox[{
+       FractionBox[
+        RowBox[{"RandomInteger", "[", 
+         RowBox[{"{", 
+          RowBox[{
+           RowBox[{"-", "12"}], ",", "12"}], "}"}], "]"}], 
+        RowBox[{"RandomInteger", "[", 
+         RowBox[{"{", 
+          RowBox[{"1", ",", "12"}], "}"}], "]"}]], ",", 
+       RowBox[{"{", 
+        RowBox[{"i", ",", 
+         SubscriptBox["n", "sites"]}], "}"}], ",", 
+       RowBox[{"{", 
+        RowBox[{"j", ",", 
+         SubscriptBox["n", "sites"]}], "}"}]}], "]"}]}], ";"}]}]}]], "Input"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", " ", "example", " ", "*)"}], "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{
+    SubscriptBox["G", "0"], "\[LeftDoubleBracket]", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"1", ",", "2", ",", 
+       RowBox[{"-", "1"}]}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"1", ",", "2", ",", 
+       RowBox[{"-", "1"}]}], "}"}]}], "\[RightDoubleBracket]"}], "//", 
+   "MatrixForm"}]}]], "Input"],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      FractionBox["1", "11"], 
+      RowBox[{"-", "10"}], 
+      RowBox[{"-", "1"}]},
+     {
+      RowBox[{"-", 
+       FractionBox["1", "3"]}], 
+      RowBox[{"-", 
+       FractionBox["12", "7"]}], "2"},
+     {
+      FractionBox["4", "3"], 
+      FractionBox["2", "3"], 
+      FractionBox["4", "3"]}
+    },
+    GridBoxAlignment->{
+     "Columns" -> {{Center}}, "ColumnsIndexed" -> {}, "Rows" -> {{Baseline}}, 
+      "RowsIndexed" -> {}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "ColumnsIndexed" -> {}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}, "RowsIndexed" -> {}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output"]
+}, Open  ]],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", " ", 
+   RowBox[{"apply", " ", "Eq", " ", 
+    RowBox[{"(", "15", ")"}]}], " ", "*)"}], "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{
+    SubscriptBox["G", "1"], "=", 
+    RowBox[{"GreenSpinFlipUpdate", "[", 
+     RowBox[{"12", ",", 
+      SubscriptBox["\[Delta]", "val"], ",", 
+      SubscriptBox["G", "0"]}], "]"}]}], ";"}]}]], "Input"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", " ", "example", " ", "*)"}], "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{
+    SubscriptBox["G", "1"], "\[LeftDoubleBracket]", 
+    RowBox[{
+     RowBox[{"{", 
+      RowBox[{"1", ",", "2", ",", 
+       RowBox[{"-", "1"}]}], "}"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"1", ",", "2", ",", 
+       RowBox[{"-", "1"}]}], "}"}]}], "\[RightDoubleBracket]"}], "//", 
+   "MatrixForm"}]}]], "Input"],
+
+Cell[BoxData[
+ TagBox[
+  RowBox[{"(", "\[NoBreak]", GridBox[{
+     {
+      FractionBox["38", "55"], 
+      RowBox[{"-", 
+       FractionBox["552", "55"]}], 
+      RowBox[{"-", 
+       FractionBox["7", "5"]}]},
+     {
+      RowBox[{"-", 
+       FractionBox["31", "120"]}], 
+      RowBox[{"-", 
+       FractionBox["2647", "1540"]}], 
+      FractionBox["39", "20"]},
+     {
+      FractionBox["25", "12"], 
+      FractionBox["41", "66"], 
+      FractionBox["5", "6"]}
+    },
+    GridBoxAlignment->{
+     "Columns" -> {{Center}}, "ColumnsIndexed" -> {}, "Rows" -> {{Baseline}}, 
+      "RowsIndexed" -> {}},
+    GridBoxSpacings->{"Columns" -> {
+        Offset[0.27999999999999997`], {
+         Offset[0.7]}, 
+        Offset[0.27999999999999997`]}, "ColumnsIndexed" -> {}, "Rows" -> {
+        Offset[0.2], {
+         Offset[0.4]}, 
+        Offset[0.2]}, "RowsIndexed" -> {}}], "\[NoBreak]", ")"}],
+  Function[BoxForm`e$, 
+   MatrixForm[BoxForm`e$]]]], "Output"]
+}, Open  ]],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", " ", 
+   RowBox[{"save", " ", "initial", " ", "and", " ", "updated", " ", 
+    RowBox[{"Green", "'"}], "s", " ", "function", " ", "to", " ", "disk"}], 
+   " ", "*)"}], "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{"Table", "[", 
+    RowBox[{
+     RowBox[{"Export", "[", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
+        RowBox[{"FileBaseName", "[", 
+         RowBox[{"NotebookFileName", "[", "]"}], "]"}], "<>", "\"\<_G\>\"", "<>", 
+        RowBox[{"ToString", "[", "i", "]"}], "<>", "\"\<.dat\>\""}], ",", 
+       RowBox[{"N", "[", 
+        RowBox[{"Flatten", "[", 
+         RowBox[{"Transpose", "[", 
+          SubscriptBox["G", "i"], "]"}], "]"}], "]"}], ",", 
+       "\"\<Real64\>\""}], "]"}], ",", 
+     RowBox[{"{", 
+      RowBox[{"i", ",", "0", ",", "1"}], "}"}]}], "]"}], ";"}]}]], "Input"]
+},
+WindowSize->{1351, 778},
+WindowMargins->{{Automatic, 385}, {87, Automatic}},
+FrontEndVersion->"10.0 for Microsoft Windows (64-bit) (July 1, 2014)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 1065, 31, 52, "Input"],
+Cell[1626, 53, 123, 4, 31, "Input"],
+Cell[1752, 59, 95, 3, 31, "Input"],
+Cell[1850, 64, 888, 27, 89, "Input"],
+Cell[CellGroupData[{
+Cell[2763, 95, 434, 13, 52, "Input"],
+Cell[3200, 110, 860, 28, 101, "Output"]
+}, Open  ]],
+Cell[4075, 141, 379, 11, 52, "Input"],
+Cell[CellGroupData[{
+Cell[4479, 156, 434, 13, 52, "Input"],
+Cell[4916, 171, 954, 31, 101, "Output"]
+}, Open  ]],
+Cell[5885, 205, 884, 22, 52, "Input"]
+}
+]
+*)
+
+(* End of internal cache information *)
