@@ -102,5 +102,5 @@ int TimeFlowTest1()
 	DeleteTimeStepMatrices(&tsm);
 	DeleteKineticExponential(&kinetic);
 
-	return (err_rel < 2e-14 && err_abs < 2e-9 ? 0 : 1);
+	return (err_rel < 4e-14 && err_abs < 2e-9 ? 0 : 1);
 }

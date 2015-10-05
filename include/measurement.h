@@ -1,6 +1,7 @@
 #ifndef MEASUREMENT_H
 #define MEASUREMENT_H
 
+#include "greens_func.h"
 #include "util.h"
 
 
@@ -36,7 +37,7 @@ void AllocateMeasurementData(const int Nx, const int Ny, measurement_data_t *res
 void DeleteMeasurementData(measurement_data_t *restrict meas_data);
 
 
-void AccumulateEqualTimeMeasurement(const double *restrict Gu, const double *restrict Gd, measurement_data_t *meas_data);
+void AccumulateEqualTimeMeasurement(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, measurement_data_t *meas_data);
 
 
 void NormalizeMeasurementData(measurement_data_t *meas_data);

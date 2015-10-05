@@ -1,15 +1,15 @@
 
 SRCFILES = dupio.o greens_func.o kinetic.o lattice_fourier.o linalg.o measurement.o monte_carlo.o param_parser.o random.o stratonovich.o time_flow.o util.o
-TSTFILES = matrix_det_test.o matrix_exp_test.o blockcyclic_qr_test.o blockcyclic_tri_test.o blockcyclic_inv_test.o kinetic_test.o lattice_fourier_test.o time_flow_test1.o time_flow_test2.o time_flow_test3.o stratonovich_test.o greens_func_flip_test.o greens_func_wrap_test.o greens_func_init_test1.o greens_func_init_test2.o greens_func_init_test3.o monte_carlo_iter_test.o monte_carlo_phonon_block_test.o monte_carlo_iter_phonon_test.o
+TSTFILES = matrix_exp_test.o blockcyclic_qr_test.o blockcyclic_tri_test.o blockcyclic_inv_test.o kinetic_test.o lattice_fourier_test.o time_flow_test1.o time_flow_test2.o time_flow_test3.o stratonovich_test.o greens_func_flip_test.o greens_func_wrap_test.o greens_func_init_test1.o greens_func_init_test2.o greens_func_init_test3.o monte_carlo_iter_test.o monte_carlo_phonon_block_test.o monte_carlo_iter_phonon_test.o
 
 # use Intel compiler
 CC = icc
 
-# set these with appropriate libraries for your system
-LIBRARIES = -L/opt/intel/mkl/lib/intel64/ -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread
-
 # compiler options
 CCOPTS = -Wall -O2 -xHost -DNDEBUG -restrict -DMEM_DATA_ALIGN=64
+
+# set these with appropriate libraries for your system
+LIBRARIES = -mkl:sequential
 
 
 all: proj_main proj_test

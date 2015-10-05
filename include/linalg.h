@@ -2,21 +2,6 @@
 #define LINALG_H
 
 
-//________________________________________________________________________________________________________________________
-///
-/// \brief Compute the sign of 'x', can be -1, 0 or 1
-///
-static inline int Signum(const double x)
-{
-    return (0.0 < x) - (x < 0.0);
-}
-
-
-double Determinant(const int n, const double *restrict A);
-
-int DeterminantSign(const int n, const double *restrict A);
-
-
 int MatrixExp(const int n, const double *restrict A, double *restrict ret);
 
 

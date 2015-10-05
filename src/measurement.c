@@ -3,6 +3,7 @@
 #include "dupio.h"
 #include <mkl.h>
 #include <math.h>
+#include <assert.h>
 
 
 //________________________________________________________________________________________________________________________
@@ -86,28 +87,25 @@ void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 ///
 /// \brief Accumulate equal time "measurement" data
 ///
-void AccumulateEqualTimeMeasurement(const double *restrict Gu, const double *restrict Gd, measurement_data_t *meas_data)
+void AccumulateEqualTimeMeasurement(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, measurement_data_t *meas_data)
 {
 	int i, j, k;
 
 	// total number of lattice sites
 	const int N = meas_data->N;
 
-	// product of the determinant signs of the Green's function matrices;
-	// to avoid underflow, only the signs of the determinants are calculated
-	const double sign = (double)(DeterminantSign(N, Gu) * DeterminantSign(N, Gd));
-	if (sign == 0.0) {
-		duprintf("Warning: zero sign encountered in 'AccumulateEqualTimeMeasurement()'.\n");
-	}
+	// product of the determinant signs of the Green's function matrices
+	const double sign = (double)(Gu->sgndet * Gd->sgndet);
+	assert(sign != 0);
 
 	double nu = 0;
 	double nd = 0;
 	double oc = 0;
 	for (i = 0; i < N; i++)
 	{
-		nu += (1 - Gu[i + i*N]);
-		nd += (1 - Gd[i + i*N]);
-		oc += (1 - Gu[i + i*N])*(1 - Gd[i + i*N]);
+		nu += (1 - Gu->mat[i + i*N]);
+		nd += (1 - Gd->mat[i + i*N]);
+		oc += (1 - Gu->mat[i + i*N])*(1 - Gd->mat[i + i*N]);
 	}
 	// normalization
 	const double nfac = 1.0 / N;
@@ -127,19 +125,19 @@ void AccumulateEqualTimeMeasurement(const double *restrict Gu, const double *res
 	// density and spin correlations
 	for (i = 0; i < N; i++)
 	{
-		const double Gu_ii = Gu[i + N*i];
-		const double Gd_ii = Gd[i + N*i];
+		const double Gu_ii = Gu->mat[i + N*i];
+		const double Gd_ii = Gd->mat[i + N*i];
 
 		for (k = 0; k < N; k++)
 		{
 			j = meas_data->latt_sum_map[k + N*i];
 
-			const double Gu_jj = Gu[j + N*j];
-			const double Gd_jj = Gd[j + N*j];
-			const double Gu_ij = Gu[i + N*j];
-			const double Gd_ij = Gd[i + N*j];
-			const double Gu_ji = Gu[j + N*i];
-			const double Gd_ji = Gd[j + N*i];
+			const double Gu_jj = Gu->mat[j + N*j];
+			const double Gd_jj = Gd->mat[j + N*j];
+			const double Gu_ij = Gu->mat[i + N*j];
+			const double Gd_ij = Gd->mat[i + N*j];
+			const double Gu_ji = Gu->mat[j + N*i];
+			const double Gd_ji = Gd->mat[j + N*i];
 
 			meas_data->uu_corr[k] += sign*((1.0 - Gu_ii)*(1.0 - Gu_jj) - Gu_ij*Gu_ji);
 			meas_data->dd_corr[k] += sign*((1.0 - Gd_ii)*(1.0 - Gd_jj) - Gd_ij*Gd_ji);

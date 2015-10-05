@@ -116,5 +116,5 @@ int TimeFlowTest3()
 	MKL_free(X);
 	DeleteKineticExponential(&kinetic);
 
-	return (err_rel < 2e-14 && err_abs < 3e-9 ? 0 : 1);
+	return (err_rel < 4e-14 && err_abs < 3e-9 ? 0 : 1);
 }

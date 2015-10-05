@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[     40694,       1140]
-NotebookOptionsPosition[     37606,       1030]
-NotebookOutlinePosition[     37949,       1045]
-CellTagsIndexPosition[     37906,       1042]
+NotebookDataLength[     41670,       1172]
+NotebookOptionsPosition[     38467,       1058]
+NotebookOutlinePosition[     38810,       1073]
+CellTagsIndexPosition[     38767,       1070]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -1008,24 +1008,52 @@ Cell[BoxData[
 Cell[BoxData["0.0003258306145175597`"], "Output"]
 }, Open  ]],
 
+Cell[CellGroupData[{
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"(*", " ", "determinant", " ", "*)"}], "\[IndentingNewLine]", 
+  RowBox[{
+   SubscriptBox["detG", "val"], "=", 
+   RowBox[{"Det", "[", 
+    SubscriptBox["G", "val"], "]"}]}]}]], "Input"],
+
+Cell[BoxData["8.\
+729147576722630132024598798286260107783652154789326844218993509492321108339471\
+27881644010211532174488742190395547948792553`94.22238864282596*^-70"], \
+"Output"]
+}, Open  ]],
+
 Cell[BoxData[
  RowBox[{
   RowBox[{"(*", " ", 
    RowBox[{"save", " ", "as", " ", "reference", " ", "to", " ", "disk"}], " ",
     "*)"}], "\[IndentingNewLine]", 
   RowBox[{
-   RowBox[{"Export", "[", 
-    RowBox[{
+   RowBox[{
+    RowBox[{"Export", "[", 
      RowBox[{
-      RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
-      RowBox[{"FileBaseName", "[", 
-       RowBox[{"NotebookFileName", "[", "]"}], "]"}], "<>", 
-      "\"\<_G.dat\>\""}], ",", 
-     RowBox[{"Flatten", "[", 
-      RowBox[{"Transpose", "[", 
-       RowBox[{"N", "[", 
-        SubscriptBox["G", "val"], "]"}], "]"}], "]"}], ",", 
-     "\"\<Real64\>\""}], "]"}], ";"}]}]], "Input"]
+      RowBox[{
+       RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
+       RowBox[{"FileBaseName", "[", 
+        RowBox[{"NotebookFileName", "[", "]"}], "]"}], "<>", 
+       "\"\<_G.dat\>\""}], ",", 
+      RowBox[{"Flatten", "[", 
+       RowBox[{"Transpose", "[", 
+        RowBox[{"N", "[", 
+         SubscriptBox["G", "val"], "]"}], "]"}], "]"}], ",", 
+      "\"\<Real64\>\""}], "]"}], ";"}], "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"Export", "[", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
+       RowBox[{"FileBaseName", "[", 
+        RowBox[{"NotebookFileName", "[", "]"}], "]"}], "<>", 
+       "\"\<_detG.dat\>\""}], ",", 
+      RowBox[{"N", "[", 
+       SubscriptBox["detG", "val"], "]"}], ",", "\"\<Real64\>\""}], "]"}], 
+    ";"}]}]}]], "Input"]
 }, Open  ]]
 },
 WindowSize->{1424, 867},
@@ -1140,7 +1168,11 @@ Cell[36802, 1002, 46, 0, 31, "Output"],
 Cell[36851, 1004, 63, 1, 31, "Output"],
 Cell[36917, 1007, 49, 0, 31, "Output"]
 }, Open  ]],
-Cell[36981, 1010, 609, 17, 52, "Input"]
+Cell[CellGroupData[{
+Cell[37003, 1012, 220, 6, 52, "Input"],
+Cell[37226, 1020, 180, 3, 31, "Output"]
+}, Open  ]],
+Cell[37421, 1026, 1030, 29, 72, "Input"]
 }, Open  ]]
 }
 ]

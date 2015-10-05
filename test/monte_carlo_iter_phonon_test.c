@@ -1,15 +1,8 @@
 #include "monte_carlo.h"
-#include "kinetic.h"
-#include "stratonovich.h"
-#include "time_flow.h"
-#include "util.h"
 #include <mkl.h>
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
-
-
-void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params, const phonon_params_t *restrict phonon_params, const int nwraps, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX, time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, double *restrict Gu, double *restrict Gd);
 
 
 int MonteCarloIterPhononTest()
@@ -89,9 +82,12 @@ int MonteCarloIterPhononTest()
 	InitPhononTimeStepMatrices(&kinetic, stratonovich_params.expVu, s, expX, &tsm_u);
 	InitPhononTimeStepMatrices(&kinetic, stratonovich_params.expVd, s, expX, &tsm_d);
 
-	// spin-up and spin-down Green's function matrices; will be initialized during call of 'DQMCPhononIteration'
-	double *Gu = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *Gd = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	// allocate and construct spin-up and spin-down Green's functions
+	greens_func_t Gu, Gd;
+	AllocateGreensFunction(N, &Gu);
+	AllocateGreensFunction(N, &Gd);
+	GreenConstruct(&tsm_u, 0, &Gu);
+	GreenConstruct(&tsm_d, 0, &Gd);
 
 	// artificial UNIX time
 	time_t itime = 1420000241;
@@ -102,7 +98,7 @@ int MonteCarloIterPhononTest()
 
 	// perform a Determinant Quantum Monte Carlo (DQMC) iteration
 	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice at beta = %g, taking phonons into account...\n", Nx, Ny, L*dt);
-	DQMCPhononIteration(dt, &kinetic, &stratonovich_params, &phonon_params, nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, Gu, Gd);
+	DQMCPhononIteration(dt, &kinetic, &stratonovich_params, &phonon_params, nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
 	spin_field_t s_ref[L*N] = {
@@ -145,34 +141,45 @@ int MonteCarloIterPhononTest()
 	printf("Largest entrywise absolute error of the phonon field: %g\n", errX);
 
 	// load reference Green's functions from disk
-	double Gu_ref[N*N];
-	double Gd_ref[N*N];
-	status = ReadData("../test/monte_carlo_iter_phonon_test_Gu1.dat", Gu_ref, sizeof(double), N*N); if (status != 0) { return status; }
-	status = ReadData("../test/monte_carlo_iter_phonon_test_Gd1.dat", Gd_ref, sizeof(double), N*N); if (status != 0) { return status; }
+	double Gu_mat_ref[N*N];
+	double Gd_mat_ref[N*N];
+	double detGu_ref, detGd_ref;
+	status = ReadData("../test/monte_carlo_iter_phonon_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_Gd1.dat",    Gd_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_detGu1.dat", &detGu_ref, sizeof(double), 1);   if (status != 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_detGd1.dat", &detGd_ref, sizeof(double), 1);   if (status != 0) { return status; }
 
 	// entrywise relative error of the Green's function matrices
 	double errG_rel = 0;
 	for (i = 0; i < N*N; i++)
 	{
-		errG_rel = fmax(errG_rel, fabs((Gu[i] - Gu_ref[i])/Gu_ref[i]));
-		errG_rel = fmax(errG_rel, fabs((Gd[i] - Gd_ref[i])/Gd_ref[i]));
+		errG_rel = fmax(errG_rel, fabs((Gu.mat[i] - Gu_mat_ref[i])/Gu_mat_ref[i]));
+		errG_rel = fmax(errG_rel, fabs((Gd.mat[i] - Gd_mat_ref[i])/Gd_mat_ref[i]));
 	}
 	printf("Largest entrywise relative error of the Green's function matrices: %g\n", errG_rel);
 
 	// entrywise absolute error of the Green's function matrices
 	double errG_abs = fmax(
-		UniformDistance(N*N, Gu, Gu_ref),
-		UniformDistance(N*N, Gd, Gd_ref));
+		UniformDistance(N*N, Gu.mat, Gu_mat_ref),
+		UniformDistance(N*N, Gd.mat, Gd_mat_ref));
 	printf("Largest entrywise absolute error of the Green's function matrices: %g\n", errG_abs);
 
+	// relative error of determinant
+	double detGu = Gu.sgndet * exp(Gu.logdet);
+	double detGd = Gd.sgndet * exp(Gd.logdet);
+	double err_detG = fmax(
+		fabs((detGu - detGu_ref) / detGu_ref),
+		fabs((detGd - detGd_ref) / detGd_ref));
+	printf("Relative determinant error: %g\n", err_detG);
+
 	// clean up
-	MKL_free(Gd);
-	MKL_free(Gu);
+	DeleteGreensFunction(&Gd);
+	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
 	MKL_free(expX);
 	MKL_free(X);
 	DeleteKineticExponential(&kinetic);
 
-	return (err_field == 0 && errX < 2e-15 && errG_rel < 4e-8 && errG_abs < 4e-11 ? 0 : 1);
+	return (err_field == 0 && errX < 2e-15 && errG_rel < 4e-8 && errG_abs < 4e-11 && err_detG < 5e-12 ? 0 : 1);
 }

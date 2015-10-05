@@ -64,29 +64,37 @@ int GreensFuncInitTest1()
 
 	// construct the Green's function matrix
 	printf("Constructing Green's function for a %i x %i lattice at beta = %g...\n", Nx, Ny, L*dt);
-	double *G = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	GreenConstruct(&tsm, 0, G);
+	greens_func_t G;
+	AllocateGreensFunction(N, &G);
+	GreenConstruct(&tsm, 0, &G);
 
 	// load reference data from disk
-	double G_ref[N*N];
-	ReadData("../test/greens_func_init_test1_G.dat", G_ref, sizeof(double), N*N);
+	double Gmat_ref[N*N];
+	double detG_ref;
+	ReadData("../test/greens_func_init_test1_G.dat", Gmat_ref, sizeof(double), N*N);
+	ReadData("../test/greens_func_init_test1_detG.dat", &detG_ref, sizeof(double), 1);
 
-	// entrywise relative error
+	// entrywise relative error of matrix entries
 	double err_rel = 0;
 	for (i = 0; i < N*N; i++)
 	{
-		err_rel = fmax(err_rel, fabs((G[i] - G_ref[i])/G_ref[i]));
+		err_rel = fmax(err_rel, fabs((G.mat[i] - Gmat_ref[i])/Gmat_ref[i]));
 	}
 	printf("Largest entrywise relative error: %g\n", err_rel);
 
-	// entrywise absolute error
-	double err_abs = UniformDistance(N*N, G, G_ref);
+	// entrywise absolute error of matrix entries
+	double err_abs = UniformDistance(N*N, G.mat, Gmat_ref);
 	printf("Largest entrywise absolute error: %g\n", err_abs);
 
+	// relative error of determinant
+	double detG = G.sgndet * exp(G.logdet);
+	double err_det = fabs((detG - detG_ref) / detG_ref);
+	printf("Relative determinant error: %g\n", err_det);
+
 	// clean up
-	MKL_free(G);
+	DeleteGreensFunction(&G);
 	DeleteTimeStepMatrices(&tsm);
 	DeleteKineticExponential(&kinetic);
 
-	return (err_rel < 2e-12 && err_abs < 1e-14 ? 0 : 1);
+	return (err_rel < 2.5e-12 && err_abs < 1e-14 && err_det < 2.5e-14 ? 0 : 1);
 }

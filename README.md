@@ -4,7 +4,7 @@ Determinant quantum Monte Carlo applied to the Hubbard model
 C implementation and test files of the Determinant quantum Monte Carlo (DQMC) method applied to the Hubbard model.
 
 How to compile the source code:
-- Linux/Unix-type OS: a makefile is provided in the *bin* subfolder. You probably have to adapt the paths to your local installation.
+- Linux/Unix-type OS: a makefile is provided in the *bin* subfolder, assuming that the Intel C compiler and MKL are available.
 - Windows: Visual Studio project files are provided in the *vcproj* subfolder.
 
 
