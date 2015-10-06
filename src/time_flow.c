@@ -306,6 +306,9 @@ void UpdatePhononTimeStepMatrices(const kinetic_t *restrict kinetic, const doubl
 ///   - Z. Bai, C.-R. Lee, R.-C. Li, S. Xu\n
 ///     Stable solutions of linear systems involving long chain of matrix multiplications\n
 ///     Linear Algebra Appl. 435, 659-673 (2011)
+///   - A. Tomas, C.-C. Chang, R. Scalettar, Z. Bai\n
+///     Advancing Large Scale Many-Body QMC Simulations on GPU Accelerated Multicore Systems\n
+///     IEEE International Symposium on Parallel & Distributed Processing (IPDPS) (2012)
 ///
 void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift, double *restrict Q, double *restrict tau, double *restrict d, double *restrict T)
 {
@@ -314,7 +317,7 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 	__assume_aligned(d,   MEM_DATA_ALIGN);
 	__assume_aligned(T,   MEM_DATA_ALIGN);
 
-	int i;
+	int i, j;
 	const int N = tsm->N;
 
 	assert(tsm->L == tsm->prodBlen * tsm->numBprod);
@@ -324,24 +327,15 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 	assert(slice_shift % tsm->prodBlen == 0);	// must be a multiple of 'tsm->prodBlen'
 	const int prod_slice_shift = slice_shift / tsm->prodBlen;
 
-	// temporary matrix for the QR decompositions of the product of subsequent 'tsm->prodBlen' B matrices
+	// temporary matrix for calculating C = (BQ)D and getting column norms
 	double *W = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-
-	// use input 'Q' as temporary matrix for storing the orthogonal rotations
-	double *U = Q;
-
-	if ((tsm->numBprod & 1) == 1)	// if 'numBprod' is odd
-	{
-		// swap W and U pointers to ensure that the final orthogonal rotation ends up in 'Q'
-		double *tmp = W;
-		W = U;
-		U = tmp;
-	}
-
 	__assume_aligned(W, MEM_DATA_ALIGN);
-	__assume_aligned(U, MEM_DATA_ALIGN);
 
-	// permutation array for QR decomposition with pivoting
+	// column norms array for pre-pivoted QR decomposition
+	double *norms = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
+	__assume_aligned(norms, MEM_DATA_ALIGN);
+
+	// permutation array for pre-pivoted QR decomposition
 	lapack_int* jpvt = (lapack_int *)MKL_malloc(N * sizeof(lapack_int), MEM_DATA_ALIGN);
 	__assume_aligned(jpvt, MEM_DATA_ALIGN);
 
@@ -354,16 +348,16 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 		// copy precomputed product of subsequent B matrices
 		const double *srcBprod = tsm->Bprod[prod_slice_shift % tsm->numBprod];
 		__assume_aligned(srcBprod, MEM_DATA_ALIGN);
-		memcpy(W, srcBprod, N*N * sizeof(double));
+		memcpy(Q, srcBprod, N*N * sizeof(double));
 
 		// perform a QR-decomposition with column pivoting of the product of subsequent B matrices
 		memset(jpvt, 0, N * sizeof(lapack_int));	// all columns of the input matrix are "free" columns
-		LAPACKE_dgeqp3(LAPACK_COL_MAJOR, N, N, W, N, jpvt, tau);
+		LAPACKE_dgeqp3(LAPACK_COL_MAJOR, N, N, Q, N, jpvt, tau);
 
 		// extract diagonal entries
 		for (i = 0; i < N; i++)
 		{
-			d[i] = W[i + i*N];
+			d[i] = Q[i + i*N];
 			// avoid division by zero
 			if (d[i] == 0) {
 				d[i] = 1;
@@ -373,7 +367,6 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 
 		// construct the matrix T_1
 		memset(T, 0, N*N * sizeof(double));
-		int j;
 		for (j = 0; j < N; j++)
 		{
 			// indices start at zero in C
@@ -381,7 +374,7 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 
 			for (i = 0; i <= j; i++)
 			{
-				T[i + jpvt[j]*N] = v[i] * W[i + j*N];
+				T[i + jpvt[j]*N] = v[i] * Q[i + j*N];
 			}
 		}
 	}
@@ -389,44 +382,63 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 	int l;
 	for (l = 1; l < tsm->numBprod; l++)
 	{
-		// swap W and U pointers
-		{
-			double *tmp = W;
-			W = U;
-			U = tmp;
-		}
-		__assume_aligned(W, MEM_DATA_ALIGN);
-		__assume_aligned(U, MEM_DATA_ALIGN);
-
 		// copy product of the next 'tsm->prodBlen' B matrices
 		const double *srcBprod = tsm->Bprod[(l + prod_slice_shift) % tsm->numBprod];
 		__assume_aligned(srcBprod, MEM_DATA_ALIGN);
 		memcpy(W, srcBprod, N*N * sizeof(double));
 
 		// multiply by previous orthogonal matrix from the right, overwriting the 'W' matrix
-		LAPACKE_dormqr(LAPACK_COL_MAJOR, 'R', 'N', N, N, N, U, N, tau, W, N);
+		LAPACKE_dormqr(LAPACK_COL_MAJOR, 'R', 'N', N, N, N, Q, N, tau, W, N);
 		// scale by previous diagonal matrix
 		for (i = 0; i < N; i++)
 		{
 			cblas_dscal(N, d[i], &W[i*N], 1);
 		}
-
-		// perform a QR-decomposition of 'W' with column pivoting
-		memset(jpvt, 0, N * sizeof(lapack_int));	// all columns of the input matrix are "free" columns
-		LAPACKE_dgeqp3(LAPACK_COL_MAJOR, N, N, W, N, jpvt, tau);
-
-		// adjust pivoting indices
-		for (i = 0; i < N; i++)
+#define PREPIVOT
+#ifdef PREPIVOT
+		////pre-pivot 'W' and perform QR-decomposition
+		// calculate column norms
+		double tmp_norm;
+		for (j = 0; j < N; j++)
 		{
-			// indices start at zero in C
-			jpvt[i]--;
+			tmp_norm = 0;
+			for (i = 0; i < N; i++) {
+				tmp_norm += W[i + j*N] * W[i + j*N];
+			}
+			norms[j] = tmp_norm;
 		}
 
+		// determine jpvt with an insertion sort
+		jpvt[0] = 0;
+		for (i = 1; i < N; i++)
+		{
+			for (j = i; j > 0 && norms[jpvt[j-1]] < norms[i]; j--) {
+				jpvt[j] = jpvt[j-1];
+			}
+			jpvt[j] = i;
+		}
+
+		// store pre-pivoted W in Q
+		for (j = 0; j < N; j++)
+		{
+			memcpy(&Q[j*N], &W[jpvt[j]*N], N*sizeof(double));
+		}
+
+		// finally do the QR
+		LAPACKE_dgeqrf(LAPACK_COL_MAJOR, N, N, Q, N, tau);
+		////
+#else
+		// standard method (QR with pivoting using dgeqp3)
+		memcpy(Q, W, N*N*sizeof(double));
+		for (i = 0; i < N; i++) jpvt[i] = 0;
+		LAPACKE_dgeqp3(LAPACK_COL_MAJOR, N, N, Q, N, jpvt, tau);
+		for (i = 0; i < N; i++) jpvt[i]--;
+#endif
 		// extract diagonal entries
 		#pragma ivdep
 		for (i = 0; i < N; i++)
 		{
-			d[i] = W[i + i*N];
+			d[i] = Q[i + i*N];
 			// avoid division by zero
 			if (d[i] == 0) {
 				d[i] = 1;
@@ -435,12 +447,11 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 		}
 
 		// multiply inverse diagonal matrix from the left with the upper triangular R matrix
-		int j;
 		for (j = 0; j < N; j++)
 		{
 			for (i = 0; i <= j; i++)
 			{
-				W[i + j*N] *= v[i];
+				Q[i + j*N] *= v[i];
 			}
 		}
 
@@ -458,14 +469,12 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 		}
 		// second, multiply with upper triangular matrix, overwriting 'T' in-place;
 		// we do not assume that upper triangular matrix is unit triangular since entries might be zero
-		cblas_dtrmm(CblasColMajor, CblasLeft, CblasUpper, CblasNoTrans, CblasNonUnit, N, N, 1.0, W, N, T, N);
+		cblas_dtrmm(CblasColMajor, CblasLeft, CblasUpper, CblasNoTrans, CblasNonUnit, N, N, 1.0, Q, N, T, N);
 	}
-
-	// pointers should match; 'W' still contains the final orthogonal rotation information in its lower triangular part
-	assert(W == Q);
 
 	// clean up
 	MKL_free(v);
+	MKL_free(norms);
 	MKL_free(jpvt);
-	MKL_free(U);	// 'U' points to the memory location of the original 'W' matrix
+	MKL_free(W);
 }
