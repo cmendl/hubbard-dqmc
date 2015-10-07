@@ -24,9 +24,9 @@ void Random_SeedInit(uint64_t n, randseed_t *seed);
 
 uint64_t Random_GetUint(randseed_t *seed);
 
-uint64_t Random_GetBoundedUint(randseed_t *seed, uint64_t max);
+uint64_t Random_GetBoundedUint(randseed_t *seed, const uint64_t bound);
 
-void Random_GetShuffle(randseed_t *seed, int n, int *a);
+void Random_Shuffle(randseed_t *seed, const int n, int *seq);
 
 double Random_GetUniform(randseed_t *seed);
 

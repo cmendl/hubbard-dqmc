@@ -82,12 +82,12 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		GreenTimeSliceWrap(N, tsm_u->B[l], tsm_u->invB[l], Gu->mat);
 		GreenTimeSliceWrap(N, tsm_d->B[l], tsm_d->invB[l], Gd->mat);
 
-		// iterate over lattice sites randomly, updating the Hubbard-Stratonovich field
-		Random_GetShuffle(seed, N, site_order);
-		int ii;
-		for (ii = 0; ii < N; ii++)
+		// iterate over lattice sites in random order, updating the Hubbard-Stratonovich field
+		Random_Shuffle(seed, N, site_order);
+		int j;
+		for (j = 0; j < N; j++)
 		{
-			int i = site_order[ii];
+			int i = site_order[j];
 			assert(0 <= i && i < N);
 			// Eq. (13)
 			// suggest flipping s_{i,l}
@@ -115,6 +115,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	}
 
 	// clean up
+	MKL_free(site_order);
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);
 }
@@ -340,11 +341,11 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		GreenTimeSliceWrap(N, tsm_d->B[l], tsm_d->invB[l], Gd->mat);
 
 		// iterate over lattice sites randomly, updating the Hubbard-Stratonovich field
-		Random_GetShuffle(seed, N, site_order);
-		int ii;
-		for (ii = 0; ii < N; ii++)
+		Random_Shuffle(seed, N, site_order);
+		int j;
+		for (j = 0; j < N; j++)
 		{
-			int i = site_order[ii];
+			int i = site_order[j];
 			assert(0 <= i && i < N);
 			// Eq. (13)
 			// suggest flipping s_{i,l}
@@ -371,11 +372,10 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		const int l_prev = (l + L - 1) % L;
 
 		// iterate over lattice sites, updating the phonon field
-		//// TODO: randomize order in which lattice sites are updated
-		Random_GetShuffle(seed, N, site_order);
-		for (ii = 0; ii < N; ii++)
+		Random_Shuffle(seed, N, site_order);
+		for (j = 0; j < N; j++)
 		{
-			int i = site_order[ii];
+			int i = site_order[j];
 			assert(0 <= i && i < N);
 			// suggest a shift of X_{i,l}
 			const double dx = (Random_GetUniform(seed) - 0.5) * phonon_params->box_width;
@@ -414,6 +414,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	PhononBlockUpdates(dt, kinetic, stratonovich_params, phonon_params, seed, s, X, expX, tsm_u, tsm_d, Gu, Gd);
 
 	// clean up
+	MKL_free(site_order);
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);
 }

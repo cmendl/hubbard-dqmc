@@ -307,8 +307,8 @@ void UpdatePhononTimeStepMatrices(const kinetic_t *restrict kinetic, const doubl
 ///     Stable solutions of linear systems involving long chain of matrix multiplications\n
 ///     Linear Algebra Appl. 435, 659-673 (2011)
 ///   - A. Tomas, C.-C. Chang, R. Scalettar, Z. Bai\n
-///     Advancing Large Scale Many-Body QMC Simulations on GPU Accelerated Multicore Systems\n
-///     IEEE International Symposium on Parallel & Distributed Processing (IPDPS) (2012)
+///     Advancing large scale many-body QMC simulations on GPU accelerated multicore systems\n
+///     IEEE 26th International Parallel & Distributed Processing Symposium (IPDPS) 308-319 (2012)
 ///
 void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift, double *restrict Q, double *restrict tau, double *restrict d, double *restrict T)
 {
@@ -327,15 +327,15 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 	assert(slice_shift % tsm->prodBlen == 0);	// must be a multiple of 'tsm->prodBlen'
 	const int prod_slice_shift = slice_shift / tsm->prodBlen;
 
-	// temporary matrix for calculating C = (BQ)D and getting column norms
+	// temporary matrix for calculating QR decompositions and obtaining column norms for pre-pivoting
 	double *W = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	__assume_aligned(W, MEM_DATA_ALIGN);
 
-	// column norms array for pre-pivoted QR decomposition
+	// column norms array for the pre-pivoted QR decompositions
 	double *norms = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
 	__assume_aligned(norms, MEM_DATA_ALIGN);
 
-	// permutation array for pre-pivoted QR decomposition
+	// permutation array for QR decomposition with pivoting
 	lapack_int* jpvt = (lapack_int *)MKL_malloc(N * sizeof(lapack_int), MEM_DATA_ALIGN);
 	__assume_aligned(jpvt, MEM_DATA_ALIGN);
 
@@ -394,20 +394,13 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 		{
 			cblas_dscal(N, d[i], &W[i*N], 1);
 		}
-#define PREPIVOT
-#ifdef PREPIVOT
-		////pre-pivot 'W' and perform QR-decomposition
+
+		// pre-pivot 'W' and perform QR-decomposition
 		// calculate column norms
-		double tmp_norm;
 		for (j = 0; j < N; j++)
 		{
-			tmp_norm = 0;
-			for (i = 0; i < N; i++) {
-				tmp_norm += W[i + j*N] * W[i + j*N];
-			}
-			norms[j] = tmp_norm;
+			norms[j] = cblas_dnrm2(N, &W[j*N], 1);
 		}
-
 		// determine jpvt with an insertion sort
 		jpvt[0] = 0;
 		for (i = 1; i < N; i++)
@@ -417,23 +410,14 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 			}
 			jpvt[j] = i;
 		}
-
 		// store pre-pivoted W in Q
 		for (j = 0; j < N; j++)
 		{
 			memcpy(&Q[j*N], &W[jpvt[j]*N], N*sizeof(double));
 		}
-
-		// finally do the QR
+		// finally perform the QR-decomposition
 		LAPACKE_dgeqrf(LAPACK_COL_MAJOR, N, N, Q, N, tau);
-		////
-#else
-		// standard method (QR with pivoting using dgeqp3)
-		memcpy(Q, W, N*N*sizeof(double));
-		for (i = 0; i < N; i++) jpvt[i] = 0;
-		LAPACKE_dgeqp3(LAPACK_COL_MAJOR, N, N, Q, N, jpvt, tau);
-		for (i = 0; i < N; i++) jpvt[i]--;
-#endif
+
 		// extract diagonal entries
 		#pragma ivdep
 		for (i = 0; i < N; i++)

@@ -55,29 +55,38 @@ uint64_t Random_GetUint(randseed_t *seed)
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Draw a random unsigned integer in [0, max) without modulo bias (doesn't really matter since 2^64 is huge)
-/// More info: http://funloop.org/post/2015-02-27-removing-modulo-bias-redux.html
+/// \brief Draw a random unsigned integer from the interval [0, bound) without modulo bias,
+/// see http://funloop.org/post/2015-02-27-removing-modulo-bias-redux.html
 ///
-uint64_t Random_GetBoundedUint(randseed_t *seed, uint64_t max)
+uint64_t Random_GetBoundedUint(randseed_t *seed, const uint64_t bound)
 {
-	uint64_t r, thresh = -max % max; //-max = UINT64_MAX - max + 1
-	while ((r = Random_GetUint(seed)) < thresh);
-	return r % max;
+	const uint64_t thresh = (-bound) % bound;	// (-bound) = UINT64_MAX - bound + 1
+
+	for (;;)
+	{
+		uint64_t r = Random_GetUint(seed);
+		if (r >= thresh) {
+			return r % bound;
+		}
+	}
 }
 
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Random shuffle of 0, 1, 2, ... n-1. See Wikipedia, Fisher-Yates shuffle for more information.
+/// \brief Random shuffle of (0, 1, ..., n-1) using the Fisher-Yates shuffle algorithm
 ///
-void Random_GetShuffle(randseed_t *seed, int n, int *a)
+void Random_Shuffle(randseed_t *seed, const int n, int *seq)
 {
-	int i, j;
+	int i;
 	for (i = 0; i < n; i++)
 	{
-		j = Random_GetBoundedUint(seed, i + 1);
-		if (j != i) a[i] = a[j];
-		a[j] = i;
+		int j = (int)Random_GetBoundedUint(seed, i + 1);
+		if (j != i)
+		{
+			seq[i] = seq[j];
+		}
+		seq[j] = i;
 	}
 }
 

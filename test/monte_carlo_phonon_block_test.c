@@ -134,5 +134,5 @@ int MonteCarloPhononBlockTest()
 	MKL_free(X);
 	DeleteKineticExponential(&kinetic);
 
-	return (errX < 5e-16 && errG_rel < 5e-11 && errG_abs < 1e-14 && err_detG < 5e-14 ? 0 : 1);
+	return (errX < 5e-16 && errG_rel < 5e-11 && errG_abs < 2e-14 && err_detG < 5e-14 ? 0 : 1);
 }
