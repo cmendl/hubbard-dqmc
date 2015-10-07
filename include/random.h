@@ -24,6 +24,10 @@ void Random_SeedInit(uint64_t n, randseed_t *seed);
 
 uint64_t Random_GetUint(randseed_t *seed);
 
+uint64_t Random_GetBoundedUint(randseed_t *seed, uint64_t max);
+
+void Random_GetShuffle(randseed_t *seed, int n, int *a);
+
 double Random_GetUniform(randseed_t *seed);
 
 double Random_GetNormal(randseed_t *seed);

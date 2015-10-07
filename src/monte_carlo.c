@@ -44,6 +44,10 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	__assume_aligned(Gu_old.mat, MEM_DATA_ALIGN);
 	__assume_aligned(Gd_old.mat, MEM_DATA_ALIGN);
 
+	// random shuffle of lattice sites
+	int *site_order = MKL_malloc(N * sizeof(int), MEM_DATA_ALIGN);
+	__assume_aligned(site_order, MEM_DATA_ALIGN);
+
 	// iterate over time slices
 	int l;
 	for (l = 0; l < tsm_u->L; l++)
@@ -78,11 +82,13 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		GreenTimeSliceWrap(N, tsm_u->B[l], tsm_u->invB[l], Gu->mat);
 		GreenTimeSliceWrap(N, tsm_d->B[l], tsm_d->invB[l], Gd->mat);
 
-		// iterate over lattice sites, updating the Hubbard-Stratonovich field
-		//// TODO: randomize order in which lattice sites are updated
-		int i;
-		for (i = 0; i < N; i++)
+		// iterate over lattice sites randomly, updating the Hubbard-Stratonovich field
+		Random_GetShuffle(seed, N, site_order);
+		int ii;
+		for (ii = 0; ii < N; ii++)
 		{
+			int i = site_order[ii];
+			assert(0 <= i && i < N);
 			// Eq. (13)
 			// suggest flipping s_{i,l}
 			const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]];
@@ -295,6 +301,10 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	const double omega_ph_sqhalf = 0.5*square(phonon_params->omega);
 	const double inv_dt_sq = 1.0 / square(dt);
 
+	// random shuffle of lattice sites
+	int *site_order = MKL_malloc(N * sizeof(int), MEM_DATA_ALIGN);
+	 __assume_aligned(site_order, MEM_DATA_ALIGN);
+
 	// iterate over time slices
 	int l;
 	for (l = 0; l < L; l++)
@@ -329,11 +339,13 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		GreenTimeSliceWrap(N, tsm_u->B[l], tsm_u->invB[l], Gu->mat);
 		GreenTimeSliceWrap(N, tsm_d->B[l], tsm_d->invB[l], Gd->mat);
 
-		// iterate over lattice sites, updating the Hubbard-Stratonovich field
-		//// TODO: randomize order in which lattice sites are updated
-		int i;
-		for (i = 0; i < N; i++)
+		// iterate over lattice sites randomly, updating the Hubbard-Stratonovich field
+		Random_GetShuffle(seed, N, site_order);
+		int ii;
+		for (ii = 0; ii < N; ii++)
 		{
+			int i = site_order[ii];
+			assert(0 <= i && i < N);
 			// Eq. (13)
 			// suggest flipping s_{i,l}
 			const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]];
@@ -360,8 +372,11 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 
 		// iterate over lattice sites, updating the phonon field
 		//// TODO: randomize order in which lattice sites are updated
-		for (i = 0; i < N; i++)
+		Random_GetShuffle(seed, N, site_order);
+		for (ii = 0; ii < N; ii++)
 		{
+			int i = site_order[ii];
+			assert(0 <= i && i < N);
 			// suggest a shift of X_{i,l}
 			const double dx = (Random_GetUniform(seed) - 0.5) * phonon_params->box_width;
 
