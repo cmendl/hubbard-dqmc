@@ -1,6 +1,7 @@
 #include "monte_carlo.h"
 #include "kinetic.h"
 #include "param_parser.h"
+#include "profiler.h"
 #include "dupio.h"
 #include <mkl.h>
 #include <math.h>
@@ -41,6 +42,8 @@ int main(int argc, char *argv[])
 	#if defined(_WIN32) & (defined(DEBUG) | defined(_DEBUG))
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	#endif
+
+	Profile_Start();
 
 	// (default) simulation parameters
 	sim_params_t params;
@@ -173,6 +176,7 @@ int main(int argc, char *argv[])
 	duprintf(" done.\n");
 
 	// clean up
+	Profile_Stop();
 	fclose(fd_log);
 	DeleteKineticExponential(&kinetic);
 	DeleteMeasurementData(&meas_data);
