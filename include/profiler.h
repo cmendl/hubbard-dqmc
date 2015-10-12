@@ -8,7 +8,6 @@
 	#error No profiling support for Windows yet.
 #endif
 
-#include "aa.h"
 #include <time.h>
 
 
@@ -26,7 +25,7 @@
 
 void Profile_Start(void);
 
-void Profile_Add(char *name, long long delta);
+void Profile_Add(const char *name, long long delta);
 
 void Profile_Stop(void);
 

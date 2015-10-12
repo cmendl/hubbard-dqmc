@@ -1,5 +1,6 @@
 #ifdef PROFILE_ENABLE
 
+#include "aa.h"
 #include "dupio.h"
 #include "profiler.h"
 #include <mkl.h>
@@ -23,9 +24,21 @@ void Profile_Start(void)
 	clock_gettime(CLOCK_MONOTONIC, &main_start_);
 }
 
-void Profile_Add(char *name, long long delta)
+void Profile_Add(const char *name, long long delta)
 {
-	profile_entry **p = (profile_entry **)aaGet(&profile_table, name);
+	profile_entry **p;
+	int thread_num = omp_get_thread_num();
+	if (thread_num > 0)
+	{
+		char name2[128];
+		sprintf(name2, "%s-%d", name, thread_num);
+		p = (profile_entry **)aaGet(&profile_table, name2);
+	}
+	else
+	{
+		p = (profile_entry **)aaGet(&profile_table, name);
+	}
+
 	if (p == NULL)
 		return;
 	if (*p == NULL)
@@ -76,7 +89,8 @@ void Profile_Stop(void)
 	qsort(sorted_i, profile_table.n, sizeof(int), entry_compare);
 
 	duprintf("===============================Profiling report=================================\n");
-	duprintf("%-32s%-8s%-10s%-12s%s\n\n", "name", "calls", "% of all", "total (s)", "time per call (us)");
+	duprintf("%-32s%-8s%-10s%-12s%s\n", "name(-thread number)", "calls", "% of all", "total (s)", "time per call (us)");
+	duprintf("%-50s%g\n","total wall time", main_total/1000000000.);
 	for (j = 0; j < profile_table.n; j++)
 	{
 		int i = sorted_i[j];

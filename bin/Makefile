@@ -7,7 +7,8 @@ CC = icc
 # compiler options
 CCOPTS = -Wall -O2 -xHost -DNDEBUG -restrict -DMEM_DATA_ALIGN=64
 # uncomment to enable profiling. make sure to run 'make clean' before recompiling.
-#CCOPTS += -DPROFILE_ENABLE
+CCOPTS += -DPROFILE_ENABLE
+CCOPTS += -qopenmp
 
 # set these with appropriate libraries for your system
 LIBRARIES = -mkl=sequential

@@ -1,5 +1,6 @@
 #include "time_flow.h"
 #include "linalg.h"
+#undef PROFILE_ENABLE
 #include "profiler.h"
 #include <mkl.h>
 #include <stdlib.h>
