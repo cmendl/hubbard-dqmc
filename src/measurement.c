@@ -1,5 +1,6 @@
 #include "measurement.h"
 #include "linalg.h"
+#include "util.h"
 #include "dupio.h"
 #include <mkl.h>
 #include <math.h>
@@ -123,10 +124,17 @@ void AccumulateEqualTimeMeasurement(const greens_func_t *restrict Gu, const gree
 	meas_data->doubleocc[1] += square(oc);
 
 	// density and spin correlations
+
+	// sign and normalization factor
+	const double signfac = sign / N;
+
 	for (i = 0; i < N; i++)
 	{
 		const double Gu_ii = Gu->mat[i + N*i];
 		const double Gd_ii = Gd->mat[i + N*i];
+
+		meas_data->zz_corr[0] += signfac*(Gu_ii + Gd_ii);
+		meas_data->xx_corr[0] += signfac*(Gu_ii + Gd_ii);
 
 		for (k = 0; k < N; k++)
 		{
@@ -139,12 +147,12 @@ void AccumulateEqualTimeMeasurement(const greens_func_t *restrict Gu, const gree
 			const double Gu_ji = Gu->mat[j + N*i];
 			const double Gd_ji = Gd->mat[j + N*i];
 
-			meas_data->uu_corr[k] += sign*((1.0 - Gu_ii)*(1.0 - Gu_jj) - Gu_ij*Gu_ji);
-			meas_data->dd_corr[k] += sign*((1.0 - Gd_ii)*(1.0 - Gd_jj) - Gd_ij*Gd_ji);
-			meas_data->ud_corr[k] += sign*((1.0 - Gu_ii)*(1.0 - Gd_jj) + (1.0 - Gd_ii)*(1.0 - Gu_jj));
+			meas_data->uu_corr[k] += signfac*((1.0 - Gu_ii)*(1.0 - Gu_jj) - Gu_ij*Gu_ji);
+			meas_data->dd_corr[k] += signfac*((1.0 - Gd_ii)*(1.0 - Gd_jj) - Gd_ij*Gd_ji);
+			meas_data->ud_corr[k] += signfac*((1.0 - Gu_ii)*(1.0 - Gd_jj) + (1.0 - Gd_ii)*(1.0 - Gu_jj));
 
-			meas_data->zz_corr[k] += sign*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
-			meas_data->xx_corr[k] += sign*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
+			meas_data->zz_corr[k] += signfac*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
+			meas_data->xx_corr[k] += signfac*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
 		}
 	}
 

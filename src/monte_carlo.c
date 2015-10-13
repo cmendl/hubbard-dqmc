@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <assert.h>
-#include <omp.h>
 
 
 //________________________________________________________________________________________________________________________
@@ -60,19 +59,17 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		{
 			PROFILE_BEGIN(DQMCIter_Grecomp);
 			// store current Green's function matrices to compare with newly constructed ones
+			CopyGreensFunction(Gu, &Gu_old);
+			CopyGreensFunction(Gd, &Gd_old);
+
 			#pragma omp parallel sections
 			{
 				#pragma omp section
-				{
-					CopyGreensFunction(Gu, &Gu_old);
-					GreenConstruct(tsm_u, l, Gu);
-				}
+				GreenConstruct(tsm_u, l, Gu);
 				#pragma omp section
-				{
-					CopyGreensFunction(Gd, &Gd_old);
-					GreenConstruct(tsm_d, l, Gd);
-				}
+				GreenConstruct(tsm_d, l, Gd);
 			}
+
 			// deviation of matrix entries
 			double err_u = UniformDistance(N*N, Gu_old.mat, Gu->mat);
 			double err_d = UniformDistance(N*N, Gd_old.mat, Gd->mat);
@@ -119,18 +116,16 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 				#pragma omp parallel sections
 				{
 					#pragma omp section
-					{
-						GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]], N, i, Gu->mat);
-						Gu->logdet -= log(fabs(du));
-						if (du < 0) { Gu->sgndet = -Gu->sgndet; }
-					}
+					GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]], N, i, Gu->mat);
 					#pragma omp section
-					{
-						GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]], N, i, Gd->mat);
-						Gd->logdet -= log(fabs(dd));
-						if (dd < 0) { Gd->sgndet = -Gd->sgndet; }
-					}
+					GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]], N, i, Gd->mat);
 				}
+				// correspondingly update determinants
+				Gu->logdet -= log(fabs(du));
+				Gd->logdet -= log(fabs(dd));
+				if (du < 0) { Gu->sgndet = -Gu->sgndet; }
+				if (dd < 0) { Gd->sgndet = -Gd->sgndet; }
+
 				// actually flip spin of Hubbard-Stratonovich field entry
 				s[i + l*N] = 1 - s[i + l*N];
 			}
@@ -251,12 +246,22 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 		}
 
 		// calculate new time step matrices
-		InitPhononTimeStepMatrices(kinetic, stratonovich_params->expVu, s, expX, &tsm_u_new);
-		InitPhononTimeStepMatrices(kinetic, stratonovich_params->expVd, s, expX, &tsm_d_new);
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			InitPhononTimeStepMatrices(kinetic, stratonovich_params->expVu, s, expX, &tsm_u_new);
+			#pragma omp section
+			InitPhononTimeStepMatrices(kinetic, stratonovich_params->expVd, s, expX, &tsm_d_new);
+		}
 
 		// calculate new Green's functions
-		GreenConstruct(&tsm_u_new, 0, Gu);
-		GreenConstruct(&tsm_d_new, 0, Gd);
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			GreenConstruct(&tsm_u_new, 0, Gu);
+			#pragma omp section
+			GreenConstruct(&tsm_d_new, 0, Gd);
+		}
 
 		// decide whether block update is accepted; note that det(G) = 1/det(M)
 		if (Random_GetUniform(seed) < exp((Gu_ref.logdet + Gd_ref.logdet) - (Gu->logdet + Gd->logdet) - dt * dEph))
@@ -353,8 +358,13 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			CopyGreensFunction(Gu, &Gu_old);
 			CopyGreensFunction(Gd, &Gd_old);
 
-			GreenConstruct(tsm_u, l, Gu);
-			GreenConstruct(tsm_d, l, Gd);
+			#pragma omp parallel sections
+			{
+				#pragma omp section
+				GreenConstruct(tsm_u, l, Gu);
+				#pragma omp section
+				GreenConstruct(tsm_d, l, Gd);
+			}
 
 			// deviation of matrix entries
 			double err_u = UniformDistance(N*N, Gu_old.mat, Gu->mat);
@@ -373,8 +383,13 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			}
 		}
 
-		GreenTimeSliceWrap(N, tsm_u->B[l], tsm_u->invB[l], Gu->mat);
-		GreenTimeSliceWrap(N, tsm_d->B[l], tsm_d->invB[l], Gd->mat);
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			GreenTimeSliceWrap(N, tsm_u->B[l], tsm_u->invB[l], Gu->mat);
+			#pragma omp section
+			GreenTimeSliceWrap(N, tsm_d->B[l], tsm_d->invB[l], Gd->mat);
+		}
 
 		// iterate over lattice sites randomly, updating the Hubbard-Stratonovich field
 		Random_Shuffle(seed, N, site_order);
@@ -390,8 +405,13 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			if (Random_GetUniform(seed) < fabs(du*dd))
 			{
 				// Eq. (15)
-				GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]], N, i, Gu->mat);
-				GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]], N, i, Gd->mat);
+				#pragma omp parallel sections
+				{
+					#pragma omp section
+					GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]], N, i, Gu->mat);
+					#pragma omp section
+					GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]], N, i, Gd->mat);
+				}
 				// correspondingly update determinants
 				Gu->logdet -= log(fabs(du));
 				Gd->logdet -= log(fabs(dd));
@@ -427,8 +447,13 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			if (Random_GetUniform(seed) < fabs(du*dd) * exp(-dt * dEph))
 			{
 				// Eq. (15)
-				GreenShermanMorrisonUpdate(delta, N, i, Gu->mat);
-				GreenShermanMorrisonUpdate(delta, N, i, Gd->mat);
+				#pragma omp parallel sections
+				{
+					#pragma omp section
+					GreenShermanMorrisonUpdate(delta, N, i, Gu->mat);
+					#pragma omp section
+					GreenShermanMorrisonUpdate(delta, N, i, Gd->mat);
+				}
 				// correspondingly update determinants
 				Gu->logdet -= log(fabs(du));
 				Gd->logdet -= log(fabs(dd));
@@ -442,8 +467,13 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		}
 
 		// re-compute corresponding B matrices
-		UpdatePhononTimeStepMatrices(kinetic, stratonovich_params->expVu, s, expX, l, tsm_u);
-		UpdatePhononTimeStepMatrices(kinetic, stratonovich_params->expVd, s, expX, l, tsm_d);
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			UpdatePhononTimeStepMatrices(kinetic, stratonovich_params->expVu, s, expX, l, tsm_u);
+			#pragma omp section
+			UpdatePhononTimeStepMatrices(kinetic, stratonovich_params->expVd, s, expX, l, tsm_d);
+		}
 	}
 
 	// perform block updates
@@ -488,25 +518,29 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 		s[i] = (Random_GetUniform(seed) < 0.5 ? 0 : 1);
 	}
 
-	// allocate and construct initial Green's functions
-	time_step_matrices_t tsm_u, tsm_d;
-	greens_func_t Gu, Gd;
+	// time step matrices
+	time_step_matrices_t tsm_u;
+	time_step_matrices_t tsm_d;
+	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_u);
+	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_d);
 	#pragma omp parallel sections
 	{
 		#pragma omp section
-		{
-			AllocateTimeStepMatrices(N, L, prodBlen, &tsm_u);
-			InitTimeStepMatrices(kinetic, stratonovich_params.expVu, s, &tsm_u);
-			AllocateGreensFunction(N, &Gu);
-			GreenConstruct(&tsm_u, 0, &Gu);
-		}
+		InitTimeStepMatrices(kinetic, stratonovich_params.expVu, s, &tsm_u);
 		#pragma omp section
-		{
-			AllocateTimeStepMatrices(N, L, prodBlen, &tsm_d);
-			InitTimeStepMatrices(kinetic, stratonovich_params.expVd, s, &tsm_d);
-			AllocateGreensFunction(N, &Gd);
-			GreenConstruct(&tsm_d, 0, &Gd);
-		}
+		InitTimeStepMatrices(kinetic, stratonovich_params.expVd, s, &tsm_d);
+	}
+
+	// allocate and construct initial Green's functions
+	greens_func_t Gu, Gd;
+	AllocateGreensFunction(N, &Gu);
+	AllocateGreensFunction(N, &Gd);
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		GreenConstruct(&tsm_u, 0, &Gu);
+		#pragma omp section
+		GreenConstruct(&tsm_d, 0, &Gd);
 	}
 
 	// perform equilibration
@@ -584,15 +618,25 @@ void DQMCPhononSimulation(const double U, const double dt, const int L, const ki
 	time_step_matrices_t tsm_d;
 	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_u);
 	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_d);
-	InitPhononTimeStepMatrices(kinetic, stratonovich_params.expVu, s, expX, &tsm_u);
-	InitPhononTimeStepMatrices(kinetic, stratonovich_params.expVd, s, expX, &tsm_d);
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		InitPhononTimeStepMatrices(kinetic, stratonovich_params.expVu, s, expX, &tsm_u);
+		#pragma omp section
+		InitPhononTimeStepMatrices(kinetic, stratonovich_params.expVd, s, expX, &tsm_d);
+	}
 
 	// allocate and construct initial Green's functions
 	greens_func_t Gu, Gd;
 	AllocateGreensFunction(N, &Gu);
 	AllocateGreensFunction(N, &Gd);
-	GreenConstruct(&tsm_u, 0, &Gu);
-	GreenConstruct(&tsm_d, 0, &Gd);
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		GreenConstruct(&tsm_u, 0, &Gu);
+		#pragma omp section
+		GreenConstruct(&tsm_d, 0, &Gd);
+	}
 
 	// perform equilibration
 	duprintf("Starting equilibration iterations (including phonons)...\n");

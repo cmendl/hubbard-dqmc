@@ -2,6 +2,7 @@
 #include "kinetic.h"
 #include "param_parser.h"
 #include "profiler.h"
+#include "util.h"
 #include "dupio.h"
 #include <mkl.h>
 #include <math.h>

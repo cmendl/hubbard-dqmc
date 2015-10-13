@@ -1,4 +1,5 @@
 #include "monte_carlo.h"
+#include "util.h"
 #include <mkl.h>
 #include <math.h>
 #include <assert.h>

@@ -2,7 +2,6 @@
 #define MEASUREMENT_H
 
 #include "greens_func.h"
-#include "util.h"
 
 
 //________________________________________________________________________________________________________________________
@@ -49,7 +48,9 @@ void NormalizeMeasurementData(measurement_data_t *meas_data);
 ///
 static inline double SampleStandardDeviation(const int n, const double mean, const double sqr)
 {
-	return sqrt(n*(sqr - square(mean)) / (double)(n-1));
+	// try to avoid numerical cancellation errors
+	const double sqr2 = sqrt(sqr);
+	return sqrt(n*(sqr2 - mean)*(sqr2 + mean) / (double)(n-1));
 }
 
 
