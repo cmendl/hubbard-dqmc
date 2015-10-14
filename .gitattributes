@@ -1,3 +1,6 @@
 # treat Mathematica notebooks as text files
 *.nb  text
 *.cdf text
+
+# treat data files as binary files
+*.dat binary

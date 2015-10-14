@@ -558,7 +558,7 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 
 		// accumulate "measurement" data
 		PROFILE_BEGIN(DQMCSim_AccumulateMeasurements);
-		AccumulateEqualTimeMeasurement(&Gu, &Gd, meas_data);
+		AccumulateMeasurement(&Gu, &Gd, meas_data);
 		PROFILE_END(DQMCSim_AccumulateMeasurements);
 	}
 
@@ -652,7 +652,7 @@ void DQMCPhononSimulation(const double U, const double dt, const int L, const ki
 		DQMCPhononIteration(dt, kinetic, &stratonovich_params, phonon_params, nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 
 		// accumulate "measurement" data
-		AccumulateEqualTimeMeasurement(&Gu, &Gd, meas_data);
+		AccumulateMeasurement(&Gu, &Gd, meas_data);
 	}
 
 	// clean up

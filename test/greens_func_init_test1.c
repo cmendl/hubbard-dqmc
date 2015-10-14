@@ -96,5 +96,5 @@ int GreensFuncInitTest1()
 	DeleteTimeStepMatrices(&tsm);
 	DeleteKineticExponential(&kinetic);
 
-	return (err_rel < 2.5e-12 && err_abs < 1e-14 && err_det < 5e-14 ? 0 : 1);
+	return (err_rel < 4e-12 && err_abs < 2e-14 && err_det < 5e-14 ? 0 : 1);
 }

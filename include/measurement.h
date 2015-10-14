@@ -36,10 +36,42 @@ void AllocateMeasurementData(const int Nx, const int Ny, measurement_data_t *res
 void DeleteMeasurementData(measurement_data_t *restrict meas_data);
 
 
-void AccumulateEqualTimeMeasurement(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, measurement_data_t *meas_data);
+void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, measurement_data_t *restrict meas_data);
 
 
 void NormalizeMeasurementData(measurement_data_t *meas_data);
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Unequal time measurement data structure
+///
+typedef struct
+{
+	double *Gu_ut;			//!< concatenated unequal time spin-up   Green's functions G_u(0,tau) with tau = 0, 1, ..., L-1; array of size L*N x N
+	double *Gd_ut;			//!< concatenated unequal time spin-down Green's functions G_d(0,tau) with tau = 0, 1, ..., L-1; array of size L*N x N
+
+	double *Hu;				//!< temporary matrix of size L*N x L*N for spin-up
+	double *Hd;				//!< temporary matrix of size L*N x L*N for spin-down
+
+	double sign;			//!< accumulated (equal time) Green's function signs (+-1)
+	int nsampl;				//!< number of accumulated samples
+
+	int N;					//!< total number of lattice sites
+	int L;					//!< total number of time steps
+}
+measurement_data_unequal_time_t;
+
+
+void AllocateUnequalTimeMeasurementData(const int N, const int L, measurement_data_unequal_time_t *restrict meas_data);
+
+void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict meas_data);
+
+
+void AccumulateUnequalTimeMeasurement(const int sign, const double *const *Bu, const double *const *Bd, measurement_data_unequal_time_t *restrict meas_data);
+
+
+void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_data);
 
 
 //________________________________________________________________________________________________________________________
