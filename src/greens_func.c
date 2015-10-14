@@ -189,15 +189,8 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 		d[j] = inv1ci * Gmat[j + N*i];
 	}
 
-	// subtract Kronecker product of d and c from Gmat
-	for (j = 0; j < N; j++)
-	{
-		int k;
-		for (k = 0; k < N; k++)
-		{
-			Gmat[k + N*j] -= d[k] * c[j];
-		}
-	}
+	// subtract outer Kronecker product d x c from Gmat
+	cblas_dger(CblasColMajor, N, N, -1.0, d, 1, c, 1, Gmat, N);
 
 	// clean up
 	MKL_free(d);

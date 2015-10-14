@@ -1,5 +1,5 @@
 SRCFILES = aa.o dupio.o greens_func.o kinetic.o lattice_fourier.o linalg.o measurement.o monte_carlo.o param_parser.o profiler.o random.o stratonovich.o time_flow.o util.o
-TSTFILES = matrix_exp_test.o blockcyclic_qr_test.o blockcyclic_tri_test.o blockcyclic_inv_test.o kinetic_test.o lattice_fourier_test.o time_flow_test1.o time_flow_test2.o time_flow_test3.o stratonovich_test.o greens_func_flip_test.o greens_func_wrap_test.o greens_func_init_test1.o greens_func_init_test2.o greens_func_init_test3.o monte_carlo_iter_test.o monte_carlo_phonon_block_test.o monte_carlo_iter_phonon_test.o
+TSTFILES = matrix_exp_test.o blockcyclic_qr_test.o blockcyclic_tri_test.o blockcyclic_inv_test.o kinetic_test.o lattice_fourier_test.o time_flow_test1.o time_flow_test2.o time_flow_test3.o stratonovich_test.o greens_func_flip_test.o greens_func_wrap_test.o greens_func_init_test1.o greens_func_init_test2.o greens_func_init_test3.o monte_carlo_iter_test.o monte_carlo_phonon_block_test.o monte_carlo_iter_phonon_test.o measurement_test.o
 
 # use Intel compiler
 CC = icc
@@ -11,7 +11,7 @@ CCOPTS += -DPROFILE_ENABLE
 CCOPTS += -qopenmp
 
 # set these with appropriate libraries for your system
-LIBRARIES = -mkl=sequential
+LIBRARIES = -mkl=sequential -lrt
 
 # static libraries, useful for gprof
 #MKLROOT = /opt/intel/mkl
@@ -89,6 +89,9 @@ monte_carlo_phonon_block_test.o: ../test/monte_carlo_phonon_block_test.c
 	${CC} -c -I../include ${CCOPTS} $<
 
 monte_carlo_iter_phonon_test.o: ../test/monte_carlo_iter_phonon_test.c
+	${CC} -c -I../include ${CCOPTS} $<
+
+measurement_test.o: ../test/measurement_test.c
 	${CC} -c -I../include ${CCOPTS} $<
 
 

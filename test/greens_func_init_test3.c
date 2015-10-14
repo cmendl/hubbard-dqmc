@@ -110,5 +110,5 @@ int GreensFuncInitTest3()
 	MKL_free(X);
 	DeleteKineticExponential(&kinetic);
 
-	return (err_rel < 1e-10 && err_abs < 1e-14 && err_det < 5e-14 ? 0 : 1);
+	return (err_rel < 4e-10 && err_abs < 2e-14 && err_det < 6e-14 ? 0 : 1);
 }
