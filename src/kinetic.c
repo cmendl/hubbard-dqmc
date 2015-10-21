@@ -19,7 +19,7 @@ void NearestNeighborKineticExponential(const int Nx, const int Ny, const double 
 
 	// set diagonal entries in 'T' (shift by chemical potential)
 	const double dt_mu = dt * mu;
-	for (i = 0; i < Nx; i++)
+	for (i = 0; i < N; i++)
 	{
 		T[i + N*i] = dt_mu;
 	}

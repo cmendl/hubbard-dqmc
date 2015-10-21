@@ -176,21 +176,20 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 	__assume_aligned(c, MEM_DATA_ALIGN);
 	for (j = 0; j < N; j++)
 	{
-		c[j] = -delta * Gmat[i + j*N];
+		c[j] = Gmat[i + j*N];
 	}
-	c[i] += delta;
+	c[i] -= 1.0;
 
 	// copy and scale i-th column of Gmat
 	double *d = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
 	__assume_aligned(d, MEM_DATA_ALIGN);
-	const double inv1ci = 1 / (1 + c[i]);
 	for (j = 0; j < N; j++)
 	{
-		d[j] = inv1ci * Gmat[j + N*i];
+		d[j] = Gmat[j + N*i];
 	}
 
 	// subtract outer Kronecker product d x c from Gmat
-	cblas_dger(CblasColMajor, N, N, -1.0, d, 1, c, 1, Gmat, N);
+	cblas_dger(CblasColMajor, N, N, delta / (1.0 - delta * c[i]), d, 1, c, 1, Gmat, N);
 
 	// clean up
 	MKL_free(d);

@@ -21,7 +21,7 @@ profile_entry;
 void Profile_Start(void)
 {
 	aaInit(&profile_table, PROFILE_MAX_ENTRIES);
-	clock_gettime(CLOCK_MONOTONIC, &main_start_);
+	clock_gettime(CLOCK_TYPE, &main_start_);
 }
 
 void Profile_Add(const char *name, long long delta)
@@ -78,7 +78,7 @@ static int entry_compare(const void *a, const void *b)
 void Profile_Stop(void)
 {
 
-	clock_gettime(CLOCK_MONOTONIC, &main_end_);
+	clock_gettime(CLOCK_TYPE, &main_end_);
 	long long main_total = DELTA_NS(main_end_, main_start_);
 
 	int *sorted_i = (int *)MKL_malloc(profile_table.n * sizeof(int), MEM_DATA_ALIGN);
