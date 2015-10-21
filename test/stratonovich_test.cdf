@@ -1,19 +1,32 @@
-(* Content-type: application/vnd.wolfram.mathematica *)
+(* Content-type: application/vnd.wolfram.cdf.text *)
 
-(*** Wolfram Notebook File ***)
-(* http://www.wolfram.com/nb *)
+(*** Wolfram CDF File ***)
+(* http://www.wolfram.com/cdf *)
 
 (* CreatedBy='Mathematica 10.0' *)
+
+(*************************************************************************)
+(*                                                                       *)
+(*  The Mathematica License under which this file was created prohibits  *)
+(*  restricting third parties in receipt of this file from republishing  *)
+(*  or redistributing it by any means, including but not limited to      *)
+(*  rights management or terms of use, without the express consent of    *)
+(*  Wolfram Research, Inc. For additional information concerning CDF     *)
+(*  licensing and redistribution see:                                    *)
+(*                                                                       *)
+(*        www.wolfram.com/cdf/adopting-cdf/licensing-options.html        *)
+(*                                                                       *)
+(*************************************************************************)
 
 (*CacheID: 234*)
 (* Internal cache information:
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
-NotebookDataPosition[       158,          7]
-NotebookDataLength[      4538,        171]
-NotebookOptionsPosition[      3900,        144]
-NotebookOutlinePosition[      4244,        159]
-CellTagsIndexPosition[      4201,        156]
+NotebookDataPosition[      1064,         20]
+NotebookDataLength[      4543,        171]
+NotebookOptionsPosition[      4806,        157]
+NotebookOutlinePosition[      5150,        172]
+CellTagsIndexPosition[      5107,        169]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -159,22 +172,24 @@ CellTagsIndex->{}
 (*NotebookFileOutline
 Notebook[{
 Cell[CellGroupData[{
-Cell[580, 22, 96, 2, 31, "Input"],
-Cell[679, 26, 206, 8, 36, "Output"]
+Cell[1486, 35, 96, 2, 31, "Input"],
+Cell[1585, 39, 206, 8, 36, "Output"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[922, 39, 762, 26, 39, "Input"],
-Cell[1687, 67, 28, 0, 31, "Output"]
+Cell[1828, 52, 762, 26, 39, "Input"],
+Cell[2593, 80, 28, 0, 31, "Output"]
 }, Open  ]],
-Cell[1730, 70, 217, 7, 52, "Input"],
+Cell[2636, 83, 217, 7, 52, "Input"],
 Cell[CellGroupData[{
-Cell[1972, 81, 313, 10, 52, "Input"],
-Cell[2288, 93, 124, 3, 33, "Output"],
-Cell[2415, 98, 46, 0, 31, "Output"]
+Cell[2878, 94, 313, 10, 52, "Input"],
+Cell[3194, 106, 124, 3, 33, "Output"],
+Cell[3321, 111, 46, 0, 31, "Output"]
 }, Open  ]],
-Cell[2476, 101, 1420, 41, 72, "Input"]
+Cell[3382, 114, 1420, 41, 72, "Input"]
 }
 ]
 *)
 
 (* End of internal cache information *)
+
+(* NotebookSignature Twp0db5c0jf8RBK#iHdURVJv *)

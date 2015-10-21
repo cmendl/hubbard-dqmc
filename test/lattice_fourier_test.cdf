@@ -1,19 +1,32 @@
-(* Content-type: application/vnd.wolfram.mathematica *)
+(* Content-type: application/vnd.wolfram.cdf.text *)
 
-(*** Wolfram Notebook File ***)
-(* http://www.wolfram.com/nb *)
+(*** Wolfram CDF File ***)
+(* http://www.wolfram.com/cdf *)
 
 (* CreatedBy='Mathematica 10.0' *)
+
+(*************************************************************************)
+(*                                                                       *)
+(*  The Mathematica License under which this file was created prohibits  *)
+(*  restricting third parties in receipt of this file from republishing  *)
+(*  or redistributing it by any means, including but not limited to      *)
+(*  rights management or terms of use, without the express consent of    *)
+(*  Wolfram Research, Inc. For additional information concerning CDF     *)
+(*  licensing and redistribution see:                                    *)
+(*                                                                       *)
+(*        www.wolfram.com/cdf/adopting-cdf/licensing-options.html        *)
+(*                                                                       *)
+(*************************************************************************)
 
 (*CacheID: 234*)
 (* Internal cache information:
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
-NotebookDataPosition[       158,          7]
-NotebookDataLength[     20601,        610]
-NotebookOptionsPosition[     19341,        562]
-NotebookOutlinePosition[     19685,        577]
-CellTagsIndexPosition[     19642,        574]
+NotebookDataPosition[      1064,         20]
+NotebookDataLength[     20608,        610]
+NotebookOptionsPosition[     20247,        575]
+NotebookOutlinePosition[     20591,        590]
+CellTagsIndexPosition[     20548,        587]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -561,7 +574,7 @@ Cell[BoxData[
 }, Open  ]]
 },
 WindowSize->{1350, 770},
-WindowMargins->{{Automatic, 199}, {Automatic, 173}},
+WindowMargins->{{384, Automatic}, {Automatic, 166}},
 FrontEndVersion->"10.0 for Microsoft Windows (64-bit) (July 1, 2014)",
 StyleDefinitions->"Default.nb"
 ]
@@ -577,43 +590,45 @@ CellTagsIndex->{}
 (*NotebookFileOutline
 Notebook[{
 Cell[CellGroupData[{
-Cell[580, 22, 42, 0, 43, "Subsection"],
-Cell[625, 24, 320, 10, 72, "Input"],
+Cell[1486, 35, 42, 0, 43, "Subsection"],
+Cell[1531, 37, 320, 10, 72, "Input"],
 Cell[CellGroupData[{
-Cell[970, 38, 1737, 55, 88, "Input"],
-Cell[2710, 95, 73, 2, 31, "Output"]
+Cell[1876, 51, 1737, 55, 88, "Input"],
+Cell[3616, 108, 73, 2, 31, "Output"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[2820, 102, 612, 20, 61, "Input"],
-Cell[3435, 124, 3261, 67, 92, "Output"]
+Cell[3726, 115, 612, 20, 61, "Input"],
+Cell[4341, 137, 3261, 67, 92, "Output"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[6733, 196, 1163, 36, 52, "Input"],
-Cell[7899, 234, 30, 0, 31, "Output"]
+Cell[7639, 209, 1163, 36, 52, "Input"],
+Cell[8805, 247, 30, 0, 31, "Output"]
 }, Open  ]],
-Cell[7944, 237, 426, 11, 31, "Input"],
-Cell[8373, 250, 1052, 31, 72, "Input"]
-}, Open  ]],
-Cell[CellGroupData[{
-Cell[9462, 286, 42, 0, 43, "Subsection"],
-Cell[9507, 288, 320, 10, 72, "Input"],
-Cell[CellGroupData[{
-Cell[9852, 302, 1897, 59, 88, "Input"],
-Cell[11752, 363, 73, 2, 31, "Output"]
+Cell[8850, 250, 426, 11, 31, "Input"],
+Cell[9279, 263, 1052, 31, 72, "Input"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[11862, 370, 612, 20, 61, "Input"],
-Cell[12477, 392, 4119, 77, 112, "Output"]
+Cell[10368, 299, 42, 0, 43, "Subsection"],
+Cell[10413, 301, 320, 10, 72, "Input"],
+Cell[CellGroupData[{
+Cell[10758, 315, 1897, 59, 88, "Input"],
+Cell[12658, 376, 73, 2, 31, "Output"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[16633, 474, 1163, 36, 52, "Input"],
-Cell[17799, 512, 30, 0, 31, "Output"]
+Cell[12768, 383, 612, 20, 61, "Input"],
+Cell[13383, 405, 4119, 77, 112, "Output"]
 }, Open  ]],
-Cell[17844, 515, 426, 11, 31, "Input"],
-Cell[18273, 528, 1052, 31, 72, "Input"]
+Cell[CellGroupData[{
+Cell[17539, 487, 1163, 36, 52, "Input"],
+Cell[18705, 525, 30, 0, 31, "Output"]
+}, Open  ]],
+Cell[18750, 528, 426, 11, 31, "Input"],
+Cell[19179, 541, 1052, 31, 72, "Input"]
 }, Open  ]]
 }
 ]
 *)
 
 (* End of internal cache information *)
+
+(* NotebookSignature pupRMouvIFHgNB1#eWtOFhRF *)
