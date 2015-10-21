@@ -22,6 +22,9 @@ int GreensFuncWrapTest()
 	// imaginary-time step size
 	const double dt = 1.0/8;
 
+	// chemical potential
+	const double mu = -1.0/5;
+
 	// lambda parameter (depends on U in Hamiltonian)
 	const double lambda = 0.75;
 	const double expV[2] = {
@@ -31,7 +34,7 @@ int GreensFuncWrapTest()
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	NearestNeighborKineticExponential(Nx, Ny, 0.0, dt, &kinetic);
+	NearestNeighborKineticExponential(Nx, Ny, mu, dt, &kinetic);
 
 	// Hubbard-Stratonovich field
 	const spin_field_t s[N] = { 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1 };
@@ -73,5 +76,5 @@ int GreensFuncWrapTest()
 	MKL_free(B);
 	DeleteKineticExponential(&kinetic);
 
-	return (err_rel < 2.5e-12 && err_abs < 2e-14 ? 0 : 1);
+	return (err_rel < 4e-12 && err_abs < 2e-14 ? 0 : 1);
 }

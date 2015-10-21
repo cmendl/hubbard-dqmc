@@ -171,7 +171,7 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 
 	int j;
 
-	// copy and scale i-th row of Gmat
+	// copy i-th row of Gmat
 	double *c = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
 	__assume_aligned(c, MEM_DATA_ALIGN);
 	for (j = 0; j < N; j++)
@@ -180,15 +180,12 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 	}
 	c[i] -= 1.0;
 
-	// copy and scale i-th column of Gmat
+	// copy i-th column of Gmat
 	double *d = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
 	__assume_aligned(d, MEM_DATA_ALIGN);
-	for (j = 0; j < N; j++)
-	{
-		d[j] = Gmat[j + N*i];
-	}
+	memcpy(d, &Gmat[N*i], N * sizeof(double));
 
-	// subtract outer Kronecker product d x c from Gmat
+	// subtract outer Kronecker product from Gmat
 	cblas_dger(CblasColMajor, N, N, delta / (1.0 - delta * c[i]), d, 1, c, 1, Gmat, N);
 
 	// clean up

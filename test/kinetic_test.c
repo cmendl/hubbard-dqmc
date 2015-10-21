@@ -7,18 +7,22 @@
 
 int KineticTest()
 {
+	// lattice dimension
+	const int Nx = 4;
+	const int Ny = 6;
+	// total number of lattice sites
+	const int N = Nx * Ny;
+
 	// imaginary-time step size
 	const double dt = 1.0/7;
 
-	#define Nx 4
-	#define Ny 6
-	// total number of lattice sites
-	#define N  (Nx * Ny)
+	// chemical potential
+	const double mu = 2.0/9;
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	printf("Calculating matrix exponential of the kinetic nearest neighbor hopping matrix on a %i x %i lattice...\n", Nx, Ny);
 	kinetic_t kinetic;
-	NearestNeighborKineticExponential(Nx, Ny, 0.0, dt, &kinetic);
+	NearestNeighborKineticExponential(Nx, Ny, mu, dt, &kinetic);
 
 	// load reference data from disk
 	double *expK_ref     = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
