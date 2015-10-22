@@ -19,19 +19,16 @@ void AllocateMeasurementData(const int Nx, const int Ny, measurement_data_t *res
 	const int N = Nx * Ny;
 	meas_data->N = N;
 
-	int i;
-	for (i = 0; i < 2; i++)
-	{
-		meas_data->density_u[i] = 0;
-		meas_data->density_d[i] = 0;
-		meas_data->doubleocc[i] = 0;
-	}
+	meas_data->density_u = 0;
+	meas_data->density_d = 0;
+	meas_data->doubleocc = 0;
 
 	// construct lattice coordinate sum map
 	meas_data->latt_sum_map = (int *)MKL_malloc(N*N * sizeof(int), MEM_DATA_ALIGN);
 	int j;
 	for (j = 0; j < Ny; j++)
 	{
+		int i;
 		for (i = 0; i < Nx; i++)
 		{
 			// index of (i,j) lattice site
@@ -116,14 +113,10 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 	nd *= nfac;
 	oc *= nfac;
 
-	// mean value
-	meas_data->density_u[0] += sign*nu;
-	meas_data->density_d[0] += sign*nd;
-	meas_data->doubleocc[0] += sign*oc;
-	// squares
-	meas_data->density_u[1] += square(nu);
-	meas_data->density_d[1] += square(nd);
-	meas_data->doubleocc[1] += square(oc);
+	// mean value of density and double occupancy
+	meas_data->density_u += sign*nu;
+	meas_data->density_d += sign*nd;
+	meas_data->doubleocc += sign*oc;
 
 	// density and spin correlations
 
@@ -178,14 +171,11 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 	// normalization factor; sign must be non-zero
 	const double nfac = 1.0 / meas_data->sign;
 
-	int i;
-	for (i = 0; i < 2; i++)
-	{
-		meas_data->density_u[i] *= nfac;
-		meas_data->density_d[i] *= nfac;
-		meas_data->doubleocc[i] *= nfac;
-	}
+	meas_data->density_u *= nfac;
+	meas_data->density_d *= nfac;
+	meas_data->doubleocc *= nfac;
 
+	int i;
 	for (i = 0; i < N; i++)
 	{
 		meas_data->uu_corr[i] *= nfac;

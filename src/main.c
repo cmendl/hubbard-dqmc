@@ -161,10 +161,10 @@ int main(int argc, char *argv[])
 	duprintf("_______________________________________________________________________________\n");
 	duprintf("Summary of simulation results\n\n");
 	duprintf("                    average sign: %g\n", meas_data.sign);
-	duprintf("         average spin-up density: %g +- %g\n", meas_data.density_u[0], SampleStandardDeviation(params.nsampl, meas_data.density_u[0], meas_data.density_u[1]));
-	duprintf("       average spin-down density: %g +- %g\n", meas_data.density_d[0], SampleStandardDeviation(params.nsampl, meas_data.density_d[0], meas_data.density_d[1]));
-	duprintf("        average double occupancy: %g +- %g\n", meas_data.doubleocc[0], SampleStandardDeviation(params.nsampl, meas_data.doubleocc[0], meas_data.doubleocc[1]));
-	duprintf("            average local moment: %g\n", meas_data.density_u[0] + meas_data.density_d[0] - 2.0*meas_data.doubleocc[0]);
+	duprintf("         average spin-up density: %g\n", meas_data.density_u);
+	duprintf("       average spin-down density: %g\n", meas_data.density_d);
+	duprintf("        average double occupancy: %g\n", meas_data.doubleocc);
+	duprintf("            average local moment: %g\n", meas_data.density_u + meas_data.density_d - 2.0*meas_data.doubleocc);
 
 	// save simulation results as binary data to disk
 	duprintf("\nSaving simulation results to disk...");

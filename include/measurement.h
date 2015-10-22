@@ -10,9 +10,9 @@
 ///
 typedef struct
 {
-	double density_u[2];			//!< spin-up density (mean value and average squares)
-	double density_d[2];			//!< spin-down density (mean value and average squares)
-	double doubleocc[2];			//!< double occupancy (mean value and average squares)
+	double density_u;				//!< spin-up density
+	double density_d;				//!< spin-down density
+	double doubleocc;				//!< double occupancy
 
 	int *latt_sum_map;				//!< lattice site index of coordinate sum of two lattice sites; matrix of size N x N
 
@@ -72,18 +72,6 @@ void AccumulateUnequalTimeMeasurement(const int sign, const double *const *Bu, c
 
 
 void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_data);
-
-
-//________________________________________________________________________________________________________________________
-///
-/// \brief Standard deviation given the mean and average square
-///
-static inline double SampleStandardDeviation(const int n, const double mean, const double sqr)
-{
-	// try to avoid numerical cancellation errors
-	const double sqr2 = sqrt(sqr);
-	return sqrt(n*(sqr2 - mean)*(sqr2 + mean) / (double)(n-1));
-}
 
 
 
