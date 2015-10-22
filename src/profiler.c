@@ -5,11 +5,12 @@
 #include "profiler.h"
 #include <mkl.h>
 #include <stdlib.h>
+#include <omp.h>
 
 #define PROFILE_MAX_ENTRIES 128
 
 static aa_t profile_table;
-static struct timespec main_start_, main_end_;
+static TIME_TYPE main_start_, main_end_;
 
 typedef struct
 {
@@ -21,7 +22,7 @@ profile_entry;
 void Profile_Start(void)
 {
 	aaInit(&profile_table, PROFILE_MAX_ENTRIES);
-	clock_gettime(CLOCK_TYPE, &main_start_);
+	GET_TICKS(&main_start_);
 }
 
 void Profile_Add(const char *name, long long delta)
@@ -77,9 +78,16 @@ static int entry_compare(const void *a, const void *b)
 
 void Profile_Stop(void)
 {
+	GET_TICKS(&main_end_);
+	long long main_total = DELTA_TICKS(main_end_, main_start_);
 
-	clock_gettime(CLOCK_TYPE, &main_end_);
-	long long main_total = DELTA_NS(main_end_, main_start_);
+#ifdef _WIN32
+	LARGE_INTEGER freq;
+	QueryPerformanceFrequency(&freq);
+	const double ticks_per_sec = (double)freq.QuadPart;
+#else
+	const double ticks_per_sec = (double)TICKS_PER_SEC;
+#endif
 
 	int *sorted_i = (int *)MKL_malloc(profile_table.n * sizeof(int), MEM_DATA_ALIGN);
 	int j;
@@ -90,7 +98,7 @@ void Profile_Stop(void)
 
 	duprintf("===============================Profiling report=================================\n");
 	duprintf("%-32s%-8s%-10s%-12s%s\n", "name(-thread number)", "calls", "% of all", "total (s)", "time per call (us)");
-	duprintf("%-50s%g\n","total wall time", main_total/1000000000.);
+	duprintf("%-50s%g\n","total wall time", main_total / ticks_per_sec);
 	for (j = 0; j < profile_table.n; j++)
 	{
 		int i = sorted_i[j];
@@ -99,8 +107,8 @@ void Profile_Stop(void)
 				profile_table.nodes[i].key,
 				p->calls,
 				(100. * p->total) / main_total,
-				p->total / 1000000000.,
-				p->total / (1000. * p->calls));
+				p->total / ticks_per_sec,
+				p->total / (ticks_per_sec / 1000000. * p->calls));
 	}
 	duprintf("--------------------------------------------------------------------------------\n");
 	MKL_free(sorted_i);

@@ -5,23 +5,33 @@
 #ifdef PROFILE_ENABLE
 
 #ifdef _WIN32
-	#error No profiling support for Windows yet.
-#endif
+
+#include <windows.h>
+
+#define TIME_TYPE LARGE_INTEGER
+#define GET_TICKS(t) QueryPerformanceCounter((t))
+#define DELTA_TICKS(a, b) ((a.QuadPart)-(b.QuadPart))
+
+#else
 
 #include <time.h>
 
-#define CLOCK_TYPE CLOCK_PROCESS_CPUTIME_ID
+#define TIME_TYPE struct timespec
+#define GET_TICKS(t) clock_gettime(CLOCK_MONOTONIC, (t))
+#define TICKS_PER_SEC 1000000000LL
+#define DELTA_TICKS(a, b) \
+	(TICKS_PER_SEC * ((a).tv_sec - (b).tv_sec) + (long long)((a).tv_nsec - (b).tv_nsec))
 
-#define DELTA_NS(a, b) \
-	(1000000000LL * ((a).tv_sec - (b).tv_sec) + (long long)((a).tv_nsec - (b).tv_nsec))
+#endif
+
 
 #define PROFILE_BEGIN(name) \
-	struct timespec name##_start_, name##_end_; \
-	clock_gettime(CLOCK_TYPE, &name##_start_)
+	TIME_TYPE name##_start_, name##_end_; \
+	GET_TICKS(&name##_start_)
 
 #define PROFILE_END(name) \
-	clock_gettime(CLOCK_TYPE, &name##_end_); \
-	Profile_Add(#name, DELTA_NS(name##_end_, name##_start_))
+	GET_TICKS(&name##_end_); \
+	Profile_Add(#name, DELTA_TICKS(name##_end_, name##_start_))
 
 
 void Profile_Start(void);
@@ -32,6 +42,7 @@ void Profile_Stop(void);
 
 #else
 
+#define DELTA_TICKS(a, b)
 #define PROFILE_BEGIN(n)
 #define PROFILE_END(n)
 #define Profile_Start()
