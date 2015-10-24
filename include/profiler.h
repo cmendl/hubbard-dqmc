@@ -42,11 +42,9 @@ void Profile_Stop(void);
 
 #else
 
-#define DELTA_TICKS(a, b)
 #define PROFILE_BEGIN(n)
 #define PROFILE_END(n)
 #define Profile_Start()
-#define Profile_Add(n, d)
 #define Profile_Stop()
 
 #endif

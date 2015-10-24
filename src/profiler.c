@@ -1,15 +1,15 @@
 #ifdef PROFILE_ENABLE
 
-#include "aa.h"
+#include "hash_table.h"
 #include "dupio.h"
 #include "profiler.h"
 #include <mkl.h>
-#include <stdlib.h>
 #include <omp.h>
 
-#define PROFILE_MAX_ENTRIES 128
+// hash table of all keys and profile entries.
+static ht_t profile_table;
 
-static aa_t profile_table;
+// for total wall time calculation
 static TIME_TYPE main_start_, main_end_;
 
 typedef struct
@@ -19,46 +19,63 @@ typedef struct
 }
 profile_entry;
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Call at beginning of main() to initialize profiling.
+///
 void Profile_Start(void)
 {
-	aaInit(&profile_table, PROFILE_MAX_ENTRIES);
+	const int n_buckets = 32;
+	htInit(&profile_table, n_buckets);
 	GET_TICKS(&main_start_);
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Adds delta ticks to the profile entry corresponding to name.
+///
 void Profile_Add(const char *name, long long delta)
 {
-	profile_entry **p;
+	#pragma omp critical(profile_add)
+	{
+	// append a -<thread number> to name if Profile_Add is not called from main thread.
+	char name2[128];
 	int thread_num = omp_get_thread_num();
 	if (thread_num > 0)
 	{
-		char name2[128];
 		sprintf(name2, "%s-%d", name, thread_num);
-		p = (profile_entry **)aaGet(&profile_table, name2);
-	}
-	else
-	{
-		p = (profile_entry **)aaGet(&profile_table, name);
+		name = name2;
 	}
 
+	// retrieves pointer to pointer to corresponding profile entry.
+	profile_entry **p = (profile_entry **)htGet(&profile_table, name);
+
+	// initializes everything the first time around
 	if (p == NULL)
-		return;
-	if (*p == NULL)
 	{
+		htInsert(&profile_table, name);
+		p = (profile_entry **)htGet(&profile_table, name);
 		*p = (profile_entry *)MKL_malloc(sizeof(profile_entry), MEM_DATA_ALIGN);
 		**p = (profile_entry){0};
 	}
+
+	// update profile entry
 	(*p)->calls++;
 	(*p)->total += delta;
+	}
 }
 
-/*
+
 // sort by total time
+/*
 static int entry_compare(const void *a, const void *b)
 {
-	int ia = *(int *)a;
-	int ib = *(int *)b;
-	profile_entry *pa = (profile_entry *)profile_table.nodes[ia].val;
-	profile_entry *pb = (profile_entry *)profile_table.nodes[ib].val;
+	ht_entry_t *ea = *(ht_entry_t **)a;
+	ht_entry_t *eb = *(ht_entry_t **)b;
+	profile_entry *pa = (profile_entry *)ea->val;
+	profile_entry *pb = (profile_entry *)eb->val;
 	long long diff = pb->total - pa->total;
 	return (diff > 0) ? 1 : (diff < 0) ? -1 : 0; // in case casting to int overflows.
 }
@@ -68,19 +85,23 @@ static int entry_compare(const void *a, const void *b)
 #include <string.h>
 static int entry_compare(const void *a, const void *b)
 {
-	int ia = *(int *)a;
-	int ib = *(int *)b;
-	char *na = profile_table.nodes[ia].key;
-	char *nb = profile_table.nodes[ib].key;
-	return strcmp(na, nb);
+	ht_entry_t *ea = *(ht_entry_t **)a;
+	ht_entry_t *eb = *(ht_entry_t **)b;
+	return strcmp(ea->key, eb->key);
 }
 
 
+//________________________________________________________________________________________________________________________
+///
+/// \brief Call at end of main() to stop profiling and print report.
+///
 void Profile_Stop(void)
 {
+	// stop total wall time counters
 	GET_TICKS(&main_end_);
 	long long main_total = DELTA_TICKS(main_end_, main_start_);
 
+	// get the tick resolution
 #ifdef _WIN32
 	LARGE_INTEGER freq;
 	QueryPerformanceFrequency(&freq);
@@ -89,30 +110,36 @@ void Profile_Stop(void)
 	const double ticks_per_sec = (double)TICKS_PER_SEC;
 #endif
 
-	int *sorted_i = (int *)MKL_malloc(profile_table.n * sizeof(int), MEM_DATA_ALIGN);
-	int j;
-	for (j = 0; j < profile_table.n; j++) {
-		sorted_i[j] = j;
+	// place (pointers to) every entries into a simple array, and sort with entry_compare.
+	ht_entry_t **entries_table = (ht_entry_t **)MKL_malloc(profile_table.n_entries * sizeof(ht_entry_t *), MEM_DATA_ALIGN);
+	int i, j = 0;
+	for (i = 0; i < profile_table.n_buckets; i++)
+	{
+		ht_entry_t *entry;
+		for (entry = profile_table.buckets[i]; entry != NULL; entry = entry->next)
+			entries_table[j++] = entry;
 	}
-	qsort(sorted_i, profile_table.n, sizeof(int), entry_compare);
+	qsort(entries_table, profile_table.n_entries, sizeof(ht_entry_t *), entry_compare);
 
+	// print report
 	duprintf("===============================Profiling report=================================\n");
 	duprintf("%-32s%-8s%-10s%-12s%s\n", "name(-thread number)", "calls", "% of all", "total (s)", "time per call (us)");
 	duprintf("%-50s%g\n","total wall time", main_total / ticks_per_sec);
-	for (j = 0; j < profile_table.n; j++)
+	for (i = 0; i < profile_table.n_entries; i++)
 	{
-		int i = sorted_i[j];
-		profile_entry *p = (profile_entry *)profile_table.nodes[i].val;
+		profile_entry *p = (profile_entry *)entries_table[i]->val;
 		duprintf("%-32s%-8d%-10g%-12g%-g\n",
-				profile_table.nodes[i].key,
+				entries_table[i]->key,
 				p->calls,
 				(100. * p->total) / main_total,
 				p->total / ticks_per_sec,
 				p->total / (ticks_per_sec / 1000000. * p->calls));
 	}
 	duprintf("--------------------------------------------------------------------------------\n");
-	MKL_free(sorted_i);
-	aaFree(&profile_table);
+
+	// free all allocated memory used for profiling.
+	MKL_free(entries_table);
+	htFree(&profile_table);
 }
 
 
