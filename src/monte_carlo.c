@@ -40,11 +40,13 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	assert(nwraps % tsm_u->prodBlen == 0);	// must be a multiple of 'prodBlen'
 
 	// store Green's functions before recomputing them to estimate error
+	#if defined(DEBUG) | defined(_DEBUG)
 	greens_func_t Gu_old, Gd_old;
 	AllocateGreensFunction(N, &Gu_old);
 	AllocateGreensFunction(N, &Gd_old);
 	__assume_aligned(Gu_old.mat, MEM_DATA_ALIGN);
 	__assume_aligned(Gd_old.mat, MEM_DATA_ALIGN);
+	#endif
 
 	// random shuffle of lattice sites
 	int *site_order = MKL_malloc(N * sizeof(int), MEM_DATA_ALIGN);
@@ -59,8 +61,10 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		{
 			PROFILE_BEGIN(DQMCIter_Grecomp);
 			// store current Green's function matrices to compare with newly constructed ones
+			#if defined(DEBUG) | defined(_DEBUG)
 			CopyGreensFunction(Gu, &Gu_old);
 			CopyGreensFunction(Gd, &Gd_old);
+			#endif
 
 			#pragma omp parallel sections
 			{
@@ -70,6 +74,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 				GreenConstruct(tsm_d, l, Gd);
 			}
 
+			#if defined(DEBUG) | defined(_DEBUG)
 			// deviation of matrix entries
 			double err_u = UniformDistance(N*N, Gu_old.mat, Gu->mat);
 			double err_d = UniformDistance(N*N, Gd_old.mat, Gd->mat);
@@ -85,6 +90,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 			if (Gu_old.sgndet != Gu->sgndet || Gd_old.sgndet != Gd->sgndet) {
 				duprintf("Warning: after calling 'GreenConstruct()', determinant sign has changed.\n");
 			}
+			#endif
 			PROFILE_END(DQMCIter_Grecomp);
 		}
 
@@ -146,8 +152,10 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 
 	// clean up
 	MKL_free(site_order);
+	#if defined(DEBUG) | defined(_DEBUG)
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);
+	#endif
 	PROFILE_END(DQMCIter);
 }
 
@@ -333,11 +341,13 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	assert(nwraps % tsm_u->prodBlen == 0);	// must be a multiple of 'prodBlen'
 
 	// store Green's functions before recomputing them to estimate error
+	#if defined(DEBUG) | defined(_DEBUG)
 	greens_func_t Gu_old, Gd_old;
 	AllocateGreensFunction(N, &Gu_old);
 	AllocateGreensFunction(N, &Gd_old);
 	__assume_aligned(Gu_old.mat, MEM_DATA_ALIGN);
 	__assume_aligned(Gd_old.mat, MEM_DATA_ALIGN);
+	#endif
 
 	// pre-compute some constants
 	const double omega_ph_sqhalf = 0.5*square(phonon_params->omega);
@@ -355,8 +365,10 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		if ((l % nwraps) == 0)
 		{
 			// store current Green's function matrices to compare with newly constructed ones
+			#if defined(DEBUG) | defined(_DEBUG)
 			CopyGreensFunction(Gu, &Gu_old);
 			CopyGreensFunction(Gd, &Gd_old);
+			#endif
 
 			#pragma omp parallel sections
 			{
@@ -366,6 +378,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 				GreenConstruct(tsm_d, l, Gd);
 			}
 
+			#if defined(DEBUG) | defined(_DEBUG)
 			// deviation of matrix entries
 			double err_u = UniformDistance(N*N, Gu_old.mat, Gu->mat);
 			double err_d = UniformDistance(N*N, Gd_old.mat, Gd->mat);
@@ -381,6 +394,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			if (Gu_old.sgndet != Gu->sgndet || Gd_old.sgndet != Gd->sgndet) {
 				duprintf("Warning: after calling 'GreenConstruct()', determinant sign has changed.\n");
 			}
+			#endif
 		}
 
 		#pragma omp parallel sections
@@ -481,8 +495,10 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 
 	// clean up
 	MKL_free(site_order);
+	#if defined(DEBUG) | defined(_DEBUG)
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);
+	#endif
 }
 
 
