@@ -20,6 +20,12 @@ int MonteCarloIterPhononTest()
 	// imaginary-time step size
 	const double dt = 1.0/8;
 
+	// t' (next-nearest neighbor) hopping parameter
+	const double tp = -1.0/12;
+
+	// chemical potential
+	const double mu = -2.0/17;
+
 	// number of time steps
 	#define L 16
 
@@ -42,7 +48,7 @@ int MonteCarloIterPhononTest()
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	NearestNeighborKineticExponential(Nx, Ny, 0.0, dt, &kinetic);
+	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
 
 	// initial Hubbard-Stratonovich field
 	spin_field_t s[L*N] = {
@@ -108,17 +114,17 @@ int MonteCarloIterPhononTest()
 		1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0,
 		0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0,
 		1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0,
-		1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0,
+		1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0,
 		1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0,
 		1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0,
-		0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0,
+		0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0,
 		1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1,
 		0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1,
 		1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1,
 		1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1,
 		0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1,
 		0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1,
-		0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0
+		0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0
 	};
 
 	// number of deviating Hubbard-Stratonovich field entries
@@ -182,5 +188,5 @@ int MonteCarloIterPhononTest()
 	MKL_free(X);
 	DeleteKineticExponential(&kinetic);
 
-	return (err_field == 0 && errX < 1e-15 && errG_rel < 2e-8 && errG_abs < 4e-11 && err_detG < 5e-12 ? 0 : 1);
+	return (err_field == 0 && errX < 1e-15 && errG_rel < 8e-8 && errG_abs < 1e-10 && err_detG < 1e-11 ? 0 : 1);
 }

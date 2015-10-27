@@ -5,9 +5,10 @@
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Allocate and calculate matrix exponential of the kinetic nearest neighbor hopping matrix
+/// \brief Allocate and calculate matrix exponential of the kinetic nearest and next-nearest
+/// neighbor hopping matrix for a square lattice geometry
 ///
-void NearestNeighborKineticExponential(const int Nx, const int Ny, const double mu, const double dt, kinetic_t *restrict kinetic)
+void SquareLatticeKineticExponential(const int Nx, const int Ny, const double tp, const double mu, const double dt, kinetic_t *restrict kinetic)
 {
 	// total number of lattice sites
 	const int N = Nx * Ny;
@@ -25,6 +26,7 @@ void NearestNeighborKineticExponential(const int Nx, const int Ny, const double 
 	}
 
 	// set hopping terms in 'T'
+	const double dt_tp = dt * tp;
 	for (j = 0; j < Ny; j++)
 	{
 		const int j_next = (j < Ny-1 ? j + 1 : 0   );
@@ -35,17 +37,15 @@ void NearestNeighborKineticExponential(const int Nx, const int Ny, const double 
 			const int i_next = (i < Nx-1 ? i + 1 : 0   );
 			const int i_prev = (i > 0    ? i - 1 : Nx-1);
 
-			T[(i_next + j*Nx) + N*(i      + j*Nx)] = dt;
-			T[(i      + j*Nx) + N*(i_next + j*Nx)] = dt;
+			T[(i + j*Nx) + N*(i_next + j     *Nx)] = dt;
+			T[(i + j*Nx) + N*(i_prev + j     *Nx)] = dt;
+			T[(i + j*Nx) + N*(i      + j_next*Nx)] = dt;
+			T[(i + j*Nx) + N*(i      + j_prev*Nx)] = dt;
 
-			T[(i_prev + j*Nx) + N*(i      + j*Nx)] = dt;
-			T[(i      + j*Nx) + N*(i_prev + j*Nx)] = dt;
-
-			T[(i + j_next*Nx) + N*(i + j     *Nx)] = dt;
-			T[(i + j     *Nx) + N*(i + j_next*Nx)] = dt;
-
-			T[(i + j_prev*Nx) + N*(i + j     *Nx)] = dt;
-			T[(i + j     *Nx) + N*(i + j_prev*Nx)] = dt;
+			T[(i + j*Nx) + N*(i_next + j_next*Nx)] = dt_tp;
+			T[(i + j*Nx) + N*(i_next + j_prev*Nx)] = dt_tp;
+			T[(i + j*Nx) + N*(i_prev + j_next*Nx)] = dt_tp;
+			T[(i + j*Nx) + N*(i_prev + j_prev*Nx)] = dt_tp;
 		}
 	}
 

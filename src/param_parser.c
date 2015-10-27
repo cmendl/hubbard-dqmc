@@ -17,6 +17,9 @@ void SetDefaultParameters(sim_params_t *params)
 	// Coulomb coupling constant in the Hubbard hamiltonian
 	params->U = 4.0;
 
+	// set t' (next-nearest neighbor) hopping parameter to zero
+	params->tp = 0;
+
 	// set chemical potential to zero (half-filling)
 	params->mu = 0;
 
@@ -94,6 +97,9 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 		}
 		else if (strcmp(name, "U") == 0) {
 			params->U = atof(value);
+		}
+		else if (strcmp(name, "tp") == 0) {
+			params->tp = atof(value);
 		}
 		else if (strcmp(name, "mu") == 0) {
 			params->mu = atof(value);

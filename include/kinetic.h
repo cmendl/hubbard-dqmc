@@ -15,7 +15,7 @@ typedef struct
 kinetic_t;
 
 
-void NearestNeighborKineticExponential(const int Nx, const int Ny, const double mu, const double dt, kinetic_t *restrict kinetic);
+void SquareLatticeKineticExponential(const int Nx, const int Ny, const double tp, const double mu, const double dt, kinetic_t *restrict kinetic);
 
 
 void DeleteKineticExponential(kinetic_t *restrict kinetic);

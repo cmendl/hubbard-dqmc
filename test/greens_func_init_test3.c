@@ -21,6 +21,9 @@ int GreensFuncInitTest3()
 	// imaginary-time step size
 	const double dt = 1.0/8;
 
+	// t' (next-nearest neighbor) hopping parameter
+	const double tp = -1.0/7;
+
 	// chemical potential
 	const double mu = -2.0/13;
 
@@ -41,7 +44,7 @@ int GreensFuncInitTest3()
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	NearestNeighborKineticExponential(Nx, Ny, mu, dt, &kinetic);
+	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
 
 	// Hubbard-Stratonovich field
 	const spin_field_t s[L*N] = {

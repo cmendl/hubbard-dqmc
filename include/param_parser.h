@@ -16,6 +16,7 @@ typedef struct
 	int Ny;							//!< lattice field y dimension
 
 	double U;						//!< Coulomb coupling constant in the Hubbard hamiltonian
+	double tp;						//!< t' (next-nearest neighbor) hopping parameter
 	double mu;						//!< chemical potential in the Hubbard hamiltonian
 
 	double dt;						//!< imaginary-time step size

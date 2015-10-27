@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
 	duprintf("Simulation parameters\n\n");
 	duprintf("               lattice dimension: %i x %i\n", params.Nx, params.Ny);
 	duprintf("                               U: %g\n", params.U);
+	duprintf("                              tp: %g\n", params.tp);
 	duprintf("                              mu: %g\n", params.mu);
 	duprintf("                       time step: %g\n", params.dt);
 	duprintf("                               L: %i\n", params.L);
@@ -124,7 +125,7 @@ int main(int argc, char *argv[])
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	NearestNeighborKineticExponential(params.Nx, params.Ny, params.mu, params.dt, &kinetic);
+	SquareLatticeKineticExponential(params.Nx, params.Ny, params.tp, params.mu, params.dt, &kinetic);
 
 	// random generator seed; multiplicative constant from Pierre L'Ecuyer's paper
 	randseed_t seed;
@@ -168,12 +169,15 @@ int main(int argc, char *argv[])
 
 	// save simulation results as binary data to disk
 	duprintf("\nSaving simulation results to disk...");
-	sprintf(path, "%s_uu_corr.dat", fnbase);	WriteData(path, meas_data.uu_corr, sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_dd_corr.dat", fnbase);	WriteData(path, meas_data.dd_corr, sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_ud_corr.dat", fnbase);	WriteData(path, meas_data.ud_corr, sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_zz_corr.dat", fnbase);	WriteData(path, meas_data.zz_corr, sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_xx_corr.dat", fnbase);	WriteData(path, meas_data.xx_corr, sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_sign.dat",    fnbase);	WriteData(path, &meas_data.sign,   sizeof(double), 1,           false);
+	sprintf(path, "%s_density_u.dat", fnbase);	WriteData(path, &meas_data.density_u, sizeof(double), 1,           false);
+	sprintf(path, "%s_density_d.dat", fnbase);	WriteData(path, &meas_data.density_d, sizeof(double), 1,           false);
+	sprintf(path, "%s_doubleocc.dat", fnbase);	WriteData(path, &meas_data.doubleocc, sizeof(double), 1,           false);
+	sprintf(path, "%s_uu_corr.dat",   fnbase);	WriteData(path,  meas_data.uu_corr,   sizeof(double), meas_data.N, false);
+	sprintf(path, "%s_dd_corr.dat",   fnbase);	WriteData(path,  meas_data.dd_corr,   sizeof(double), meas_data.N, false);
+	sprintf(path, "%s_ud_corr.dat",   fnbase);	WriteData(path,  meas_data.ud_corr,   sizeof(double), meas_data.N, false);
+	sprintf(path, "%s_zz_corr.dat",   fnbase);	WriteData(path,  meas_data.zz_corr,   sizeof(double), meas_data.N, false);
+	sprintf(path, "%s_xx_corr.dat",   fnbase);	WriteData(path,  meas_data.xx_corr,   sizeof(double), meas_data.N, false);
+	sprintf(path, "%s_sign.dat",      fnbase);	WriteData(path, &meas_data.sign,      sizeof(double), 1,           false);
 	duprintf(" done.\n");
 
 	// clean up

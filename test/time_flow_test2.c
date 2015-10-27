@@ -17,6 +17,12 @@ int TimeFlowTest2()
 	// imaginary-time step size
 	const double dt = 1.0/11;
 
+	// t' (next-nearest neighbor) hopping parameter
+	const double tp = 0;
+
+	// chemical potential
+	const double mu = 0;
+
 	// number of time steps
 	#define L 21
 
@@ -32,7 +38,7 @@ int TimeFlowTest2()
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	NearestNeighborKineticExponential(Nx, Ny, 0.0, dt, &kinetic);
+	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
 
 	// Hubbard-Stratonovich field
 	const spin_field_t s[L*N] = {

@@ -20,6 +20,12 @@ int MonteCarloPhononBlockTest()
 	// imaginary-time step size
 	const double dt = 1.0/8;
 
+	// t' (next-nearest neighbor) hopping parameter
+	const double tp = 0;
+
+	// chemical potential
+	const double mu = 0;
+
 	// number of time steps
 	#define L 16
 
@@ -39,7 +45,7 @@ int MonteCarloPhononBlockTest()
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	NearestNeighborKineticExponential(Nx, Ny, 0.0, dt, &kinetic);
+	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
 
 	// Hubbard-Stratonovich field remains constant during phonon block updates
 	spin_field_t s[L*N];

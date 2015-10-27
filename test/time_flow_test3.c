@@ -17,6 +17,12 @@ int TimeFlowTest3()
 	// imaginary-time step size
 	const double dt = 1.0/8;
 
+	// t' (next-nearest neighbor) hopping parameter
+	const double tp = 0;
+
+	// chemical potential
+	const double mu = 0;
+
 	// electron-phonon interaction strength
 	const double g = 0.7;
 
@@ -35,7 +41,7 @@ int TimeFlowTest3()
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	NearestNeighborKineticExponential(Nx, Ny, 0.0, dt, &kinetic);
+	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
 
 	// Hubbard-Stratonovich field
 	const spin_field_t s[L*N] = {

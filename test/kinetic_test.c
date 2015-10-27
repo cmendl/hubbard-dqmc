@@ -16,13 +16,16 @@ int KineticTest()
 	// imaginary-time step size
 	const double dt = 1.0/7;
 
+	// t' (next-nearest neighbor) hopping parameter
+	const double tp = -2.0/13;
+
 	// chemical potential
 	const double mu = 2.0/9;
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
-	printf("Calculating matrix exponential of the kinetic nearest neighbor hopping matrix on a %i x %i lattice...\n", Nx, Ny);
+	printf("Calculating matrix exponential of the kinetic nearest and next-nearest neighbor hopping matrix on a %i x %i lattice...\n", Nx, Ny);
 	kinetic_t kinetic;
-	NearestNeighborKineticExponential(Nx, Ny, mu, dt, &kinetic);
+	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
 
 	// load reference data from disk
 	double *expK_ref     = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
