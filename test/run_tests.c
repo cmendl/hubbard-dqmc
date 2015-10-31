@@ -26,10 +26,11 @@ int GreensFuncWrapTest();
 int GreensFuncInitTest1();
 int GreensFuncInitTest2();
 int GreensFuncInitTest3();
+int GreensFuncInitTest4();
 int MonteCarloIterTest();
 int MonteCarloPhononBlockTest();
 int MonteCarloIterPhononTest();
-int MeasurementTest();
+int GreenUnequalTimeTest();
 
 
 int main()
@@ -39,8 +40,8 @@ int main()
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	#endif
 
-	#define NUM_TESTS 19
-	test_function_t tests[NUM_TESTS] = { MatrixExpTest, BlockCyclicQRTest, BlockCyclicTriTest, BlockCyclicInvTest, KineticTest, LatticeFourierTest, TimeFlowTest1, TimeFlowTest2, TimeFlowTest3, StratonovichTest, GreensFuncFlipTest, GreensFuncWrapTest, GreensFuncInitTest1, GreensFuncInitTest2, GreensFuncInitTest3, MonteCarloIterTest, MonteCarloPhononBlockTest, MonteCarloIterPhononTest, MeasurementTest };
+	#define NUM_TESTS 20
+	test_function_t tests[NUM_TESTS] = { MatrixExpTest, BlockCyclicQRTest, BlockCyclicTriTest, BlockCyclicInvTest, KineticTest, LatticeFourierTest, TimeFlowTest1, TimeFlowTest2, TimeFlowTest3, StratonovichTest, GreensFuncFlipTest, GreensFuncWrapTest, GreensFuncInitTest1, GreensFuncInitTest2, GreensFuncInitTest3, GreensFuncInitTest4, MonteCarloIterTest, MonteCarloPhononBlockTest, MonteCarloIterPhononTest, GreenUnequalTimeTest };
 
 	bool pass = true;
 

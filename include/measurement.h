@@ -48,22 +48,31 @@ void NormalizeMeasurementData(measurement_data_t *meas_data);
 ///
 typedef struct
 {
-	double *Gu_ut;			//!< concatenated unequal time spin-up   Green's functions G_u(0,tau) with tau = 0, 1, ..., L-1; array of size L*N x N
-	double *Gd_ut;			//!< concatenated unequal time spin-down Green's functions G_d(0,tau) with tau = 0, 1, ..., L-1; array of size L*N x N
+	double *Gtau0_u;			//!< concatenated unequal time spin-up   Green's functions G_u(tau,   0) with tau = 0, 1, ..., L-1; array of size L*N x N
+	double *G0tau_u;			//!< concatenated unequal time spin-up   Green's functions G_u(0,   tau) with tau = 0, 1, ..., L-1; array of size N x L*N
+	double *Geqlt_u;			//!< concatenated   equal time spin-up   Green's functions G_u(tau, tau) with tau = 0, 1, ..., L-1; array of size N x L*N
+	double *Gtau0_d;			//!< concatenated unequal time spin-down Green's functions G_d(tau,   0) with tau = 0, 1, ..., L-1; array of size L*N x N
+	double *G0tau_d;			//!< concatenated unequal time spin-down Green's functions G_d(0,   tau) with tau = 0, 1, ..., L-1; array of size N x L*N
+	double *Geqlt_d;			//!< concatenated   equal time spin-down Green's functions G_d(tau, tau) with tau = 0, 1, ..., L-1; array of size N x L*N
 
-	double *Hu;				//!< temporary matrix of size L*N x L*N for spin-up
-	double *Hd;				//!< temporary matrix of size L*N x L*N for spin-down
+	int *latt_sum_map;			//!< lattice site index of coordinate sum of two lattice sites; matrix of size N x N
 
-	double sign;			//!< accumulated (equal time) Green's function signs (+-1)
-	int nsampl;				//!< number of accumulated samples
+	double *zz_corr;			//!< z-z spin correlations
+	double *xx_corr;			//!< x-x spin correlations
 
-	int N;					//!< total number of lattice sites
-	int L;					//!< total number of time steps
+	double *Hu;					//!< temporary matrix of size L*N x L*N for spin-up
+	double *Hd;					//!< temporary matrix of size L*N x L*N for spin-down
+
+	double sign;				//!< accumulated (equal time) Green's function signs (+-1)
+	int nsampl;					//!< number of accumulated samples
+
+	int N;						//!< total number of lattice sites
+	int L;						//!< total number of time steps
 }
 measurement_data_unequal_time_t;
 
 
-void AllocateUnequalTimeMeasurementData(const int N, const int L, measurement_data_unequal_time_t *restrict meas_data);
+void AllocateUnequalTimeMeasurementData(const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data);
 
 void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict meas_data);
 

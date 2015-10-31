@@ -1,4 +1,5 @@
 #include "greens_func.h"
+#include "linalg.h"
 #include <mkl.h>
 #include <math.h>
 #include <stdlib.h>
@@ -211,4 +212,122 @@ void GreenTimeSliceWrap(const int N, const double *restrict B, const double *res
 
 	// clean up
 	MKL_free(T);
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Compute unequal time Green's functions
+///
+/// \param N            number of lattice sites
+/// \param L            number of time steps
+/// \param B            array of B matrices (discrete time step evolution operators), array of length L
+/// \param H            temporary array of size L*N x L*N, will be overwritten
+/// \param Gtau0        concatenated unequal time Green's functions G(tau,   0) with tau = 0, 1, ..., L-1; array of size L*N x N
+/// \param G0tau        concatenated unequal time Green's functions G(0,   tau) with tau = 0, 1, ..., L-1; array of size N x L*N
+/// \param Geqlt        concatenated   equal time Green's functions G(tau, tau) with tau = 0, 1, ..., L-1; array of size N x L*N
+/// \param Gtau0_avr    G(tau + tau', tau') averaged over tau', with tau, tau' = 0, 1, ..., L-1; array of size L*N x N
+/// \param G0tau_avr    G(tau', tau + tau') averaged over tau', with tau, tau' = 0, 1, ..., L-1; array of size N x L*N
+/// \param Geqlt_avr    G(tau', tau') averaged over tau', with tau' = 0, 1, ..., L-1; array of size N x N
+///
+/// Reference:
+///   - R. Blankenbecler, D. J. Scalapino, R. L. Sugar\n
+///     Monte Carlo calculations of coupled boson-fermion systems. I\n
+///     Phys. Rev. D 24, 2278 (1981)
+///
+void ComputeUnequalTimeGreensFunction(const int N, const int L, const double *const *B, double *restrict H, double *restrict Gtau0, double *restrict G0tau, double *restrict Geqlt, double *restrict Gtau0_avr, double *restrict G0tau_avr, double *restrict Geqlt_avr)
+{
+	int i, j, k;
+
+	// set H to the identity matrix
+	memset(H, 0, N*N*L*L * sizeof(double));
+	for (i = 0; i < L*N; i++)
+	{
+		H[i + i*L*N] = 1;
+	}
+
+	// copy B matrices as blocks into H
+	for (i = 0; i < L; i++)
+	{
+		if (i < L-1)
+		{
+			// lower off-diagonal blocks; note the factor (-1)
+			mkl_domatcopy('C', 'N', N, N, -1.0, B[i], N, &H[((i + 1) + L*N*i)*N], L*N);
+		}
+		else
+		{
+			// upper right block
+			mkl_domatcopy('C', 'N', N, N, 1.0, B[i], N, &H[L*N*(L - 1)*N], L*N);
+		}
+	}
+
+	// compute the inverse of the block L-cyclic H matrix
+	BlockCyclicInverse(N, L, H);
+
+	// Gtau0 is the first column block of H
+	memcpy(Gtau0, H, L*N*N * sizeof(double));
+
+	// G0tau is the first row block of H
+	mkl_domatcopy('C', 'N', N, L*N, 1.0, H, L*N, G0tau, N);
+
+	// Geqlt contains the diagonal blocks of H
+	for (i = 0; i < L; i++)
+	{
+		mkl_domatcopy('C', 'N', N, N, 1.0, &H[(i + L*N*i)*N], L*N, &Geqlt[i*N*N], N);
+	}
+
+	if (Gtau0_avr != NULL)
+	{
+		// Gtau0_avr is the average of cyclically shifted column blocks of H^{-1}
+		memset(Gtau0_avr, 0, L*N*N * sizeof(double));
+		for (j = 0; j < L; j++)
+		{
+			for (i = 0; i < L; i++)
+			{
+				const int ij = (i + j) % L;
+
+				for (k = 0; k < N; k++)
+				{
+					cblas_daxpy(N, 1.0, &H[(ij + L*(k + N*j))*N], 1, &Gtau0_avr[(i + k*L)*N], 1);
+				}
+			}
+		}
+		// normalize (divide by L)
+		cblas_dscal(L*N*N, 1.0/L, Gtau0_avr, 1);
+	}
+
+	if (G0tau_avr != NULL)
+	{
+		// G0tau_avr is the average of cyclically shifted row blocks of H^{-1}
+		memset(G0tau_avr, 0, L*N*N * sizeof(double));
+		for (j = 0; j < L; j++)
+		{
+			for (i = 0; i < L; i++)
+			{
+				const int ij = (i + j) % L;
+
+				for (k = 0; k < N; k++)
+				{
+					cblas_daxpy(N, 1.0, &H[(ij + L*(k + N*j))*N], 1, &G0tau_avr[(k + j*N)*N], 1);
+				}
+			}
+		}
+		// normalize (divide by L)
+		cblas_dscal(L*N*N, 1.0/L, G0tau_avr, 1);
+	}
+
+	if (Geqlt_avr != NULL)
+	{
+		// Geqlt_avr is the average of the diagonal blocks of H^{-1}
+		memset(Geqlt_avr, 0, N*N * sizeof(double));
+		for (i = 0; i < L; i++)
+		{
+			for (k = 0; k < N; k++)
+			{
+				cblas_daxpy(N, 1.0, &H[(i + L*(k + N*i))*N], 1, &Geqlt_avr[k*N], 1);
+			}
+		}
+		// normalize (divide by L)
+		cblas_dscal(N*N, 1.0/L, Geqlt_avr, 1);
+	}
 }
