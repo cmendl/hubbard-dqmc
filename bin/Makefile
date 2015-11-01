@@ -1,14 +1,15 @@
-SRCFILES = aa.o dupio.o greens_func.o kinetic.o lattice_fourier.o linalg.o measurement.o monte_carlo.o param_parser.o profiler.o random.o stratonovich.o time_flow.o util.o
-TSTFILES = matrix_exp_test.o blockcyclic_qr_test.o blockcyclic_tri_test.o blockcyclic_inv_test.o kinetic_test.o lattice_fourier_test.o time_flow_test1.o time_flow_test2.o time_flow_test3.o stratonovich_test.o greens_func_flip_test.o greens_func_wrap_test.o greens_func_init_test1.o greens_func_init_test2.o greens_func_init_test3.o monte_carlo_iter_test.o monte_carlo_phonon_block_test.o monte_carlo_iter_phonon_test.o measurement_test.o
+SRCFILES = dupio.o greens_func.o hash_table.o kinetic.o lattice_fourier.o linalg.o measurement.o monte_carlo.o param_parser.o profiler.o random.o stratonovich.o time_flow.o util.o
+TSTFILES = matrix_exp_test.o blockcyclic_qr_test.o blockcyclic_tri_test.o blockcyclic_inv_test.o kinetic_test.o lattice_fourier_test.o time_flow_test1.o time_flow_test2.o time_flow_test3.o stratonovich_test.o greens_func_flip_test.o greens_func_wrap_test.o greens_func_init_test1.o greens_func_init_test2.o greens_func_init_test3.o greens_func_init_test4.o monte_carlo_iter_test.o monte_carlo_phonon_block_test.o monte_carlo_iter_phonon_test.o green_unequaltime_test.o
 
 # use Intel compiler
 CC = icc
 
 # compiler options
 CCOPTS = -Wall -O2 -xHost -DNDEBUG -restrict -DMEM_DATA_ALIGN=64
-# uncomment to enable profiling. make sure to run 'make clean' before recompiling.
-CCOPTS += -DPROFILE_ENABLE
-CCOPTS += -qopenmp
+# uncomment to enable profiling; make sure to run 'make clean' before recompiling
+# CCOPTS += -DPROFILE_ENABLE
+# replace by -qopenmp to enable OpenMP shared-memory parallelization
+CCOPTS += -qopenmp-stubs
 
 # set these with appropriate libraries for your system
 LIBRARIES = -mkl=sequential -lrt
@@ -82,6 +83,9 @@ greens_func_init_test2.o: ../test/greens_func_init_test2.c
 greens_func_init_test3.o: ../test/greens_func_init_test3.c
 	${CC} -c -I../include ${CCOPTS} $<
 
+greens_func_init_test4.o: ../test/greens_func_init_test4.c
+	${CC} -c -I../include ${CCOPTS} $<
+
 monte_carlo_iter_test.o: ../test/monte_carlo_iter_test.c
 	${CC} -c -I../include ${CCOPTS} $<
 
@@ -91,7 +95,7 @@ monte_carlo_phonon_block_test.o: ../test/monte_carlo_phonon_block_test.c
 monte_carlo_iter_phonon_test.o: ../test/monte_carlo_iter_phonon_test.c
 	${CC} -c -I../include ${CCOPTS} $<
 
-measurement_test.o: ../test/measurement_test.c
+green_unequaltime_test.o: ../test/green_unequaltime_test.c
 	${CC} -c -I../include ${CCOPTS} $<
 
 
