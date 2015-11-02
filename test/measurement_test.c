@@ -2,6 +2,7 @@
 #include "random.h"
 #include "util.h"
 #include <math.h>
+#include <time.h>
 #include <stdio.h>
 
 
