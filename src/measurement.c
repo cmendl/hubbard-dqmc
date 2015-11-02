@@ -156,9 +156,9 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 			const double Gd_ji = Gd->mat[j + N*i];
 
 			// k = 0 is special
-			meas_data->uu_corr[k] += signfac*(k == 0 ? (1.0 - Gu_ii) : (1.0 - Gu_ii)*(1.0 - Gu_jj) - Gu_ij*Gu_ji);
-			meas_data->dd_corr[k] += signfac*(k == 0 ? (1.0 - Gd_ii) : (1.0 - Gd_ii)*(1.0 - Gd_jj) - Gd_ij*Gd_ji);
-			meas_data->ud_corr[k] += signfac*((1.0 - Gu_ii)*(1.0 - Gd_jj) + (1.0 - Gd_ii)*(1.0 - Gu_jj));
+			meas_data->uu_corr[k] += signfac*(k == 0 ? (1 - Gu_ii) : (1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
+			meas_data->dd_corr[k] += signfac*(k == 0 ? (1 - Gd_ii) : (1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
+			meas_data->ud_corr[k] += signfac*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
 
 			meas_data->zz_corr[k] += signfac*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
 			meas_data->xx_corr[k] += signfac*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
@@ -202,9 +202,6 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
-
-	// set sample counter to 1
-	meas_data->nsampl = 1;
 }
 
 
@@ -212,7 +209,7 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 ///
 /// \brief Allocate and initialize unequal time measurement data structure
 ///
-void AllocateUnequalTimeMeasurementData(const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data)
+int AllocateUnequalTimeMeasurementData(const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data)
 {
 	// total number of lattice sites
 	const int N = Nx * Ny;
@@ -221,29 +218,33 @@ void AllocateUnequalTimeMeasurementData(const int Nx, const int Ny, const int L,
 	// total number of time steps
 	meas_data->L = L;
 
+	// allocate temporary H matrices
+	meas_data->Hu = (double *)MKL_malloc(L*L*N*N * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hu == NULL) { return -1; }
+	meas_data->Hd = (double *)MKL_malloc(L*L*N*N * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hd == NULL) { return -1; }
+
 	// allocate and initialize Green's functions with zeros
-	meas_data->Gtau0_u = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->G0tau_u = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->Geqlt_u = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->Gtau0_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->G0tau_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->Geqlt_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->Gtau0_u = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Gtau0_u == NULL) { return -1; }
+	meas_data->G0tau_u = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->G0tau_u == NULL) { return -1; }
+	meas_data->Geqlt_u = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_u == NULL) { return -1; }
+	meas_data->Gtau0_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Gtau0_d == NULL) { return -1; }
+	meas_data->G0tau_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->G0tau_d == NULL) { return -1; }
+	meas_data->Geqlt_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_d == NULL) { return -1; }
 
 	// construct lattice coordinate sum map
 	meas_data->latt_sum_map = (int *)MKL_malloc(N*N * sizeof(int), MEM_DATA_ALIGN);
 	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
 
-	// spin correlation data for all time differences
+	// density and spin correlation data for all time differences
+	meas_data->nn_corr = (double *)MKL_calloc(L*N, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->zz_corr = (double *)MKL_calloc(L*N, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->xx_corr = (double *)MKL_calloc(L*N, sizeof(double), MEM_DATA_ALIGN);
-
-	meas_data->Hu = (double *)MKL_malloc(N*N*L*L * sizeof(double), MEM_DATA_ALIGN);
-	meas_data->Hd = (double *)MKL_malloc(N*N*L*L * sizeof(double), MEM_DATA_ALIGN);
 
 	meas_data->sign = 0;
 
 	// no samples collected so far
 	meas_data->nsampl = 0;
+
+	return 0;
 }
 
 
@@ -258,6 +259,7 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 
 	MKL_free(meas_data->xx_corr);
 	MKL_free(meas_data->zz_corr);
+	MKL_free(meas_data->nn_corr);
 
 	MKL_free(meas_data->latt_sum_map);
 
@@ -274,39 +276,80 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 ///
 /// \brief Accumulate unequal time "measurement" data
 ///
-void AccumulateUnequalTimeMeasurement(const int sign, const double *const *Bu, const double *const *Bd, measurement_data_unequal_time_t *restrict meas_data)
+void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu, const double *const *Bd, measurement_data_unequal_time_t *restrict meas_data)
 {
+	int i, j, k, l;
+
 	const int N = meas_data->N;
 	const int L = meas_data->L;
 
-	// spin-up
+	// current spin-up unequal time Green's functions
 	double *curGtau0_u = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *curG0tau_u = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *curGeqlt_u = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
 
-	// spin-down
+	// current spin-down unequal time Green's functions
 	double *curGtau0_d = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *curG0tau_d = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *curGeqlt_d = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
 
-	// compute unequal time spin-up and spin-down Green's functions
+	// compute and accumulate unequal time spin-up and spin-down Green's functions
 	#pragma omp parallel sections
 	{
 		#pragma omp section
-		ComputeUnequalTimeGreensFunction(N, L, Bu, meas_data->Hu, curGtau0_u, curG0tau_u, curGeqlt_u, NULL, NULL, NULL);
+		{
+			ComputeUnequalTimeGreensFunction(N, L, Bu, meas_data->Hu, curGtau0_u, curG0tau_u, curGeqlt_u, NULL, NULL, NULL);
+			cblas_daxpy(L*N*N, sign, curGtau0_u, 1, meas_data->Gtau0_u, 1);
+			cblas_daxpy(L*N*N, sign, curG0tau_u, 1, meas_data->G0tau_u, 1);
+			cblas_daxpy(L*N*N, sign, curGeqlt_u, 1, meas_data->Geqlt_u, 1);
+		}
 		#pragma omp section
-		ComputeUnequalTimeGreensFunction(N, L, Bd, meas_data->Hd, curGtau0_d, curG0tau_d, curGeqlt_d, NULL, NULL, NULL);
+		{
+			ComputeUnequalTimeGreensFunction(N, L, Bd, meas_data->Hd, curGtau0_d, curG0tau_d, curGeqlt_d, NULL, NULL, NULL);
+			cblas_daxpy(L*N*N, sign, curGtau0_d, 1, meas_data->Gtau0_d, 1);
+			cblas_daxpy(L*N*N, sign, curG0tau_d, 1, meas_data->G0tau_d, 1);
+			cblas_daxpy(L*N*N, sign, curGeqlt_d, 1, meas_data->Geqlt_d, 1);
+		}
 	}
 
-	// accumulate unequal time Green's functions
-	cblas_daxpy(L*N*N, sign, curGtau0_u, 1, meas_data->Gtau0_u, 1);
-	cblas_daxpy(L*N*N, sign, curG0tau_u, 1, meas_data->G0tau_u, 1);
-	cblas_daxpy(L*N*N, sign, curGeqlt_u, 1, meas_data->Geqlt_u, 1);
-	cblas_daxpy(L*N*N, sign, curGtau0_d, 1, meas_data->Gtau0_d, 1);
-	cblas_daxpy(L*N*N, sign, curG0tau_d, 1, meas_data->G0tau_d, 1);
-	cblas_daxpy(L*N*N, sign, curGeqlt_d, 1, meas_data->Geqlt_d, 1);
+	// accumulate density and spin correlation data
 
-	// TODO: accumulate spin correlation data
+	// sign and normalization factor
+	const double signfac = sign / N;
+
+	for (l = 0; l < L; l++)		// for all discrete time differences...
+	{
+		for (i = 0; i < N; i++)
+		{
+			const double Gtt_u_ii = curGeqlt_u[i + N*(i + N*l)];
+			const double Gtt_d_ii = curGeqlt_d[i + N*(i + N*l)];
+
+			// special case l == 0 and k == 0
+			if (l == 0)
+			{
+				meas_data->nn_corr[0] += signfac*(Gtt_u_ii + Gtt_d_ii);
+				meas_data->zz_corr[0] += signfac*(Gtt_u_ii + Gtt_d_ii);
+				meas_data->xx_corr[0] += signfac*(Gtt_u_ii + Gtt_d_ii);
+			}
+
+			for (k = 0; k < N; k++)
+			{
+				j = meas_data->latt_sum_map[k + N*i];
+
+				const double G00_u_jj = curGeqlt_u[j + N*j];
+				const double G00_d_jj = curGeqlt_d[j + N*j];
+
+				const double Gt0_u_ij = curGtau0_u[i + N*(L*j + l)];
+				const double Gt0_d_ij = curGtau0_d[i + N*(L*j + l)];
+				const double G0t_u_ji = curG0tau_u[j + N*(i + N*l)];
+				const double G0t_d_ji = curG0tau_d[j + N*(i + N*l)];
+
+				meas_data->nn_corr[k + N*l] += signfac*((2 - Gtt_u_ii - Gtt_d_ii)*(2 - G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
+				meas_data->zz_corr[k + N*l] += signfac*((    Gtt_u_ii - Gtt_d_ii)*(    G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
+				meas_data->xx_corr[k + N*l] += signfac*(                                                    - (Gt0_u_ij*G0t_d_ji + Gt0_d_ij*G0t_u_ji));
+			}
+		}
+	}
 
 	// clean up
 	MKL_free(curGeqlt_d);
@@ -317,7 +360,7 @@ void AccumulateUnequalTimeMeasurement(const int sign, const double *const *Bu, c
 	MKL_free(curGtau0_u);
 
 	// add current sign
-	meas_data->sign += (double)sign;
+	meas_data->sign += sign;
 
 	// increment sample counter
 	meas_data->nsampl++;
@@ -347,9 +390,11 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 	cblas_dscal(L*N*N, nfac, meas_data->G0tau_d, 1);
 	cblas_dscal(L*N*N, nfac, meas_data->Geqlt_d, 1);
 
+	// divide density and spin correlations by sign
+	cblas_dscal(L*N, nfac, meas_data->nn_corr, 1);
+	cblas_dscal(L*N, nfac, meas_data->zz_corr, 1);
+	cblas_dscal(L*N, nfac, meas_data->xx_corr, 1);
+
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
-
-	// set sample counter to 1
-	meas_data->nsampl = 1;
 }

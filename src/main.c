@@ -121,6 +121,14 @@ int main(int argc, char *argv[])
 	duprintf("                           itime: %lli\n", params.itime);
 	duprintf("        equilibration iterations: %i\n", params.nequil);
 	duprintf("          measurement iterations: %i\n", params.nsampl);
+	if (params.nuneqlt > 0)
+	{
+		duprintf("       unequal time measurements: every %i iteration(s)\n", params.nuneqlt);
+	}
+	else
+	{
+		duprintf("       unequal time measurements: disabled\n");
+	}
 	duprintf("\n");
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
@@ -131,9 +139,20 @@ int main(int argc, char *argv[])
 	randseed_t seed;
 	Random_SeedInit(1865811235122147685LL * (uint64_t)params.itime, &seed);
 
-	// allocate and initialize measurement data structure
+	// allocate and initialize equal time measurement data structure
 	measurement_data_t meas_data;
 	AllocateMeasurementData(params.Nx, params.Ny, &meas_data);
+
+	// allocate and initialize unequal time measurement data structure
+	measurement_data_unequal_time_t meas_data_uneqlt;
+	if (params.nuneqlt > 0)
+	{
+		status = AllocateUnequalTimeMeasurementData(params.Nx, params.Ny, params.L, &meas_data_uneqlt);
+		if (status < 0) {
+			duprintf("Could not allocate unequal time measurement data structure (probably out of memory), exiting...\n");
+			return -3;
+		}
+	}
 
 	duprintf("\nStarting DQMC simulation...\n");
 
@@ -143,15 +162,16 @@ int main(int argc, char *argv[])
 	// perform simulation
 	if (!params.use_phonons)
 	{
-		DQMCSimulation(params.U, params.dt, params.L, &kinetic, params.prodBlen, params.nwraps, params.nequil, params.nsampl, &seed, &meas_data);
+		DQMCSimulation(params.U, params.dt, params.L, &kinetic, params.prodBlen, params.nwraps, params.nequil, params.nsampl, params.nuneqlt, &seed, &meas_data, &meas_data_uneqlt);
 	}
 	else
 	{
-		DQMCPhononSimulation(params.U, params.dt, params.L, &kinetic, params.prodBlen, params.nwraps, &params.phonon_params, params.nequil, params.nsampl, &seed, &meas_data);
+		DQMCPhononSimulation(params.U, params.dt, params.L, &kinetic, params.prodBlen, params.nwraps, &params.phonon_params, params.nequil, params.nsampl, params.nuneqlt, &seed, &meas_data, &meas_data_uneqlt);
 	}
 
 	// normalize measurement data
 	NormalizeMeasurementData(&meas_data);
+	NormalizeUnequalTimeMeasurementData(&meas_data_uneqlt);
 
 	// stop timer
 	const clock_t t_end = clock();
@@ -162,6 +182,7 @@ int main(int argc, char *argv[])
 	duprintf("_______________________________________________________________________________\n");
 	duprintf("Summary of simulation results\n\n");
 	duprintf("                    average sign: %g\n", meas_data.sign);
+	duprintf("           average total density: %g\n", meas_data.density_u + meas_data.density_d);
 	duprintf("         average spin-up density: %g\n", meas_data.density_u);
 	duprintf("       average spin-down density: %g\n", meas_data.density_d);
 	duprintf("        average double occupancy: %g\n", meas_data.doubleocc);
@@ -169,22 +190,43 @@ int main(int argc, char *argv[])
 
 	// save simulation results as binary data to disk
 	duprintf("\nSaving simulation results to disk...");
-	sprintf(path, "%s_density_u.dat", fnbase);	WriteData(path, &meas_data.density_u, sizeof(double), 1,           false);
-	sprintf(path, "%s_density_d.dat", fnbase);	WriteData(path, &meas_data.density_d, sizeof(double), 1,           false);
-	sprintf(path, "%s_doubleocc.dat", fnbase);	WriteData(path, &meas_data.doubleocc, sizeof(double), 1,           false);
-	sprintf(path, "%s_uu_corr.dat",   fnbase);	WriteData(path,  meas_data.uu_corr,   sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_dd_corr.dat",   fnbase);	WriteData(path,  meas_data.dd_corr,   sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_ud_corr.dat",   fnbase);	WriteData(path,  meas_data.ud_corr,   sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_zz_corr.dat",   fnbase);	WriteData(path,  meas_data.zz_corr,   sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_xx_corr.dat",   fnbase);	WriteData(path,  meas_data.xx_corr,   sizeof(double), meas_data.N, false);
-	sprintf(path, "%s_sign.dat",      fnbase);	WriteData(path, &meas_data.sign,      sizeof(double), 1,           false);
+	const int N = params.Nx * params.Ny;
+	sprintf(path, "%s_density_u.dat", fnbase);	WriteData(path, &meas_data.density_u, sizeof(double), 1, false);
+	sprintf(path, "%s_density_d.dat", fnbase);	WriteData(path, &meas_data.density_d, sizeof(double), 1, false);
+	sprintf(path, "%s_doubleocc.dat", fnbase);	WriteData(path, &meas_data.doubleocc, sizeof(double), 1, false);
+	sprintf(path, "%s_uu_corr.dat",   fnbase);	WriteData(path,  meas_data.uu_corr,   sizeof(double), N, false);
+	sprintf(path, "%s_dd_corr.dat",   fnbase);	WriteData(path,  meas_data.dd_corr,   sizeof(double), N, false);
+	sprintf(path, "%s_ud_corr.dat",   fnbase);	WriteData(path,  meas_data.ud_corr,   sizeof(double), N, false);
+	sprintf(path, "%s_zz_corr.dat",   fnbase);	WriteData(path,  meas_data.zz_corr,   sizeof(double), N, false);
+	sprintf(path, "%s_xx_corr.dat",   fnbase);	WriteData(path,  meas_data.xx_corr,   sizeof(double), N, false);
+	sprintf(path, "%s_sign.dat",      fnbase);	WriteData(path, &meas_data.sign,      sizeof(double), 1, false);
+	if (params.nuneqlt > 0)
+	{
+		sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase);	WriteData(path, meas_data_uneqlt.Gtau0_u, sizeof(double), params.L*N*N, false);
+		sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase);	WriteData(path, meas_data_uneqlt.G0tau_u, sizeof(double), params.L*N*N, false);
+		sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase);	WriteData(path, meas_data_uneqlt.Geqlt_u, sizeof(double), params.L*N*N, false);
+		sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase);	WriteData(path, meas_data_uneqlt.Gtau0_d, sizeof(double), params.L*N*N, false);
+		sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase);	WriteData(path, meas_data_uneqlt.G0tau_d, sizeof(double), params.L*N*N, false);
+		sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase);	WriteData(path, meas_data_uneqlt.Geqlt_d, sizeof(double), params.L*N*N, false);
+
+		sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase);	WriteData(path, meas_data_uneqlt.nn_corr, sizeof(double), params.L*N, false);
+		sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase);	WriteData(path, meas_data_uneqlt.zz_corr, sizeof(double), params.L*N, false);
+		sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase);	WriteData(path, meas_data_uneqlt.xx_corr, sizeof(double), params.L*N, false);
+
+		sprintf(path, "%s_uneqlt_sign.dat",    fnbase);	WriteData(path, &meas_data_uneqlt.sign,   sizeof(double), 1, false);
+		sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase);	WriteData(path, &meas_data_uneqlt.nsampl, sizeof(int),    1, false);
+	}
 	duprintf(" done.\n");
 
 	// clean up
 	Profile_Stop();
 	fclose(fd_log);
-	DeleteKineticExponential(&kinetic);
+	if (params.nuneqlt > 0)
+	{
+		DeleteUnequalTimeMeasurementData(&meas_data_uneqlt);
+	}
 	DeleteMeasurementData(&meas_data);
+	DeleteKineticExponential(&kinetic);
 
 	return 0;
 }

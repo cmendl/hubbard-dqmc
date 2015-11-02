@@ -21,8 +21,8 @@
 /// \param s                    Hubbard-Stratonovich field; will be updated
 /// \param tsm_u                time step matrices for the spin-up Green's function, will be updated
 /// \param tsm_d                time step matrices for the spin-down Green's function, will be updated
-/// \param Gu                   spin-up Green's function, will be updated
-/// \param Gd                   spin-down Green's function, will be updated
+/// \param Gu                   spin-up   Green's function, must have been computed on input and will be updated
+/// \param Gd                   spin-down Green's function, must have been computed on input and will be updated
 ///
 void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params, const int nwraps,
 	randseed_t *restrict seed, spin_field_t *restrict s, time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd)
@@ -57,7 +57,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	for (l = 0; l < tsm_u->L; l++)
 	{
 		// recompute Green's function after several time slice "wraps"
-		if ((l % nwraps) == 0)
+		if (l > 0 && (l % nwraps) == 0)
 		{
 			PROFILE_BEGIN(DQMCIter_Grecomp);
 			// store current Green's function matrices to compare with newly constructed ones
@@ -321,8 +321,8 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 /// \param expX                 entrywise exponential of the phonon field: exp(-dt g X)
 /// \param tsm_u                time step matrices for the spin-up Green's function, will be updated
 /// \param tsm_d                time step matrices for the spin-down Green's function, will be updated
-/// \param Gu                   spin-up Green's function, will be updated
-/// \param Gd                   spin-down Green's function, will be updated
+/// \param Gu                   spin-up   Green's function, must have been computed on input and will be updated
+/// \param Gd                   spin-down Green's function, must have been computed on input and will be updated
 ///
 void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params, const phonon_params_t *restrict phonon_params,
 	const int nwraps, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX,
@@ -362,7 +362,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	for (l = 0; l < L; l++)
 	{
 		// recompute Green's function after several time slice "wraps"
-		if ((l % nwraps) == 0)
+		if (l > 0 && (l % nwraps) == 0)
 		{
 			// store current Green's function matrices to compare with newly constructed ones
 			#if defined(DEBUG) | defined(_DEBUG)
@@ -506,19 +506,21 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 ///
 /// \brief Perform a Determinant Quantum Monte Carlo (DQMC) simulation
 ///
-/// \param U                Coulomb coupling constant in the Hubbard hamiltonian
-/// \param dt               imaginary-time step
-/// \param L                number of time steps
-/// \param kinetic          matrix exponential of kinetic energy operator
-/// \param prodBlen         largest number of B_l matrices multiplied together before performing a QR decomposition
-/// \param nwraps           number of "time slice wraps" before recomputing the Green's function
-/// \param nequil           number of equilibration iterations
-/// \param nsampl           number of sample iterations
-/// \param seed             random number "seed" structure, will be updated during function call
-/// \param meas_data        measurement data structure for accumulating measurements
+/// \param U                    Coulomb coupling constant in the Hubbard hamiltonian
+/// \param dt                   imaginary-time step
+/// \param L                    number of time steps
+/// \param kinetic              matrix exponential of kinetic energy operator
+/// \param prodBlen             largest number of B_l matrices multiplied together before performing a QR decomposition
+/// \param nwraps               number of "time slice wraps" before recomputing the Green's function
+/// \param nequil               number of equilibration iterations
+/// \param nsampl               number of sample iterations
+/// \param nuneqlt              number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
+/// \param seed                 random number "seed" structure, will be updated during function call
+/// \param meas_data            measurement data structure for accumulating measurements
+/// \param meas_data_uneqlt     unequal time measurement data structure
 ///
 void DQMCSimulation(const double U, const double dt, const int L, const kinetic_t *restrict kinetic, const int prodBlen, const int nwraps,
-	const int nequil, const int nsampl, randseed_t *restrict seed, measurement_data_t *restrict meas_data)
+	const int nequil, const int nsampl, const int nuneqlt, randseed_t *restrict seed, measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt)
 {
 	int i;
 	const int N = kinetic->N;
@@ -547,22 +549,26 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 		InitTimeStepMatrices(kinetic, stratonovich_params.expVd, s, &tsm_d);
 	}
 
-	// allocate and construct initial Green's functions
+	// allocate Green's functions
 	greens_func_t Gu, Gd;
 	AllocateGreensFunction(N, &Gu);
 	AllocateGreensFunction(N, &Gd);
-	#pragma omp parallel sections
-	{
-		#pragma omp section
-		GreenConstruct(&tsm_u, 0, &Gu);
-		#pragma omp section
-		GreenConstruct(&tsm_d, 0, &Gd);
-	}
 
 	// perform equilibration
 	duprintf("Starting equilibration iterations...\n");
 	for (i = 0; i < nequil; i++)
 	{
+		// construct initial Green's functions
+		PROFILE_BEGIN(DQMCIter_Grecomp);
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			GreenConstruct(&tsm_u, 0, &Gu);
+			#pragma omp section
+			GreenConstruct(&tsm_d, 0, &Gd);
+		}
+		PROFILE_END(DQMCIter_Grecomp);
+
 		DQMCIteration(kinetic, &stratonovich_params, nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
 	}
 
@@ -570,12 +576,29 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 	duprintf("Starting measurement iterations...\n");
 	for (i = 0; i < nsampl; i++)
 	{
-		DQMCIteration(kinetic, &stratonovich_params, nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+		// construct initial Green's functions
+		PROFILE_BEGIN(DQMCIter_Grecomp);
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			GreenConstruct(&tsm_u, 0, &Gu);
+			#pragma omp section
+			GreenConstruct(&tsm_d, 0, &Gd);
+		}
+		PROFILE_END(DQMCIter_Grecomp);
 
-		// accumulate "measurement" data
+		// perform measurements directly after constructing Green's functions to improve numerical accuracy
+		// accumulate equal time "measurement" data
 		PROFILE_BEGIN(DQMCSim_AccumulateMeasurements);
 		AccumulateMeasurement(&Gu, &Gd, meas_data);
 		PROFILE_END(DQMCSim_AccumulateMeasurements);
+		// accumulate unequal time "measurement" data
+		if (nuneqlt > 0 && (i % nuneqlt) == 0)
+		{
+			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
+		}
+
+		DQMCIteration(kinetic, &stratonovich_params, nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
 	}
 
 	// clean up
@@ -591,20 +614,22 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 ///
 /// \brief Perform a Determinant Quantum Monte Carlo (DQMC) simulation, taking phonons into account
 ///
-/// \param U                Coulomb coupling constant in the Hubbard hamiltonian
-/// \param dt               imaginary-time step
-/// \param L                number of time steps
-/// \param kinetic          matrix exponential of kinetic energy operator
-/// \param prodBlen         largest number of B_l matrices multiplied together before performing a QR decomposition
-/// \param nwraps           number of "time slice wraps" before recomputing the Green's function
-/// \param phonon_params    phonon field parameters
-/// \param nequil           number of equilibration iterations
-/// \param nsampl           number of sample iterations
-/// \param seed             random number "seed" structure, will be updated during function call
-/// \param meas_data        measurement data structure for accumulating measurements
+/// \param U                    Coulomb coupling constant in the Hubbard hamiltonian
+/// \param dt                   imaginary-time step
+/// \param L                    number of time steps
+/// \param kinetic              matrix exponential of kinetic energy operator
+/// \param prodBlen             largest number of B_l matrices multiplied together before performing a QR decomposition
+/// \param nwraps               number of "time slice wraps" before recomputing the Green's function
+/// \param phonon_params        phonon field parameters
+/// \param nequil               number of equilibration iterations
+/// \param nsampl               number of sample iterations
+/// \param nuneqlt              number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
+/// \param seed                 random number "seed" structure, will be updated during function call
+/// \param meas_data            measurement data structure for accumulating measurements
+/// \param meas_data_uneqlt     unequal time measurement data structure
 ///
-void DQMCPhononSimulation(const double U, const double dt, const int L, const kinetic_t *restrict kinetic, const int prodBlen, const int nwraps,
-	const phonon_params_t *restrict phonon_params, const int nequil, const int nsampl, randseed_t *restrict seed, measurement_data_t *restrict meas_data)
+void DQMCPhononSimulation(const double U, const double dt, const int L, const kinetic_t *restrict kinetic, const int prodBlen, const int nwraps, const phonon_params_t *restrict phonon_params,
+	const int nequil, const int nsampl, const int nuneqlt, randseed_t *restrict seed, measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt)
 {
 	int i;
 	const int N = kinetic->N;
@@ -642,22 +667,24 @@ void DQMCPhononSimulation(const double U, const double dt, const int L, const ki
 		InitPhononTimeStepMatrices(kinetic, stratonovich_params.expVd, s, expX, &tsm_d);
 	}
 
-	// allocate and construct initial Green's functions
+	// allocate Green's functions
 	greens_func_t Gu, Gd;
 	AllocateGreensFunction(N, &Gu);
 	AllocateGreensFunction(N, &Gd);
-	#pragma omp parallel sections
-	{
-		#pragma omp section
-		GreenConstruct(&tsm_u, 0, &Gu);
-		#pragma omp section
-		GreenConstruct(&tsm_d, 0, &Gd);
-	}
 
 	// perform equilibration
 	duprintf("Starting equilibration iterations (including phonons)...\n");
 	for (i = 0; i < nequil; i++)
 	{
+		// construct initial Green's functions
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			GreenConstruct(&tsm_u, 0, &Gu);
+			#pragma omp section
+			GreenConstruct(&tsm_d, 0, &Gd);
+		}
+
 		DQMCPhononIteration(dt, kinetic, &stratonovich_params, phonon_params, nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 	}
 
@@ -665,10 +692,25 @@ void DQMCPhononSimulation(const double U, const double dt, const int L, const ki
 	duprintf("Starting measurement iterations (including phonons)...\n");
 	for (i = 0; i < nsampl; i++)
 	{
-		DQMCPhononIteration(dt, kinetic, &stratonovich_params, phonon_params, nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
+		// construct initial Green's functions
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			GreenConstruct(&tsm_u, 0, &Gu);
+			#pragma omp section
+			GreenConstruct(&tsm_d, 0, &Gd);
+		}
 
-		// accumulate "measurement" data
+		// perform measurements directly after constructing Green's functions to improve numerical accuracy
+		// accumulate equal time "measurement" data
 		AccumulateMeasurement(&Gu, &Gd, meas_data);
+		// accumulate unequal time "measurement" data
+		if (nuneqlt > 0 && (i % nuneqlt) == 0)
+		{
+			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
+		}
+
+		DQMCPhononIteration(dt, kinetic, &stratonovich_params, phonon_params, nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 	}
 
 	// clean up

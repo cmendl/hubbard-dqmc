@@ -32,6 +32,7 @@ typedef struct
 
 	int nequil;						//!< number of equilibration iterations
 	int nsampl;						//!< number of sampling iterations
+	int nuneqlt;					//!< number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
 }
 sim_params_t;
 

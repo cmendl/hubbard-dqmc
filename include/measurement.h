@@ -57,8 +57,9 @@ typedef struct
 
 	int *latt_sum_map;			//!< lattice site index of coordinate sum of two lattice sites; matrix of size N x N
 
-	double *zz_corr;			//!< z-z spin correlations
-	double *xx_corr;			//!< x-x spin correlations
+	double *nn_corr;			//!< density correlations;  matrix of size N x L
+	double *zz_corr;			//!< z-z spin correlations; matrix of size N x L
+	double *xx_corr;			//!< x-x spin correlations; matrix of size N x L
 
 	double *Hu;					//!< temporary matrix of size L*N x L*N for spin-up
 	double *Hd;					//!< temporary matrix of size L*N x L*N for spin-down
@@ -72,12 +73,12 @@ typedef struct
 measurement_data_unequal_time_t;
 
 
-void AllocateUnequalTimeMeasurementData(const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data);
+int AllocateUnequalTimeMeasurementData(const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data);
 
 void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict meas_data);
 
 
-void AccumulateUnequalTimeMeasurement(const int sign, const double *const *Bu, const double *const *Bd, measurement_data_unequal_time_t *restrict meas_data);
+void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu, const double *const *Bd, measurement_data_unequal_time_t *restrict meas_data);
 
 
 void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_data);

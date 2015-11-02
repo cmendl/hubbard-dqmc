@@ -22,7 +22,7 @@ int GreenUnequalTimeTest()
 		B[l] = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 
 		char path[1024];
-		sprintf(path, "../test/green_unequaltime_test_B%i.dat", l);
+		sprintf(path, "../test/green_unequal_time_test_B%i.dat", l);
 		status = ReadData(path, B[l], sizeof(double), N*N);
 		if (status != 0) { return status; }
 	}
@@ -48,12 +48,12 @@ int GreenUnequalTimeTest()
 	double *Gtau0_avr_ref = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *G0tau_avr_ref = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *Geqlt_avr_ref = (double *)MKL_malloc(  N*N * sizeof(double), MEM_DATA_ALIGN);	// dimension N x N
-	status = ReadData("../test/green_unequaltime_test_Gtau0.dat",     Gtau0_ref,     sizeof(double), L*N*N); if (status != 0) { return status; }
-	status = ReadData("../test/green_unequaltime_test_G0tau.dat",     G0tau_ref,     sizeof(double), L*N*N); if (status != 0) { return status; }
-	status = ReadData("../test/green_unequaltime_test_Geqlt.dat",     Geqlt_ref,     sizeof(double), L*N*N); if (status != 0) { return status; }
-	status = ReadData("../test/green_unequaltime_test_Gtau0_avr.dat", Gtau0_avr_ref, sizeof(double), L*N*N); if (status != 0) { return status; }
-	status = ReadData("../test/green_unequaltime_test_G0tau_avr.dat", G0tau_avr_ref, sizeof(double), L*N*N); if (status != 0) { return status; }
-	status = ReadData("../test/green_unequaltime_test_Geqlt_avr.dat", Geqlt_avr_ref, sizeof(double),   N*N); if (status != 0) { return status; }
+	status = ReadData("../test/green_unequal_time_test_Gtau0.dat",     Gtau0_ref,     sizeof(double), L*N*N); if (status != 0) { return status; }
+	status = ReadData("../test/green_unequal_time_test_G0tau.dat",     G0tau_ref,     sizeof(double), L*N*N); if (status != 0) { return status; }
+	status = ReadData("../test/green_unequal_time_test_Geqlt.dat",     Geqlt_ref,     sizeof(double), L*N*N); if (status != 0) { return status; }
+	status = ReadData("../test/green_unequal_time_test_Gtau0_avr.dat", Gtau0_avr_ref, sizeof(double), L*N*N); if (status != 0) { return status; }
+	status = ReadData("../test/green_unequal_time_test_G0tau_avr.dat", G0tau_avr_ref, sizeof(double), L*N*N); if (status != 0) { return status; }
+	status = ReadData("../test/green_unequal_time_test_Geqlt_avr.dat", Geqlt_avr_ref, sizeof(double),   N*N); if (status != 0) { return status; }
 
 	// entrywise absolute error of matrix entries
 	double err = fmax(fmax(fmax(fmax(fmax(

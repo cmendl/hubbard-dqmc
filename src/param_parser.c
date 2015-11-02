@@ -50,6 +50,9 @@ void SetDefaultParameters(sim_params_t *params)
 	// number of equilibration and sampling iterations
 	params->nequil = 256;
 	params->nsampl = 1024;
+
+	// disable unequal time measurements by default
+	params->nuneqlt = 0;
 }
 
 
@@ -148,6 +151,9 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 		}
 		else if (strcmp(name, "nsampl") == 0) {
 			params->nsampl = atoi(value);
+		}
+		else if (strcmp(name, "nuneqlt") == 0) {
+			params->nuneqlt = atoi(value);
 		}
 		else {
 			duprintf("Warning: unrecognized parameter '%s' in file '%s'.\n", name, filename);
