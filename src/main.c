@@ -171,7 +171,11 @@ int main(int argc, char *argv[])
 
 	// normalize measurement data
 	NormalizeMeasurementData(&meas_data);
-	NormalizeUnequalTimeMeasurementData(&meas_data_uneqlt);
+	if (params.nuneqlt > 0)
+	{
+		NormalizeUnequalTimeMeasurementData(&meas_data_uneqlt);
+	}
+
 
 	// stop timer
 	const clock_t t_end = clock();
