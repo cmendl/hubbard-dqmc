@@ -1,5 +1,7 @@
 #include "param_parser.h"
 #include "dupio.h"
+#include "hash_table.h"
+#include <mkl.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -68,6 +70,10 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 		return -1;
 	}
 
+	// load the input file into a hash table
+	ht_t params_table;
+	htInit(&params_table, 64); // 64 buckets
+
 	// read file line by line
 	char line[1024];
 	while (fgets(line, sizeof(line), fd) != NULL)
@@ -88,78 +94,55 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 		char *value = strtok(NULL, delim);
 		if (value == NULL)
 		{
-			duprintf("Missing value for parameter '%s' in file '%s'.\n", name, filename);
-			return -1;
+			duprintf("Missing value for parameter '%s' in input file '%s'.\n", name, filename);
+			continue;
 		}
 
-		if (strcmp(name, "Nx") == 0) {
-			params->Nx = atoi(value);
-		}
-		else if (strcmp(name, "Ny") == 0) {
-			params->Ny = atoi(value);
-		}
-		else if (strcmp(name, "U") == 0) {
-			params->U = atof(value);
-		}
-		else if (strcmp(name, "tp") == 0) {
-			params->tp = atof(value);
-		}
-		else if (strcmp(name, "mu") == 0) {
-			params->mu = atof(value);
-		}
-		else if (strcmp(name, "dt") == 0) {
-			params->dt = atof(value);
-		}
-		else if (strcmp(name, "L") == 0) {
-			params->L = atoi(value);
-		}
-		else if (strcmp(name, "prodBlen") == 0) {
-			params->prodBlen = atoi(value);
-		}
-		else if (strcmp(name, "nwraps") == 0) {
-			params->nwraps = atoi(value);
-		}
-		else if (strcmp(name, "use_phonons") == 0)
+		// add an entry to the hash table
+		char *value_copy = (char *)MKL_malloc(strlen(value) + 1, MEM_DATA_ALIGN);
+		strcpy(value_copy, value);
+
+		if (htInsert(&params_table, name, value_copy) != 0)
 		{
-			if (strcmp(value, "true") == 0) {
-				params->use_phonons = true;
-			}
-			else if (strcmp(value, "false") == 0) {
-				params->use_phonons = false;
-			}
-			else {
-				duprintf("Warning: unrecognized 'use_phonons = %s' in file '%s', should be either 'true' or 'false'.\n", value, filename);
-			}
+			duprintf("Warning: Duplicate parameter '%s' in input file '%s'.\n", name, filename);
 		}
-		else if (strcmp(name, "phonon_omega") == 0) {
-			params->phonon_params.omega = atof(value);
-		}
-		else if (strcmp(name, "phonon_g") == 0) {
-			params->phonon_params.g = atof(value);
-		}
-		else if (strcmp(name, "phonon_box_width") == 0) {
-			params->phonon_params.box_width = atof(value);
-		}
-		else if (strcmp(name, "phonon_nblock_updates") == 0) {
-			params->phonon_params.nblock_updates = atoi(value);
-		}
-		else if (strcmp(name, "itime") == 0) {
-			params->itime = atoi(value);
-		}
-		else if (strcmp(name, "nequil") == 0) {
-			params->nequil = atoi(value);
-		}
-		else if (strcmp(name, "nsampl") == 0) {
-			params->nsampl = atoi(value);
-		}
-		else if (strcmp(name, "nuneqlt") == 0) {
-			params->nuneqlt = atoi(value);
-		}
-		else {
-			duprintf("Warning: unrecognized parameter '%s' in file '%s'.\n", name, filename);
-		}
+		duprintf("%s:%s\n", name, htGet(&params_table, name));
 	}
 
+	// update params with values from hash table
+	char *value;
+	if ((value = htGet(&params_table, "Nx"))       != NULL) params->Nx       = atoi(value);
+	if ((value = htGet(&params_table, "Ny"))       != NULL) params->Ny       = atoi(value);
+	if ((value = htGet(&params_table, "U"))        != NULL) params->U        = atof(value);
+	if ((value = htGet(&params_table, "tp"))       != NULL) params->tp       = atof(value);
+	if ((value = htGet(&params_table, "mu"))       != NULL) params->mu       = atof(value);
+	if ((value = htGet(&params_table, "dt"))       != NULL) params->dt       = atof(value);
+	if ((value = htGet(&params_table, "L"))        != NULL) params->L        = atoi(value);
+	if ((value = htGet(&params_table, "prodBlen")) != NULL) params->prodBlen = atoi(value);
+	if ((value = htGet(&params_table, "nwraps"))   != NULL) params->nwraps   = atoi(value);
+	if ((value = htGet(&params_table, "use_phonons")) != NULL)
+	{
+		if (strcmp(value, "true") == 0) {
+			params->use_phonons = true;
+		}
+		else if (strcmp(value, "false") == 0) {
+			params->use_phonons = false;
+		}
+		else {
+			duprintf("Warning: unrecognized 'use_phonons = %s' in file '%s', should be either 'true' or 'false'.\n", value, filename);
+		}
+	}
+	if ((value = htGet(&params_table, "phonon_omega"))          != NULL) params->phonon_params.omega          = atof(value);
+	if ((value = htGet(&params_table, "phonon_g"))              != NULL) params->phonon_params.g              = atof(value);
+	if ((value = htGet(&params_table, "phonon_box_width"))      != NULL) params->phonon_params.box_width      = atof(value);
+	if ((value = htGet(&params_table, "phonon_nblock_updates")) != NULL) params->phonon_params.nblock_updates = atof(value);
+	if ((value = htGet(&params_table, "itime"))   != NULL) params->itime   = atoi(value);
+	if ((value = htGet(&params_table, "nequil"))  != NULL) params->nequil  = atoi(value);
+	if ((value = htGet(&params_table, "nsampl"))  != NULL) params->nsampl  = atoi(value);
+	if ((value = htGet(&params_table, "nuneqlt")) != NULL) params->nuneqlt = atoi(value);
+
+	// deallocate everything in the hash table
+	htFree(&params_table);
 	return 0;
 }
 

@@ -49,21 +49,20 @@ void Profile_Add(const char *name, long long delta)
 		name = name2;
 	}
 
-	// retrieves pointer to pointer to corresponding profile entry.
-	profile_entry **p = (profile_entry **)htGet(&profile_table, name);
+	// pointer to corresponding profile entry.
+	profile_entry *p = (profile_entry *)htGet(&profile_table, name);
 
 	// initializes everything the first time around
 	if (p == NULL)
 	{
-		htInsert(&profile_table, name);
-		p = (profile_entry **)htGet(&profile_table, name);
-		*p = (profile_entry *)MKL_malloc(sizeof(profile_entry), MEM_DATA_ALIGN);
-		**p = (profile_entry){0};
+		p = (profile_entry *)MKL_malloc(sizeof(profile_entry), MEM_DATA_ALIGN);
+		*p = (profile_entry) { 0 };
+		htInsert(&profile_table, name, p);
 	}
 
 	// update profile entry
-	(*p)->calls++;
-	(*p)->total += delta;
+	p->calls++;
+	p->total += delta;
 	}
 }
 

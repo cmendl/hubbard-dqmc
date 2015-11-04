@@ -20,13 +20,13 @@ typedef struct
 }
 ht_t;
 
-void htInit(ht_t *ht, int n);
+void htInit(ht_t *ht, int n_buckets);
 
 void htFree(ht_t *ht);
 
-int htInsert(ht_t *ht, const char *key);
+int htInsert(ht_t *ht, const char *key, void *val);
 
-void **htGet(ht_t *ht, const char *key);
+void *htGet(ht_t *ht, const char *key);
 
 int htDelete(ht_t *ht, const char *key);
 

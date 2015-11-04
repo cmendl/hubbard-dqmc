@@ -54,22 +54,27 @@ static uint32_t fnv_1a(const char *key)
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Inserts a key into hash table. val is not initialized and simply set to NULL. If key already exists, return 1.
+/// \brief Inserts an entry into hash table. val should be a pointer returned by MKL_malloc.
+/// If key already exists, deallocate and replace previous val and return 1.
 ///
-int htInsert(ht_t *ht, const char *key)
+int htInsert(ht_t *ht, const char *key, void *val)
 {
 	const int i = fnv_1a(key) % ht->n_buckets;
 	ht_entry_t **p_entry, *entry; //p_entry is whatever was pointing at entry.
 	for (p_entry = ht->buckets + i; (entry = *p_entry) != NULL; p_entry = &(entry->next))
 	{
-		if (!strcmp(key, entry->key))
-			return 1; //already exists!
+		if (!strcmp(key, entry->key)) //entry already exists!
+		{
+			MKL_free(entry->val);
+			entry->val = val;
+			return 1;
+		}
 	}
 	//not found, insert.
 	entry = (ht_entry_t *)MKL_malloc(sizeof(ht_entry_t), MEM_DATA_ALIGN);
 	entry->key = (char *)MKL_malloc(strlen(key) + 1, MEM_DATA_ALIGN);
 	strcpy(entry->key, key);
-	entry->val = NULL;
+	entry->val = val;
 	entry->next = NULL;
 	*p_entry = entry;
 	ht->n_entries++;
@@ -79,16 +84,16 @@ int htInsert(ht_t *ht, const char *key)
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Returns a pointer to val, which itself is a pointer to the actual value. If key not found, return NULL.
+/// \brief Returns val, which is a pointer to the actual value. If key not found, return NULL.
 ///
-void **htGet(ht_t *ht, const char *key)
+void *htGet(ht_t *ht, const char *key)
 {
 	const int i = fnv_1a(key) % ht->n_buckets;
 	ht_entry_t *entry;
 	for (entry = ht->buckets[i]; entry != NULL; entry = entry->next)
 	{
 		if (!strcmp(key, entry->key))
-			return &(entry->val);
+			return entry->val;
 	}
 	//not found
 	return NULL;
