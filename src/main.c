@@ -6,6 +6,7 @@
 #include "dupio.h"
 #include <mkl.h>
 #include <math.h>
+#include <omp.h>
 
 // for sleep function and creating directories
 #ifdef _WIN32
@@ -44,6 +45,10 @@ int main(int argc, char *argv[])
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	#endif
 
+	// if compiled with OpenMP, use only 2 threads max for efficiency
+	omp_set_num_threads(2);
+
+	// initialize profiling
 	Profile_Start();
 
 	// (default) simulation parameters
