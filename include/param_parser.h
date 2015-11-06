@@ -43,6 +43,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params);
 
 int ValidateSimulationParameters(const sim_params_t *params);
 
+void PrintParameters(const sim_params_t *params);
 
 
 #endif

@@ -179,3 +179,41 @@ int ValidateSimulationParameters(const sim_params_t *params)
 
 	return 0;
 }
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Print simulation parameters
+///
+void PrintParameters(const sim_params_t *params)
+{
+	duprintf("Simulation parameters\n\n");
+	duprintf("               lattice dimension: %i x %i\n", params->Nx, params->Ny);
+	duprintf("                               U: %g\n", params->U);
+	duprintf("                              tp: %g\n", params->tp);
+	duprintf("                              mu: %g\n", params->mu);
+	duprintf("                       time step: %g\n", params->dt);
+	duprintf("                               L: %i\n", params->L);
+	duprintf("                            beta: %g\n", params->L * params->dt);	// inverse temperature
+	duprintf("                        prodBlen: %i\n", params->prodBlen);
+	duprintf("                          nwraps: %i\n", params->nwraps);
+	duprintf("                   using phonons: %i\n", params->use_phonons);
+	if (params->use_phonons)
+	{
+		duprintf("                phonon frequency: %g\n", params->phonon_params.omega);
+		duprintf("               electron-phonon g: %g\n", params->phonon_params.g);
+		duprintf("         phonon update box width: %g\n", params->phonon_params.box_width);
+		duprintf("  number of phonon block updates: %i\n", params->phonon_params.nblock_updates);
+	}
+	duprintf("                           itime: %lli\n", params->itime);
+	duprintf("        equilibration iterations: %i\n", params->nequil);
+	duprintf("          measurement iterations: %i\n", params->nsampl);
+	if (params->nuneqlt > 0)
+	{
+		duprintf("       unequal time measurements: every %i iteration(s)\n", params->nuneqlt);
+	}
+	else
+	{
+		duprintf("       unequal time measurements: disabled\n");
+	}
+	duprintf("\n");
+}
