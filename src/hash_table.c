@@ -8,7 +8,7 @@
 ///
 /// \brief Allocates memory for a hash table
 ///
-void htInit(ht_t *ht, int n_buckets)
+void htInit(ht_t *ht, const int n_buckets)
 {
 	ht->buckets = (ht_entry_t **)MKL_malloc(n_buckets * sizeof(ht_entry_t *), MEM_DATA_ALIGN);
 	memset(ht->buckets, 0, n_buckets * sizeof(ht_entry_t *));
@@ -86,7 +86,7 @@ int htInsert(ht_t *ht, const char *key, void *val)
 ///
 /// \brief Returns val, which is a pointer to the actual value. If key not found, return NULL.
 ///
-void *htGet(ht_t *ht, const char *key)
+void *htGet(const ht_t *ht, const char *key)
 {
 	const int i = fnv_1a(key) % ht->n_buckets;
 	ht_entry_t *entry;

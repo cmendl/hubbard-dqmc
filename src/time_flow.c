@@ -314,7 +314,7 @@ void UpdatePhononTimeStepMatrices(const kinetic_t *restrict kinetic, const doubl
 ///
 void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift, double *restrict Q, double *restrict tau, double *restrict d, double *restrict T)
 {
-	PROFILE_BEGIN(TFM);
+	Profile_Begin("TFM");
 	__assume_aligned(Q,   MEM_DATA_ALIGN);
 	__assume_aligned(tau, MEM_DATA_ALIGN);
 	__assume_aligned(d,   MEM_DATA_ALIGN);
@@ -348,7 +348,7 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 
 	// initial QR decomposition
 	{
-		PROFILE_BEGIN(TFM_1stQR);
+		Profile_Begin("TFM_1stQR");
 		// copy precomputed product of subsequent B matrices
 		const double *srcBprod = tsm->Bprod[prod_slice_shift % tsm->numBprod];
 		__assume_aligned(srcBprod, MEM_DATA_ALIGN);
@@ -381,33 +381,33 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 				T[i + jpvt[j]*N] = v[i] * Q[i + j*N];
 			}
 		}
-		PROFILE_END(TFM_1stQR);
+		Profile_End("TFM_1stQR");
 	}
 
 	int l;
 	for (l = 1; l < tsm->numBprod; l++)
 	{
-		PROFILE_BEGIN(TFM_QR);
-		PROFILE_BEGIN(TFM_QR_ComputeC);
+		Profile_Begin("TFM_QR");
+		Profile_Begin("TFM_QR_ComputeC");
 		// copy product of the next 'tsm->prodBlen' B matrices
 		const double *srcBprod = tsm->Bprod[(l + prod_slice_shift) % tsm->numBprod];
 		__assume_aligned(srcBprod, MEM_DATA_ALIGN);
 		memcpy(W, srcBprod, N*N * sizeof(double));
 
 		// multiply by previous orthogonal matrix from the right, overwriting the 'W' matrix
-		PROFILE_BEGIN(TFM_QR_ComputeC_dormqr);
+		Profile_Begin("TFM_QR_ComputeC_dormqr");
 		LAPACKE_dormqr(LAPACK_COL_MAJOR, 'R', 'N', N, N, N, Q, N, tau, W, N);
-		PROFILE_END(TFM_QR_ComputeC_dormqr);
+		Profile_End("TFM_QR_ComputeC_dormqr");
 
 		// scale by previous diagonal matrix
 		for (i = 0; i < N; i++)
 		{
 			cblas_dscal(N, d[i], &W[i*N], 1);
 		}
-		PROFILE_END(TFM_QR_ComputeC);
+		Profile_End("TFM_QR_ComputeC");
 
 		// pre-pivot 'W' and perform QR-decomposition
-		PROFILE_BEGIN(TFM_QR_Pivot);
+		Profile_Begin("TFM_QR_Pivot");
 		// calculate column norms
 		for (j = 0; j < N; j++)
 		{
@@ -427,13 +427,13 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 		{
 			memcpy(&Q[j*N], &W[jpvt[j]*N], N*sizeof(double));
 		}
-		PROFILE_END(TFM_QR_Pivot);
+		Profile_End("TFM_QR_Pivot");
 		// finally perform the QR-decomposition
-		PROFILE_BEGIN(TFM_QR_dgeqrf);
+		Profile_Begin("TFM_QR_dgeqrf");
 		LAPACKE_dgeqrf(LAPACK_COL_MAJOR, N, N, Q, N, tau);
-		PROFILE_END(TFM_QR_dgeqrf);
+		Profile_End("TFM_QR_dgeqrf");
 
-		PROFILE_BEGIN(TFM_QR_ComputeDandT);
+		Profile_Begin("TFM_QR_ComputeDandT");
 		// extract diagonal entries
 		#pragma ivdep
 		for (i = 0; i < N; i++)
@@ -470,8 +470,8 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 		// second, multiply with upper triangular matrix, overwriting 'T' in-place;
 		// we do not assume that upper triangular matrix is unit triangular since entries might be zero
 		cblas_dtrmm(CblasColMajor, CblasLeft, CblasUpper, CblasNoTrans, CblasNonUnit, N, N, 1.0, Q, N, T, N);
-		PROFILE_END(TFM_QR_ComputeDandT);
-		PROFILE_END(TFM_QR);
+		Profile_End("TFM_QR_ComputeDandT");
+		Profile_End("TFM_QR");
 	}
 
 	// clean up
@@ -479,5 +479,5 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 	MKL_free(norms);
 	MKL_free(jpvt);
 	MKL_free(W);
-	PROFILE_END(TFM);
+	Profile_End("TFM");
 }

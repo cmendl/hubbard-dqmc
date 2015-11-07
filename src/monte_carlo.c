@@ -27,7 +27,7 @@
 void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params, const int nwraps,
 	randseed_t *restrict seed, spin_field_t *restrict s, time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd)
 {
-	PROFILE_BEGIN(DQMCIter);
+	Profile_Begin("DQMCIter");
 	__assume_aligned(s, MEM_DATA_ALIGN);
 
 	// dimension consistency checks
@@ -59,7 +59,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		// recompute Green's function after several time slice "wraps"
 		if (l > 0 && (l % nwraps) == 0)
 		{
-			PROFILE_BEGIN(DQMCIter_Grecomp);
+			Profile_Begin("DQMCIter_Grecomp");
 			// store current Green's function matrices to compare with newly constructed ones
 			#if defined(DEBUG) | defined(_DEBUG)
 			CopyGreensFunction(Gu, &Gu_old);
@@ -91,10 +91,10 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 				duprintf("Warning: after calling 'GreenConstruct()', determinant sign has changed.\n");
 			}
 			#endif
-			PROFILE_END(DQMCIter_Grecomp);
+			Profile_End("DQMCIter_Grecomp");
 		}
 
-		PROFILE_BEGIN(DQMCIter_Wraps);
+		Profile_Begin("DQMCIter_Wraps");
 		#pragma omp parallel sections
 		{
 			#pragma omp section
@@ -102,14 +102,14 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 			#pragma omp section
 			GreenTimeSliceWrap(N, tsm_d->B[l], tsm_d->invB[l], Gd->mat);
 		}
-		PROFILE_END(DQMCIter_Wraps);
+		Profile_End("DQMCIter_Wraps");
 
 		// iterate over lattice sites in random order, updating the Hubbard-Stratonovich field
+		Profile_Begin("DQMCIter_SiteUpdate");
 		Random_Shuffle(seed, N, site_order);
 		int j;
 		for (j = 0; j < N; j++)
 		{
-			PROFILE_BEGIN(DQMCIter_SiteUpdate);
 			int i = site_order[j];
 			assert(0 <= i && i < N);
 			// Eq. (13)
@@ -135,10 +135,10 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 				// actually flip spin of Hubbard-Stratonovich field entry
 				s[i + l*N] = 1 - s[i + l*N];
 			}
-			PROFILE_END(DQMCIter_SiteUpdate);
 		}
+		Profile_End("DQMCIter_SiteUpdate");
 
-		PROFILE_BEGIN(DQMCIter_Brecomp);
+		Profile_Begin("DQMCIter_Brecomp");
 		// re-compute corresponding B matrices
 		#pragma omp parallel sections
 		{
@@ -147,7 +147,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 			#pragma omp section
 			UpdateTimeStepMatrices(kinetic, stratonovich_params->expVd, s, l, tsm_d);
 		}
-		PROFILE_END(DQMCIter_Brecomp);
+		Profile_End("DQMCIter_Brecomp");
 	}
 
 	// clean up
@@ -156,7 +156,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);
 	#endif
-	PROFILE_END(DQMCIter);
+	Profile_End("DQMCIter");
 }
 
 
@@ -559,7 +559,7 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 	for (i = 0; i < nequil; i++)
 	{
 		// construct initial Green's functions
-		PROFILE_BEGIN(DQMCIter_Grecomp);
+		Profile_Begin("DQMCIter_Grecomp");
 		#pragma omp parallel sections
 		{
 			#pragma omp section
@@ -567,7 +567,7 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 			#pragma omp section
 			GreenConstruct(&tsm_d, 0, &Gd);
 		}
-		PROFILE_END(DQMCIter_Grecomp);
+		Profile_End("DQMCIter_Grecomp");
 
 		DQMCIteration(kinetic, &stratonovich_params, nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
 	}
@@ -577,7 +577,7 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 	for (i = 0; i < nsampl; i++)
 	{
 		// construct initial Green's functions
-		PROFILE_BEGIN(DQMCIter_Grecomp);
+		Profile_Begin("DQMCIter_Grecomp");
 		#pragma omp parallel sections
 		{
 			#pragma omp section
@@ -585,17 +585,19 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 			#pragma omp section
 			GreenConstruct(&tsm_d, 0, &Gd);
 		}
-		PROFILE_END(DQMCIter_Grecomp);
+		Profile_End("DQMCIter_Grecomp");
 
 		// perform measurements directly after constructing Green's functions to improve numerical accuracy
 		// accumulate equal time "measurement" data
-		PROFILE_BEGIN(DQMCSim_AccumulateMeasurements);
+		Profile_Begin("DQMCSim_AccumulateEqMeas");
 		AccumulateMeasurement(&Gu, &Gd, meas_data);
-		PROFILE_END(DQMCSim_AccumulateMeasurements);
+		Profile_End("DQMCSim_AccumulateEqMeas");
 		// accumulate unequal time "measurement" data
 		if (nuneqlt > 0 && (i % nuneqlt) == 0)
 		{
+			Profile_Begin("DQMCSim_AccumulateUneqMeas");
 			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
+			Profile_End("DQMCSim_AccumulateUneqMeas");
 		}
 
 		DQMCIteration(kinetic, &stratonovich_params, nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
