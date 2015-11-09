@@ -106,7 +106,6 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 		{
 			duprintf("Warning: Duplicate parameter '%s' in input file '%s'.\n", name, filename);
 		}
-		duprintf("%s:%s\n", name, htGet(&params_table, name));
 	}
 
 	// update params with values from hash table
