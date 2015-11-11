@@ -12,21 +12,25 @@
 ///
 /// \brief Compute a time step B matrix (product of a potential and kinetic energy matrix)
 ///
-inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, double *restrict B)
+static inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict B)
 {
 	__assume_aligned(B, MEM_DATA_ALIGN);
 
 	const int N = kinetic->N;
+	const int Ncell = kinetic->Ncell;
 
 	// copy kinetic energy matrix
 	__assume_aligned(kinetic->expK, MEM_DATA_ALIGN);
 	memcpy(B, kinetic->expK, N*N * sizeof(double));
 
 	// scale the rows by the diagonal potential matrix entries (multiply by diagonal potential matrix from the left)
-	int i;
-	for (i = 0; i < N; i++)
+	int i, o;
+	for (o = 0; o < kinetic->Norb; o++)
 	{
-		cblas_dscal(N, expV[s[i]], &B[i], N);
+		for (i = 0; i < Ncell; i++)
+		{
+			cblas_dscal(N, expV[s[i + o * Ncell]][o], &B[i], N);
+		}
 	}
 }
 
@@ -34,21 +38,25 @@ inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const doubl
 ///
 /// \brief Compute an inverse time step matrix
 ///
-inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, double *restrict invB)
+static inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict invB)
 {
 	__assume_aligned(invB, MEM_DATA_ALIGN);
 
 	const int N = kinetic->N;
+	const int Ncell = kinetic->Ncell;
 
 	// copy inverse kinetic energy matrix
 	__assume_aligned(kinetic->inv_expK, MEM_DATA_ALIGN);
 	memcpy(invB, kinetic->inv_expK, N*N * sizeof(double));
 
 	// scale the columns by the inverse diagonal potential matrix entries (multiply by inverse diagonal potential matrix from the right)
-	int i;
-	for (i = 0; i < N; i++)
+	int i, o;
+	for (o = 0; o < kinetic->Norb; o++)
 	{
-		cblas_dscal(N, expV[1-s[i]], &invB[i*N], 1);
+		for (i = 0; i < Ncell; i++)
+		{
+			cblas_dscal(N, expV[1 - s[i + o * Ncell]][o], &invB[i*N], 1);
+		}
 	}
 }
 
@@ -57,21 +65,25 @@ inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, cons
 ///
 /// \brief Compute a time step B matrix (product of a potential and kinetic energy matrix), including phonons 
 ///
-inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict B)
+static inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict B)
 {
 	__assume_aligned(B, MEM_DATA_ALIGN);
 
 	const int N = kinetic->N;
+	const int Ncell = kinetic->Ncell;
 
 	// copy kinetic energy matrix
 	__assume_aligned(kinetic->expK, MEM_DATA_ALIGN);
 	memcpy(B, kinetic->expK, N*N * sizeof(double));
 
 	// scale the rows by the diagonal potential matrix entries (multiply by diagonal potential matrix from the left)
-	int i;
-	for (i = 0; i < N; i++)
+	int i, o;
+	for (o = 0; o < kinetic->Norb; o++)
 	{
-		cblas_dscal(N, expV[s[i]] * expX[i], &B[i], N);
+		for (i = 0; i < Ncell; i++)
+		{
+			cblas_dscal(N, expV[s[i + o * Ncell]][o] * expX[i], &B[i], N);
+		}
 	}
 }
 
@@ -79,21 +91,25 @@ inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const
 ///
 /// \brief Compute an inverse time step matrix including phonons
 ///
-inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict invB)
+static inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict invB)
 {
 	__assume_aligned(invB, MEM_DATA_ALIGN);
 
 	const int N = kinetic->N;
+	const int Ncell = kinetic->Ncell;
 
 	// copy inverse kinetic energy matrix
 	__assume_aligned(kinetic->inv_expK, MEM_DATA_ALIGN);
 	memcpy(invB, kinetic->inv_expK, N*N * sizeof(double));
 
 	// scale the columns by the inverse diagonal potential matrix entries (multiply by inverse diagonal potential matrix from the right)
-	int i;
-	for (i = 0; i < N; i++)
+	int i, o;
+	for (o = 0; o < kinetic->Norb; o++)
 	{
-		cblas_dscal(N, expV[1-s[i]] / expX[i], &invB[i*N], 1);
+		for (i = 0; i < N; i++)
+		{
+			cblas_dscal(N, expV[1 - s[i + o * Ncell]][o] / expX[i], &invB[i*N], 1);
+		}
 	}
 }
 
@@ -203,7 +219,7 @@ void CopyTimeStepMatrices(time_step_matrices_t *restrict src, time_step_matrices
 ///
 /// \brief Initialize time step B matrices and products of subsequent 'tsm->prodBlen' matrices
 ///
-void InitTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, time_step_matrices_t *restrict tsm)
+void InitTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, time_step_matrices_t *restrict tsm)
 {
 	int l;
 	const int N = kinetic->N;
@@ -219,7 +235,7 @@ void InitTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2
 	// form products of the B matrices
 	for (l = 0; l < tsm->numBprod; l++)
 	{
-		MatrixProductSequence(N, tsm->prodBlen, (const double **)(tsm->B + l*tsm->prodBlen), tsm->Bprod[l]);
+		MatrixProductSequence(N, tsm->prodBlen, (tsm->B + l*tsm->prodBlen), tsm->Bprod[l]);
 	}
 }
 
@@ -227,7 +243,7 @@ void InitTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2
 ///
 /// \brief Initialize time step B matrices and products of subsequent 'tsm->prodBlen' matrices, taking phonons into account
 ///
-void InitPhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, const double *restrict expX, time_step_matrices_t *restrict tsm)
+void InitPhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, time_step_matrices_t *restrict tsm)
 {
 	int l;
 	const int N = kinetic->N;
@@ -253,7 +269,7 @@ void InitPhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double 
 /// \brief Update time step B matrices for time slice 'l', and re-compute products of subsequent matrices
 /// if 'l' refers to the last B matrix of a product interval
 ///
-void UpdateTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, const int l, time_step_matrices_t *restrict tsm)
+void UpdateTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const int l, time_step_matrices_t *restrict tsm)
 {
 	assert(0 <= l && l < tsm->L);
 
@@ -273,7 +289,7 @@ void UpdateTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV
 /// \brief Update time step B matrices for time slice 'l' taking phonons into account,
 /// and re-compute products of subsequent matrices if 'l' refers to the last B matrix of a product interval
 ///
-void UpdatePhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, const double *restrict expX, const int l, time_step_matrices_t *restrict tsm)
+void UpdatePhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, const int l, time_step_matrices_t *restrict tsm)
 {
 	assert(0 <= l && l < tsm->L);
 

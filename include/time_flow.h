@@ -28,11 +28,11 @@ void DeleteTimeStepMatrices(time_step_matrices_t *restrict tsm);
 
 void CopyTimeStepMatrices(time_step_matrices_t *restrict src, time_step_matrices_t *restrict dst);
 
-void InitTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, time_step_matrices_t *restrict tsm);
-void InitPhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, const double *restrict expX, time_step_matrices_t *restrict tsm);
+void InitTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, time_step_matrices_t *restrict tsm);
+void InitPhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, time_step_matrices_t *restrict tsm);
 
-void UpdateTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, const int l, time_step_matrices_t *restrict tsm);
-void UpdatePhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, const double *restrict expX, const int l, time_step_matrices_t *restrict tsm);
+void UpdateTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const int l, time_step_matrices_t *restrict tsm);
+void UpdatePhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, const int l, time_step_matrices_t *restrict tsm);
 
 
 void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift, double *restrict Q, double *restrict tau, double *restrict d, double *restrict T);

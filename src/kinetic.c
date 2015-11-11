@@ -6,48 +6,65 @@
 //________________________________________________________________________________________________________________________
 ///
 /// \brief Allocate and calculate matrix exponential of the kinetic nearest and next-nearest
-/// neighbor hopping matrix for a square lattice geometry
+/// neighbor hopping matrix for a rectangular lattice geometry with periodic boundary conditions.
 ///
-void SquareLatticeKineticExponential(const int Nx, const int Ny, const double tp, const double mu, const double dt, kinetic_t *restrict kinetic)
+void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_t *restrict kinetic)
 {
-	// total number of lattice sites
-	const int N = Nx * Ny;
+	const int Norb = params->Norb;
+	const int Nx = params->Nx;
+	const int Ny = params->Ny;
+	const int N = Norb*Nx*Ny;
+
+	kinetic->Norb = Norb;
+	kinetic->Ncell = Nx*Ny;
 	kinetic->N = N;
 
-	int i, j;
+	int i, j; // spatial indices
+	int o, p; // these are orbital numbers
 
 	double *T = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
 
-	// set diagonal entries in 'T' (shift by chemical potential)
-	const double dt_mu = dt * mu;
-	for (i = 0; i < N; i++)
-	{
-		T[i + N*i] = dt_mu;
-	}
-
 	// set hopping terms in 'T'
-	const double dt_tp = dt * tp;
 	for (j = 0; j < Ny; j++)
 	{
-		const int j_next = (j < Ny-1 ? j + 1 : 0   );
-		const int j_prev = (j > 0    ? j - 1 : Ny-1);
+		const int j_next = (j < Ny-1 ? j + 1 : 0);
 
 		for (i = 0; i < Nx; i++)
 		{
-			const int i_next = (i < Nx-1 ? i + 1 : 0   );
-			const int i_prev = (i > 0    ? i - 1 : Nx-1);
+			const int i_next = (i < Nx-1 ? i + 1 : 0);
 
-			T[(i + j*Nx) + N*(i_next + j     *Nx)] = dt;
-			T[(i + j*Nx) + N*(i_prev + j     *Nx)] = dt;
-			T[(i + j*Nx) + N*(i      + j_next*Nx)] = dt;
-			T[(i + j*Nx) + N*(i      + j_prev*Nx)] = dt;
+			for (o = 0; o < Norb; o++)
+			{
+				for (p = 0; p < Norb; p++)
+				{
+					T[(i + j*Nx + o*Nx*Ny) + N*(i      + j     *Nx + p*Nx*Ny)] = params->t.aa[o + p * Norb];
+					T[(i + j*Nx + o*Nx*Ny) + N*(i_next + j     *Nx + p*Nx*Ny)] = params->t.ab[o + p * Norb];
+					T[(i + j*Nx + o*Nx*Ny) + N*(i      + j_next*Nx + p*Nx*Ny)] = params->t.ac[o + p * Norb];
+					T[(i + j*Nx + o*Nx*Ny) + N*(i_next + j_next*Nx + p*Nx*Ny)] = params->t.ad[o + p * Norb];
+					T[(i_next + j*Nx + o*Nx*Ny) + N*(i + j_next*Nx + p*Nx*Ny)] = params->t.bc[o + p * Norb];
 
-			T[(i + j*Nx) + N*(i_next + j_next*Nx)] = dt_tp;
-			T[(i + j*Nx) + N*(i_next + j_prev*Nx)] = dt_tp;
-			T[(i + j*Nx) + N*(i_prev + j_next*Nx)] = dt_tp;
-			T[(i + j*Nx) + N*(i_prev + j_prev*Nx)] = dt_tp;
+					T[(i      + j     *Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] = params->t.aa[o + p * Norb];
+					T[(i_next + j     *Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] = params->t.ab[o + p * Norb];
+					T[(i      + j_next*Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] = params->t.ac[o + p * Norb];
+					T[(i_next + j_next*Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] = params->t.ad[o + p * Norb];
+					T[(i + j_next*Nx + p*Nx*Ny) + (i_next + j*Nx + p*Nx*Ny)*N] = params->t.bc[o + p * Norb];
+				}
+			}
 		}
 	}
+
+	// set diagonal entries in 'T' (shift by chemical potential and site energies)
+	for (o = 0; o < Norb; o++)
+	{
+		for (i = 0; i < Nx*Ny; i++)
+		{
+			const int index = i + o*Nx*Ny;
+			T[index + N * index] = params->mu + params->eps[o];
+		}
+	}
+
+	//scale by dt
+	cblas_dscal(N*N, params->dt, T, 1);
 
 	kinetic->expK     = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	kinetic->inv_expK = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);

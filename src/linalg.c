@@ -61,7 +61,7 @@ int MatrixExp(const int n, const double *restrict A, double *restrict ret)
 ///
 /// \brief Compute the matrix product A_{num-1} ... A_1 A_0 where each A_i is a n x n matrix
 ///
-void MatrixProductSequence(const int n, const int num, const double **restrict A, double *restrict ret)
+void MatrixProductSequence(const int n, const int num, const double *const *restrict A, double *restrict ret)
 {
 	assert(n > 0);
 	assert(num > 0);

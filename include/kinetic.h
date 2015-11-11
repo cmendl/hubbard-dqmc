@@ -1,6 +1,8 @@
 #ifndef KINETIC_H
 #define KINETIC_H
 
+#include "param_parser.h"
+
 
 //________________________________________________________________________________________________________________________
 ///
@@ -10,13 +12,14 @@ typedef struct
 {
 	double *expK;			//!< exp(-dt K)
 	double *inv_expK;		//!< exp( dt K)
-	int N;					//!< total number of lattice sites
+	int Norb;				//!< number of orbitals per unit cell
+	int Ncell;				//!< total number of unit cells
+	int N;					//!< total number of orbitals
 }
 kinetic_t;
 
 
-void SquareLatticeKineticExponential(const int Nx, const int Ny, const double tp, const double mu, const double dt, kinetic_t *restrict kinetic);
-
+void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_t *restrict kinetic);
 
 void DeleteKineticExponential(kinetic_t *restrict kinetic);
 

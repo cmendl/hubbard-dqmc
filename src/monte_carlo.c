@@ -35,6 +35,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	assert(tsm_u->N == tsm_d->N);
 	assert(tsm_u->L == tsm_d->L);
 	const int N = kinetic->N;
+	const int Ncell = kinetic->Ncell;
 
 	assert(tsm_u->prodBlen == tsm_d->prodBlen);
 	assert(nwraps % tsm_u->prodBlen == 0);	// must be a multiple of 'prodBlen'
@@ -111,20 +112,21 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		for (j = 0; j < N; j++)
 		{
 			int i = site_order[j];
+			int o = i / Ncell; // orbital number
 			assert(0 <= i && i < N);
 			// Eq. (13)
 			// suggest flipping s_{i,l}
-			const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]];
-			const double dd = 1 + (1 - Gd->mat[i + i*N]) * stratonovich_params->delta[1-s[i + l*N]];
+			const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]][o];
+			const double dd = 1 + (1 - Gd->mat[i + i*N]) * stratonovich_params->delta[1-s[i + l*N]][o];
 			if (Random_GetUniform(seed) < fabs(du*dd))
 			{
 				// Eq. (15)
 				#pragma omp parallel sections
 				{
 					#pragma omp section
-					GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]], N, i, Gu->mat);
+					GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]][o], N, i, Gu->mat);
 					#pragma omp section
-					GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]], N, i, Gd->mat);
+					GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]][o], N, i, Gd->mat);
 				}
 				// correspondingly update determinants
 				Gu->logdet -= log(fabs(du));
@@ -159,7 +161,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	Profile_End("DQMCIter");
 }
 
-
+/*
 
 //________________________________________________________________________________________________________________________
 ///
@@ -500,53 +502,54 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	DeleteGreensFunction(&Gu_old);
 	#endif
 }
-
+*/
 
 //________________________________________________________________________________________________________________________
 ///
 /// \brief Perform a Determinant Quantum Monte Carlo (DQMC) simulation
 ///
-/// \param U                    Coulomb coupling constant in the Hubbard hamiltonian
-/// \param dt                   imaginary-time step
-/// \param L                    number of time steps
-/// \param kinetic              matrix exponential of kinetic energy operator
-/// \param prodBlen             largest number of B_l matrices multiplied together before performing a QR decomposition
-/// \param nwraps               number of "time slice wraps" before recomputing the Green's function
-/// \param nequil               number of equilibration iterations
-/// \param nsampl               number of sample iterations
-/// \param nuneqlt              number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
-/// \param seed                 random number "seed" structure, will be updated during function call
+/// \param params               simulation parameters
 /// \param meas_data            measurement data structure for accumulating measurements
 /// \param meas_data_uneqlt     unequal time measurement data structure
 ///
-void DQMCSimulation(const double U, const double dt, const int L, const kinetic_t *restrict kinetic, const int prodBlen, const int nwraps,
-	const int nequil, const int nsampl, const int nuneqlt, randseed_t *restrict seed, measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt)
+void DQMCSimulation(const sim_params_t *restrict params,
+	measurement_data_t *restrict meas_data,
+	measurement_data_unequal_time_t *restrict meas_data_uneqlt)
 {
 	int i;
-	const int N = kinetic->N;
+	const int Norb = params->Norb;
+	const int N = Norb * params->Nx * params->Ny;
 
-	// Hubbard-Stratonovich parameters
+	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
+	kinetic_t kinetic;
+	RectangularKineticExponential(params, &kinetic);
+
+	// pre-calculate some stuff related to the Hubbard-Stratonovich field, for every orbital
 	stratonovich_params_t stratonovich_params;
-	FillStratonovichParameters(U, dt, &stratonovich_params);
+	FillStratonovichParameters(Norb, params->U, params->dt, &stratonovich_params);
+
+	// random generator seed; multiplicative constant from Pierre L'Ecuyer's paper
+	randseed_t seed;
+	Random_SeedInit(1865811235122147685LL * (uint64_t)params->itime, &seed);
 
 	// random initial Hubbard-Stratonovich field
-	spin_field_t *s = (spin_field_t *)MKL_malloc(L*N * sizeof(spin_field_t), MEM_DATA_ALIGN);
-	for (i = 0; i < L*N; i++)
+	spin_field_t *s = (spin_field_t *)MKL_malloc(params->L * N * sizeof(spin_field_t), MEM_DATA_ALIGN);
+	for (i = 0; i < params->L*N; i++)
 	{
-		s[i] = (Random_GetUniform(seed) < 0.5 ? 0 : 1);
+		s[i] = (Random_GetUniform(&seed) < 0.5 ? 0 : 1);
 	}
 
 	// time step matrices
 	time_step_matrices_t tsm_u;
 	time_step_matrices_t tsm_d;
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_u);
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_d);
+	AllocateTimeStepMatrices(N, params->L, params->prodBlen, &tsm_u);
+	AllocateTimeStepMatrices(N, params->L, params->prodBlen, &tsm_d);
 	#pragma omp parallel sections
 	{
 		#pragma omp section
-		InitTimeStepMatrices(kinetic, stratonovich_params.expVu, s, &tsm_u);
+		InitTimeStepMatrices(&kinetic, stratonovich_params.expVu, s, &tsm_u);
 		#pragma omp section
-		InitTimeStepMatrices(kinetic, stratonovich_params.expVd, s, &tsm_d);
+		InitTimeStepMatrices(&kinetic, stratonovich_params.expVd, s, &tsm_d);
 	}
 
 	// allocate Green's functions
@@ -556,7 +559,7 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 
 	// perform equilibration
 	duprintf("Starting equilibration iterations...\n");
-	for (i = 0; i < nequil; i++)
+	for (i = 0; i < params->nequil; i++)
 	{
 		// construct initial Green's functions
 		Profile_Begin("DQMCIter_Grecomp");
@@ -569,12 +572,12 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 		}
 		Profile_End("DQMCIter_Grecomp");
 
-		DQMCIteration(kinetic, &stratonovich_params, nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+		DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
 	}
 
 	// perform measurement iterations
 	duprintf("Starting measurement iterations...\n");
-	for (i = 0; i < nsampl; i++)
+	for (i = 0; i < params->nsampl; i++)
 	{
 		// construct initial Green's functions
 		Profile_Begin("DQMCIter_Grecomp");
@@ -593,14 +596,14 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 		AccumulateMeasurement(&Gu, &Gd, meas_data);
 		Profile_End("DQMCSim_AccumulateEqMeas");
 		// accumulate unequal time "measurement" data
-		if (nuneqlt > 0 && (i % nuneqlt) == 0)
+		if (params->nuneqlt > 0 && (i % params->nuneqlt) == 0)
 		{
 			Profile_Begin("DQMCSim_AccumulateUneqMeas");
 			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
 			Profile_End("DQMCSim_AccumulateUneqMeas");
 		}
 
-		DQMCIteration(kinetic, &stratonovich_params, nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+		DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
 	}
 
 	// clean up
@@ -609,9 +612,10 @@ void DQMCSimulation(const double U, const double dt, const int L, const kinetic_
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
 	MKL_free(s);
+	DeleteStratonovichParameters(&stratonovich_params);
 }
 
-
+/*
 //________________________________________________________________________________________________________________________
 ///
 /// \brief Perform a Determinant Quantum Monte Carlo (DQMC) simulation, taking phonons into account
@@ -724,3 +728,4 @@ void DQMCPhononSimulation(const double U, const double dt, const int L, const ki
 	MKL_free(X);
 	MKL_free(s);
 }
+*/

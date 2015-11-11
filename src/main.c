@@ -7,6 +7,7 @@
 #include <mkl.h>
 #include <math.h>
 #include <omp.h>
+#include <time.h>
 
 // for sleep function and creating directories
 #ifdef _WIN32
@@ -51,18 +52,24 @@ int main(int argc, char *argv[])
 	// initialize profiling
 	Profile_Start();
 
-	// (default) simulation parameters
-	sim_params_t params;
-	SetDefaultParameters(&params);
+	// make sure there's an input file
+	if (argc < 2)
+	{
+		duprintf("No input file specified!.\n");
+		return -1;
+	}
 
-	// read parameters from file, overwriting default parameters
-	if (argc >= 2) {
-		duprintf("Reading simulation parameters from file '%s'...\n", argv[1]);
-		status = ParseParameterFile(argv[1], &params);
-		if (status < 0) {
-			duprintf("Error parsing parameter file, exiting...\n");
-			return -1;
-		}
+	// zero simulation parameters and set initial time for random seed.
+	sim_params_t params = { 0 };
+	params.itime = time(NULL);
+
+	// read parameters from input file.
+	duprintf("Reading simulation parameters from file '%s'...\n", argv[1]);
+	status = ParseParameterFile(argv[1], &params); // this also allocates memory for the arrays in params
+	if (status < 0)
+	{
+		duprintf("Error parsing parameter file, exiting...\n");
+		return -1;
 	}
 
 	// perform admissibility checks of the simulation parameters
@@ -107,14 +114,6 @@ int main(int argc, char *argv[])
 	duprintf("_______________________________________________________________________________\n");
 	PrintParameters(&params);
 
-	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
-	kinetic_t kinetic;
-	SquareLatticeKineticExponential(params.Nx, params.Ny, params.tp, params.mu, params.dt, &kinetic);
-
-	// random generator seed; multiplicative constant from Pierre L'Ecuyer's paper
-	randseed_t seed;
-	Random_SeedInit(1865811235122147685LL * (uint64_t)params.itime, &seed);
-
 	// allocate and initialize equal time measurement data structure
 	measurement_data_t meas_data;
 	AllocateMeasurementData(params.Nx, params.Ny, &meas_data);
@@ -136,6 +135,8 @@ int main(int argc, char *argv[])
 	const clock_t t_start = clock();
 
 	// perform simulation
+	DQMCSimulation(&params, &meas_data, &meas_data_uneqlt);
+	/*
 	if (!params.use_phonons)
 	{
 		DQMCSimulation(params.U, params.dt, params.L, &kinetic, params.prodBlen, params.nwraps, params.nequil, params.nsampl, params.nuneqlt, &seed, &meas_data, &meas_data_uneqlt);
@@ -144,6 +145,7 @@ int main(int argc, char *argv[])
 	{
 		DQMCPhononSimulation(params.U, params.dt, params.L, &kinetic, params.prodBlen, params.nwraps, &params.phonon_params, params.nequil, params.nsampl, params.nuneqlt, &seed, &meas_data, &meas_data_uneqlt);
 	}
+	*/
 
 	// normalize measurement data
 	NormalizeMeasurementData(&meas_data);
@@ -206,7 +208,7 @@ int main(int argc, char *argv[])
 		DeleteUnequalTimeMeasurementData(&meas_data_uneqlt);
 	}
 	DeleteMeasurementData(&meas_data);
-	DeleteKineticExponential(&kinetic);
+	DeleteParameters(&params);
 
 	return 0;
 }

@@ -1,0 +1,15 @@
+Norb	1
+Nx		6
+Ny		6
+t_ab	0,0,1
+t_ac	0,0,1
+U		4
+eps		0
+mu		0
+dt		0.05
+L		40
+prodBlen	8
+nwraps		8
+nequil		512
+nsampl		512
+nuneqlt		0
