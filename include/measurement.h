@@ -10,9 +10,9 @@
 ///
 typedef struct
 {
-	double density_u;				//!< spin-up density
-	double density_d;				//!< spin-down density
-	double doubleocc;				//!< double occupancy
+	double *density_u;				//!< spin-up density
+	double *density_d;				//!< spin-down density
+	double *doubleocc;				//!< double occupancy
 
 	int *latt_sum_map;				//!< lattice site index of coordinate sum of two lattice sites; matrix of size N x N
 
@@ -26,12 +26,14 @@ typedef struct
 	double sign;					//!< accumulated Green's function signs (+-1)
 	int nsampl;						//!< number of accumulated samples
 
-	int N;							//!< total number of lattice sites
+	int Norb;						//!< number of orbitals per unit cell
+	int Ncell;						//!< total number of unit cells
+	int N;							//!< total number of orbitals
 }
 measurement_data_t;
 
 
-void AllocateMeasurementData(const int Nx, const int Ny, measurement_data_t *restrict meas_data);
+void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measurement_data_t *restrict meas_data);
 
 void DeleteMeasurementData(measurement_data_t *restrict meas_data);
 

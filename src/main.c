@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 
 	// allocate and initialize equal time measurement data structure
 	measurement_data_t meas_data;
-	AllocateMeasurementData(params.Nx, params.Ny, &meas_data);
+	AllocateMeasurementData(params.Norb, params.Nx, params.Ny, &meas_data);
 
 	// allocate and initialize unequal time measurement data structure
 	measurement_data_unequal_time_t meas_data_uneqlt;
@@ -162,25 +162,27 @@ int main(int argc, char *argv[])
 
 	// show some simulation results
 	duprintf("_______________________________________________________________________________\n");
-	duprintf("Summary of simulation results\n\n");
+	duprintf("Summary of simulation results (for orbital 0)\n\n");
 	duprintf("                    average sign: %g\n", meas_data.sign);
-	duprintf("           average total density: %g\n", meas_data.density_u + meas_data.density_d);
-	duprintf("         average spin-up density: %g\n", meas_data.density_u);
-	duprintf("       average spin-down density: %g\n", meas_data.density_d);
-	duprintf("        average double occupancy: %g\n", meas_data.doubleocc);
-	duprintf("            average local moment: %g\n", meas_data.density_u + meas_data.density_d - 2.0*meas_data.doubleocc);
+	duprintf("           average total density: %g\n", meas_data.density_u[0] + meas_data.density_d[0]);
+	duprintf("         average spin-up density: %g\n", meas_data.density_u[0]);
+	duprintf("       average spin-down density: %g\n", meas_data.density_d[0]);
+	duprintf("        average double occupancy: %g\n", meas_data.doubleocc[0]);
+	duprintf("            average local moment: %g\n", meas_data.density_u[0] + meas_data.density_d[0] - 2.0*meas_data.doubleocc[0]);
 
 	// save simulation results as binary data to disk
 	duprintf("\nSaving simulation results to disk...");
-	const int N = params.Nx * params.Ny;
-	sprintf(path, "%s_density_u.dat", fnbase);	WriteData(path, &meas_data.density_u, sizeof(double), 1, false);
-	sprintf(path, "%s_density_d.dat", fnbase);	WriteData(path, &meas_data.density_d, sizeof(double), 1, false);
-	sprintf(path, "%s_doubleocc.dat", fnbase);	WriteData(path, &meas_data.doubleocc, sizeof(double), 1, false);
-	sprintf(path, "%s_uu_corr.dat",   fnbase);	WriteData(path,  meas_data.uu_corr,   sizeof(double), N, false);
-	sprintf(path, "%s_dd_corr.dat",   fnbase);	WriteData(path,  meas_data.dd_corr,   sizeof(double), N, false);
-	sprintf(path, "%s_ud_corr.dat",   fnbase);	WriteData(path,  meas_data.ud_corr,   sizeof(double), N, false);
-	sprintf(path, "%s_zz_corr.dat",   fnbase);	WriteData(path,  meas_data.zz_corr,   sizeof(double), N, false);
-	sprintf(path, "%s_xx_corr.dat",   fnbase);	WriteData(path,  meas_data.xx_corr,   sizeof(double), N, false);
+	const int Norb = params.Norb;
+	const int Ncell = params.Nx * params.Ny;
+	const int N = Norb * Ncell;
+	sprintf(path, "%s_density_u.dat", fnbase);	WriteData(path, &meas_data.density_u, sizeof(double), Norb, false);
+	sprintf(path, "%s_density_d.dat", fnbase);	WriteData(path, &meas_data.density_d, sizeof(double), Norb, false);
+	sprintf(path, "%s_doubleocc.dat", fnbase);	WriteData(path, &meas_data.doubleocc, sizeof(double), Norb, false);
+	sprintf(path, "%s_uu_corr.dat",   fnbase);	WriteData(path,  meas_data.uu_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_dd_corr.dat",   fnbase);	WriteData(path,  meas_data.dd_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_ud_corr.dat",   fnbase);	WriteData(path,  meas_data.ud_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_zz_corr.dat",   fnbase);	WriteData(path,  meas_data.zz_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_xx_corr.dat",   fnbase);	WriteData(path,  meas_data.xx_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_sign.dat",      fnbase);	WriteData(path, &meas_data.sign,      sizeof(double), 1, false);
 	if (params.nuneqlt > 0)
 	{

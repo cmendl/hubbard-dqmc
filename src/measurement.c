@@ -51,28 +51,32 @@ static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, int *re
 ///
 /// \brief Allocate and initialize measurement data structure
 ///
-void AllocateMeasurementData(const int Nx, const int Ny, measurement_data_t *restrict meas_data)
+void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measurement_data_t *restrict meas_data)
 {
 	// total number of lattice sites
-	const int N = Nx * Ny;
+	meas_data->Norb = Norb;
+	const int Ncell = Nx * Ny;
+	meas_data->Ncell = Nx * Ny;
+	const int N = Norb * Ncell;
 	meas_data->N = N;
 
-	meas_data->density_u = 0;
-	meas_data->density_d = 0;
-	meas_data->doubleocc = 0;
+	meas_data->density_u = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->density_d = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->doubleocc = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
 
 	// construct lattice coordinate sum map
 	meas_data->latt_sum_map = (int *)MKL_malloc(N*N * sizeof(int), MEM_DATA_ALIGN);
 	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
 
 	// density correlation data
-	meas_data->uu_corr = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->dd_corr = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->ud_corr = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
+	// first index for spatial offset, second and third indices for orbital numbers. hence Ncell*Norb*Norb.
+	meas_data->uu_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->dd_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->ud_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 
 	// spin correlation data
-	meas_data->zz_corr = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->xx_corr = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->zz_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->xx_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 
 	meas_data->sign = 0;
 
@@ -87,6 +91,9 @@ void AllocateMeasurementData(const int Nx, const int Ny, measurement_data_t *res
 ///
 void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 {
+	MKL_free(meas_data->density_u);
+	MKL_free(meas_data->density_d);
+	MKL_free(meas_data->doubleocc);
 	MKL_free(meas_data->xx_corr);
 	MKL_free(meas_data->zz_corr);
 	MKL_free(meas_data->ud_corr);
@@ -102,69 +109,83 @@ void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 ///
 void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, measurement_data_t *restrict meas_data)
 {
-	int i, j, k;
+	int i, k; // spatial indices
+	int o, p; // orbital indices
 
 	// total number of lattice sites
+	const int Norb = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
 	const int N = meas_data->N;
+	const double nfac = 1.0 / N;
 
 	// product of the determinant signs of the Green's function matrices
 	const double sign = (double)(Gu->sgndet * Gd->sgndet);
 	assert(sign != 0);
 
-	double nu = 0;
-	double nd = 0;
-	double oc = 0;
-	for (i = 0; i < N; i++)
+	for (o = 0; o < Norb; o++)
 	{
-		nu += (1 - Gu->mat[i + i*N]);
-		nd += (1 - Gd->mat[i + i*N]);
-		oc += (1 - Gu->mat[i + i*N])*(1 - Gd->mat[i + i*N]);
+		double nu = 0;
+		double nd = 0;
+		double oc = 0;
+		for (i = 0; i < Ncell; i++)
+		{
+			const int io = i + o * Ncell;
+			nu += (1 - Gu->mat[io + io*N]);
+			nd += (1 - Gd->mat[io + io*N]);
+			oc += (1 - Gu->mat[io + io*N])*(1 - Gd->mat[io + io*N]);
+		}
+		// normalization
+		nu *= nfac;
+		nd *= nfac;
+		oc *= nfac;
+		// mean value of density and double occupancy
+		meas_data->density_u[o] += sign*nu;
+		meas_data->density_d[o] += sign*nd;
+		meas_data->doubleocc[o] += sign*oc;
 	}
-	// normalization
-	const double nfac = 1.0 / N;
-	nu *= nfac;
-	nd *= nfac;
-	oc *= nfac;
-
-	// mean value of density and double occupancy
-	meas_data->density_u += sign*nu;
-	meas_data->density_d += sign*nd;
-	meas_data->doubleocc += sign*oc;
-
 	// density and spin correlations
 
 	// sign and normalization factor
 	const double signfac = sign / N;
 
-	for (i = 0; i < N; i++)
+	for (o = 0; o < Norb; o++)
 	{
-		const double Gu_ii = Gu->mat[i + N*i];
-		const double Gd_ii = Gd->mat[i + N*i];
-
-		meas_data->zz_corr[0] += signfac*(Gu_ii + Gd_ii);
-		meas_data->xx_corr[0] += signfac*(Gu_ii + Gd_ii);
-
-		for (k = 0; k < N; k++)
+		for (p = 0; p < Norb; p++)
 		{
-			j = meas_data->latt_sum_map[k + N*i];
+			// starting index for correlation accumulators
+			const int offset = o*Ncell + p*Ncell*Norb;
 
-			const double Gu_jj = Gu->mat[j + N*j];
-			const double Gd_jj = Gd->mat[j + N*j];
-			const double Gu_ij = Gu->mat[i + N*j];
-			const double Gd_ij = Gd->mat[i + N*j];
-			const double Gu_ji = Gu->mat[j + N*i];
-			const double Gd_ji = Gd->mat[j + N*i];
+			for (i = 0; i < Ncell; i++)
+			{
+				const int io = i + o * Ncell;
+				const double Gu_ii = Gu->mat[i + N*i];
+				const double Gd_ii = Gd->mat[i + N*i];
 
-			// k = 0 is special
-			meas_data->uu_corr[k] += signfac*(k == 0 ? (1 - Gu_ii) : (1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
-			meas_data->dd_corr[k] += signfac*(k == 0 ? (1 - Gd_ii) : (1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
-			meas_data->ud_corr[k] += signfac*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
+				meas_data->zz_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
+				meas_data->xx_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
 
-			meas_data->zz_corr[k] += signfac*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
-			meas_data->xx_corr[k] += signfac*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
+				for (k = 0; k < Ncell; k++)
+				{
+					const int jp = meas_data->latt_sum_map[k + N*i] + p * Ncell;
+
+					const double Gu_jj = Gu->mat[jp + N*jp];
+					const double Gd_jj = Gd->mat[jp + N*jp];
+					const double Gu_ij = Gu->mat[io + N*jp];
+					const double Gd_ij = Gd->mat[io + N*jp];
+					const double Gu_ji = Gu->mat[jp + N*io];
+					const double Gd_ji = Gd->mat[jp + N*io];
+
+					// k = 0 is special
+					meas_data->uu_corr[k + offset] += signfac*(k == 0 ? (1 - Gu_ii) : (1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
+					meas_data->dd_corr[k + offset] += signfac*(k == 0 ? (1 - Gd_ii) : (1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
+					meas_data->ud_corr[k + offset] += signfac*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
+
+					meas_data->zz_corr[k + offset] += signfac*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
+					meas_data->xx_corr[k + offset] += signfac*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
+				}
+			}
 		}
 	}
-
 	// add current sign
 	meas_data->sign += sign;
 
@@ -180,17 +201,21 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 void NormalizeMeasurementData(measurement_data_t *meas_data)
 {
 	// total number of lattice sites
-	const int N = meas_data->N;
+	const int Norb = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
 
 	// normalization factor; sign must be non-zero
 	const double nfac = 1.0 / meas_data->sign;
 
-	meas_data->density_u *= nfac;
-	meas_data->density_d *= nfac;
-	meas_data->doubleocc *= nfac;
-
 	int i;
-	for (i = 0; i < N; i++)
+	for (i = 0; i < Norb; i++)
+	{
+		meas_data->density_u[i] *= nfac;
+		meas_data->density_d[i] *= nfac;
+		meas_data->doubleocc[i] *= nfac;
+	}
+
+	for (i = 0; i < Ncell*Norb*Norb; i++)
 	{
 		meas_data->uu_corr[i] *= nfac;
 		meas_data->dd_corr[i] *= nfac;
