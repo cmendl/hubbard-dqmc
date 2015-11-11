@@ -84,11 +84,8 @@ int main(int argc, char *argv[])
 
 	// trying to create output directory corresponding to parameters
 	char path[1024];
-	makedir("../output");
-	sprintf(path, "../output/N%ix%i",                     params.Nx, params.Ny);                               makedir(path);
-	sprintf(path, "../output/N%ix%i/U%g",                 params.Nx, params.Ny, params.U);                     makedir(path);
-	sprintf(path, "../output/N%ix%i/U%g/beta%g",          params.Nx, params.Ny, params.U, beta);               makedir(path);
-	sprintf(path, "../output/N%ix%i/U%g/beta%g/sim_%lli", params.Nx, params.Ny, params.U, beta, params.itime);
+	makedir("output");
+	sprintf(path, "output/sim_%lli", params.itime);
 	while (makedir(path) < 0)
 	{
 		duprintf("Cannot create output directory '%s', changing 'itime'...\n", path);
@@ -98,13 +95,13 @@ int main(int argc, char *argv[])
 		sleep(15);
 		#endif
 		params.itime += (clock() % 16) + 15;
-		sprintf(path, "../output/N%ix%i/U%g/beta%g/sim_%lli", params.Nx, params.Ny, params.U, beta, params.itime);
+		sprintf(path, "output/sim_%lli", params.itime);
 	}
 	duprintf("Created output directory '%s'...\n\n", path);
 
 	// base output file name
 	char fnbase[1024];
-	sprintf(fnbase, "../output/N%ix%i/U%g/beta%g/sim_%lli/N%ix%i_U%g_beta%g_sim_%lli_ns%i", params.Nx, params.Ny, params.U, beta, params.itime, params.Nx, params.Ny, params.U, beta, params.itime, params.nsampl);
+	sprintf(fnbase, "output/sim_%lli/N%ix%i_beta%g_sim_%lli_ns%i", params.itime, params.Nx, params.Ny, beta, params.itime, params.nsampl);
 
 	// open simulation log file for writing
 	sprintf(path, "%s_simulation.log", fnbase);
