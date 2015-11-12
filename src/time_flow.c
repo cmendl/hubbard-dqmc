@@ -98,7 +98,7 @@ static inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict 
 
 	// scale the columns by the inverse diagonal potential matrix entries (multiply by inverse diagonal potential matrix from the right)
 	int i;
-	for (i = 0; i < Ncell; i++)
+	for (i = 0; i < N; i++)
 	{
 		const int o = i / Ncell;
 		cblas_dscal(N, expV[1 - s[i]][o] / expX[i], &invB[i*N], 1);
