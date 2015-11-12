@@ -16,7 +16,7 @@
 static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, int *restrict latt_sum_map)
 {
 	// total number of lattice sites
-	const int N = Nx * Ny;
+	const int Ncell = Nx * Ny;
 
 	int j;
 	for (j = 0; j < Ny; j++)
@@ -39,7 +39,7 @@ static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, int *re
 					const int u = (i + k) % Nx;
 					const int v = (j + l) % Ny;
 
-					latt_sum_map[ij + N*kl] = u + Nx*v;
+					latt_sum_map[ij + Ncell*kl] = u + Nx*v;
 				}
 			}
 		}
@@ -53,20 +53,25 @@ static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, int *re
 ///
 void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measurement_data_t *restrict meas_data)
 {
-	// total number of lattice sites
+	// lattice dimensions
 	meas_data->Norb = Norb;
 	const int Ncell = Nx * Ny;
-	meas_data->Ncell = Nx * Ny;
+	meas_data->Ncell = Ncell;
 	const int N = Norb * Ncell;
 	meas_data->N = N;
+
+	// no samples collected so far
+	meas_data->nsampl = 0;
+
+	// construct lattice coordinate sum map
+	meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
+	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
+
+	meas_data->sign = 0;
 
 	meas_data->density_u = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->density_d = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->doubleocc = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
-
-	// construct lattice coordinate sum map
-	meas_data->latt_sum_map = (int *)MKL_malloc(N*N * sizeof(int), MEM_DATA_ALIGN);
-	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
 
 	// density correlation data
 	// first index for spatial offset, second and third indices for orbital numbers. hence Ncell*Norb*Norb.
@@ -77,11 +82,6 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measure
 	// spin correlation data
 	meas_data->zz_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->xx_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
-
-	meas_data->sign = 0;
-
-	// no samples collected so far
-	meas_data->nsampl = 0;
 }
 
 
@@ -91,14 +91,14 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measure
 ///
 void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 {
-	MKL_free(meas_data->density_u);
-	MKL_free(meas_data->density_d);
-	MKL_free(meas_data->doubleocc);
 	MKL_free(meas_data->xx_corr);
 	MKL_free(meas_data->zz_corr);
 	MKL_free(meas_data->ud_corr);
 	MKL_free(meas_data->dd_corr);
 	MKL_free(meas_data->uu_corr);
+	MKL_free(meas_data->doubleocc);
+	MKL_free(meas_data->density_d);
+	MKL_free(meas_data->density_u);
 	MKL_free(meas_data->latt_sum_map);
 }
 
@@ -112,15 +112,21 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 	int i, k; // spatial indices
 	int o, p; // orbital indices
 
-	// total number of lattice sites
+	// lattice dimensions
 	const int Norb = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
 	const int N = meas_data->N;
 	const double nfac = 1.0 / Ncell;
 
+	// increment sample counter
+	meas_data->nsampl++;
+
 	// product of the determinant signs of the Green's function matrices
 	const double sign = (double)(Gu->sgndet * Gd->sgndet);
 	assert(sign != 0);
+
+	// add current sign
+	meas_data->sign += sign;
 
 	for (o = 0; o < Norb; o++)
 	{
@@ -166,7 +172,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 
 				for (k = 0; k < Ncell; k++)
 				{
-					const int jp = meas_data->latt_sum_map[k + N*i] + p * Ncell;
+					const int jp = meas_data->latt_sum_map[k + Ncell*i] + p * Ncell;
 
 					const double Gu_jj = Gu->mat[jp + N*jp];
 					const double Gd_jj = Gd->mat[jp + N*jp];
@@ -186,11 +192,6 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 			}
 		}
 	}
-	// add current sign
-	meas_data->sign += sign;
-
-	// increment sample counter
-	meas_data->nsampl++;
 }
 
 
@@ -229,6 +230,26 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 	meas_data->sign /= meas_data->nsampl;
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Save equal time measurement data structure
+///
+void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data)
+{
+	const int Norb = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
+	char path[1024];
+	sprintf(path, "%s_sign.dat",      fnbase); WriteData(path, &meas_data->sign,     sizeof(double), 1, false);
+	sprintf(path, "%s_density_u.dat", fnbase); WriteData(path, meas_data->density_u, sizeof(double), Norb, false);
+	sprintf(path, "%s_density_d.dat", fnbase); WriteData(path, meas_data->density_d, sizeof(double), Norb, false);
+	sprintf(path, "%s_doubleocc.dat", fnbase); WriteData(path, meas_data->doubleocc, sizeof(double), Norb, false);
+	sprintf(path, "%s_uu_corr.dat",   fnbase); WriteData(path, meas_data->uu_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_dd_corr.dat",   fnbase); WriteData(path, meas_data->dd_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_ud_corr.dat",   fnbase); WriteData(path, meas_data->ud_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_zz_corr.dat",   fnbase); WriteData(path, meas_data->zz_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_xx_corr.dat",   fnbase); WriteData(path, meas_data->xx_corr,   sizeof(double), Ncell*Norb*Norb, false);
+}
 
 //________________________________________________________________________________________________________________________
 ///
@@ -286,14 +307,14 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 	MKL_free(meas_data->zz_corr);
 	MKL_free(meas_data->nn_corr);
 
-	MKL_free(meas_data->latt_sum_map);
-
 	MKL_free(meas_data->Geqlt_d);
 	MKL_free(meas_data->G0tau_d);
 	MKL_free(meas_data->Gtau0_d);
 	MKL_free(meas_data->Geqlt_u);
 	MKL_free(meas_data->G0tau_u);
 	MKL_free(meas_data->Gtau0_u);
+
+	MKL_free(meas_data->latt_sum_map);
 }
 
 
@@ -422,4 +443,29 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Save unequal time measurement data structure
+///
+void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data)
+{
+	const int N = meas_data->N;
+	const int L = meas_data->L;
+	char path[1024];
+	sprintf(path, "%s_uneqlt_sign.dat",    fnbase); WriteData(path, &meas_data->sign,   sizeof(double), 1, false);
+	sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase); WriteData(path, &meas_data->nsampl, sizeof(int), 1, false);
+
+	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); WriteData(path, meas_data->Gtau0_u, sizeof(double), L*N*N, false);
+	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); WriteData(path, meas_data->G0tau_u, sizeof(double), L*N*N, false);
+	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); WriteData(path, meas_data->Geqlt_u, sizeof(double), L*N*N, false);
+	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); WriteData(path, meas_data->Gtau0_d, sizeof(double), L*N*N, false);
+	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); WriteData(path, meas_data->G0tau_d, sizeof(double), L*N*N, false);
+	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); WriteData(path, meas_data->Geqlt_d, sizeof(double), L*N*N, false);
+
+	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); WriteData(path, meas_data->nn_corr, sizeof(double), L*N, false);
+	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); WriteData(path, meas_data->zz_corr, sizeof(double), L*N, false);
+	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); WriteData(path, meas_data->xx_corr, sizeof(double), L*N, false);
 }

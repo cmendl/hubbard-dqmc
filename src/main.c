@@ -169,33 +169,10 @@ int main(int argc, char *argv[])
 
 	// save simulation results as binary data to disk
 	duprintf("\nSaving simulation results to disk...");
-	const int Norb = params.Norb;
-	const int Ncell = params.Nx * params.Ny;
-	const int N = Norb * Ncell;
-	sprintf(path, "%s_density_u.dat", fnbase);	WriteData(path,  meas_data.density_u, sizeof(double), Norb, false);
-	sprintf(path, "%s_density_d.dat", fnbase);	WriteData(path,  meas_data.density_d, sizeof(double), Norb, false);
-	sprintf(path, "%s_doubleocc.dat", fnbase);	WriteData(path,  meas_data.doubleocc, sizeof(double), Norb, false);
-	sprintf(path, "%s_uu_corr.dat",   fnbase);	WriteData(path,  meas_data.uu_corr,   sizeof(double), Ncell*Norb*Norb, false);
-	sprintf(path, "%s_dd_corr.dat",   fnbase);	WriteData(path,  meas_data.dd_corr,   sizeof(double), Ncell*Norb*Norb, false);
-	sprintf(path, "%s_ud_corr.dat",   fnbase);	WriteData(path,  meas_data.ud_corr,   sizeof(double), Ncell*Norb*Norb, false);
-	sprintf(path, "%s_zz_corr.dat",   fnbase);	WriteData(path,  meas_data.zz_corr,   sizeof(double), Ncell*Norb*Norb, false);
-	sprintf(path, "%s_xx_corr.dat",   fnbase);	WriteData(path,  meas_data.xx_corr,   sizeof(double), Ncell*Norb*Norb, false);
-	sprintf(path, "%s_sign.dat",      fnbase);	WriteData(path, &meas_data.sign,      sizeof(double), 1, false);
+	SaveMeasurementData(fnbase, &meas_data);
 	if (params.nuneqlt > 0)
 	{
-		sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase);	WriteData(path, meas_data_uneqlt.Gtau0_u, sizeof(double), params.L*N*N, false);
-		sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase);	WriteData(path, meas_data_uneqlt.G0tau_u, sizeof(double), params.L*N*N, false);
-		sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase);	WriteData(path, meas_data_uneqlt.Geqlt_u, sizeof(double), params.L*N*N, false);
-		sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase);	WriteData(path, meas_data_uneqlt.Gtau0_d, sizeof(double), params.L*N*N, false);
-		sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase);	WriteData(path, meas_data_uneqlt.G0tau_d, sizeof(double), params.L*N*N, false);
-		sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase);	WriteData(path, meas_data_uneqlt.Geqlt_d, sizeof(double), params.L*N*N, false);
-
-		sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase);	WriteData(path, meas_data_uneqlt.nn_corr, sizeof(double), params.L*N, false);
-		sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase);	WriteData(path, meas_data_uneqlt.zz_corr, sizeof(double), params.L*N, false);
-		sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase);	WriteData(path, meas_data_uneqlt.xx_corr, sizeof(double), params.L*N, false);
-
-		sprintf(path, "%s_uneqlt_sign.dat",    fnbase);	WriteData(path, &meas_data_uneqlt.sign,   sizeof(double), 1, false);
-		sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase);	WriteData(path, &meas_data_uneqlt.nsampl, sizeof(int),    1, false);
+		SaveUnequalTimeMeasurementData(fnbase, &meas_data_uneqlt);
 	}
 	duprintf(" done.\n");
 
