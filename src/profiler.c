@@ -40,7 +40,7 @@ static inline long long get_ticks(void)
 #else
 	struct timespec t;
 	clock_gettime(CLOCK_MONOTONIC, &t);
-	return 1000000000LL * t.tv_sec + tv_nsec;
+	return 1000000000LL * t.tv_sec + t.tv_nsec;
 #endif
 }
 
