@@ -12,7 +12,8 @@ CCOPTS = -Wall -O2 -xHost -DNDEBUG -restrict -DMEM_DATA_ALIGN=64
 CCOPTS += -qopenmp-stubs
 
 # set these with appropriate libraries for your system
-LIBRARIES = -mkl=sequential -lrt
+MKL = -mkl=sequential
+LIBRARIES = ${MKL} -lrt
 
 # static libraries, useful for gprof
 #MKLROOT = /opt/intel/mkl
@@ -28,78 +29,78 @@ proj_test: ${SRCFILES} ${TSTFILES} run_tests.o
 
 
 %.o: ../src/%.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 
 run_tests.o: ../test/run_tests.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 
 matrix_det_test.o: ../test/matrix_det_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 matrix_exp_test.o: ../test/matrix_exp_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 blockcyclic_qr_test.o: ../test/blockcyclic_qr_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 blockcyclic_tri_test.o: ../test/blockcyclic_tri_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 blockcyclic_inv_test.o: ../test/blockcyclic_inv_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 kinetic_test.o: ../test/kinetic_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 lattice_fourier_test.o: ../test/lattice_fourier_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 time_flow_test1.o: ../test/time_flow_test1.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 time_flow_test2.o: ../test/time_flow_test2.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 time_flow_test3.o: ../test/time_flow_test3.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 stratonovich_test.o: ../test/stratonovich_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 greens_func_flip_test.o: ../test/greens_func_flip_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 greens_func_wrap_test.o: ../test/greens_func_wrap_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 greens_func_init_test1.o: ../test/greens_func_init_test1.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 greens_func_init_test2.o: ../test/greens_func_init_test2.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 greens_func_init_test3.o: ../test/greens_func_init_test3.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 greens_func_init_test4.o: ../test/greens_func_init_test4.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 monte_carlo_iter_test.o: ../test/monte_carlo_iter_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 monte_carlo_phonon_block_test.o: ../test/monte_carlo_phonon_block_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 monte_carlo_iter_phonon_test.o: ../test/monte_carlo_iter_phonon_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 green_unequal_time_test.o: ../test/green_unequal_time_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 measurement_test.o: ../test/measurement_test.c
-	${CC} -c -I../include ${CCOPTS} $<
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 
 clean:
