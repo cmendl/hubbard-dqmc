@@ -172,9 +172,9 @@ int main(int argc, char *argv[])
 	const int Norb = params.Norb;
 	const int Ncell = params.Nx * params.Ny;
 	const int N = Norb * Ncell;
-	sprintf(path, "%s_density_u.dat", fnbase);	WriteData(path, &meas_data.density_u, sizeof(double), Norb, false);
-	sprintf(path, "%s_density_d.dat", fnbase);	WriteData(path, &meas_data.density_d, sizeof(double), Norb, false);
-	sprintf(path, "%s_doubleocc.dat", fnbase);	WriteData(path, &meas_data.doubleocc, sizeof(double), Norb, false);
+	sprintf(path, "%s_density_u.dat", fnbase);	WriteData(path,  meas_data.density_u, sizeof(double), Norb, false);
+	sprintf(path, "%s_density_d.dat", fnbase);	WriteData(path,  meas_data.density_d, sizeof(double), Norb, false);
+	sprintf(path, "%s_doubleocc.dat", fnbase);	WriteData(path,  meas_data.doubleocc, sizeof(double), Norb, false);
 	sprintf(path, "%s_uu_corr.dat",   fnbase);	WriteData(path,  meas_data.uu_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_dd_corr.dat",   fnbase);	WriteData(path,  meas_data.dd_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_ud_corr.dat",   fnbase);	WriteData(path,  meas_data.ud_corr,   sizeof(double), Ncell*Norb*Norb, false);
