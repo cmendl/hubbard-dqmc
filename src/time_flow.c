@@ -24,13 +24,11 @@ static inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, cons
 	memcpy(B, kinetic->expK, N*N * sizeof(double));
 
 	// scale the rows by the diagonal potential matrix entries (multiply by diagonal potential matrix from the left)
-	int i, o;
-	for (o = 0; o < kinetic->Norb; o++)
+	int i;
+	for (i = 0; i < N; i++)
 	{
-		for (i = 0; i < Ncell; i++)
-		{
-			cblas_dscal(N, expV[s[i + o * Ncell]][o], &B[i], N);
-		}
+		const int o = i / Ncell; // orbital number
+		cblas_dscal(N, expV[s[i]][o], &B[i], N);
 	}
 }
 
@@ -50,13 +48,11 @@ static inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kineti
 	memcpy(invB, kinetic->inv_expK, N*N * sizeof(double));
 
 	// scale the columns by the inverse diagonal potential matrix entries (multiply by inverse diagonal potential matrix from the right)
-	int i, o;
-	for (o = 0; o < kinetic->Norb; o++)
+	int i;
+	for (i = 0; i < N; i++)
 	{
-		for (i = 0; i < Ncell; i++)
-		{
-			cblas_dscal(N, expV[1 - s[i + o * Ncell]][o], &invB[i*N], 1);
-		}
+		const int o = i / Ncell;
+		cblas_dscal(N, expV[1 - s[i]][o], &invB[i*N], 1);
 	}
 }
 
@@ -77,13 +73,11 @@ static inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic
 	memcpy(B, kinetic->expK, N*N * sizeof(double));
 
 	// scale the rows by the diagonal potential matrix entries (multiply by diagonal potential matrix from the left)
-	int i, o;
-	for (o = 0; o < kinetic->Norb; o++)
+	int i;
+	for (i = 0; i < N; i++)
 	{
-		for (i = 0; i < Ncell; i++)
-		{
-			cblas_dscal(N, expV[s[i + o * Ncell]][o] * expX[i], &B[i], N);
-		}
+		const int o = i / Ncell;
+		cblas_dscal(N, expV[s[i]][o] * expX[i], &B[i], N);
 	}
 }
 
@@ -103,13 +97,11 @@ static inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict 
 	memcpy(invB, kinetic->inv_expK, N*N * sizeof(double));
 
 	// scale the columns by the inverse diagonal potential matrix entries (multiply by inverse diagonal potential matrix from the right)
-	int i, o;
-	for (o = 0; o < kinetic->Norb; o++)
+	int i;
+	for (i = 0; i < Ncell; i++)
 	{
-		for (i = 0; i < N; i++)
-		{
-			cblas_dscal(N, expV[1 - s[i + o * Ncell]][o] / expX[i], &invB[i*N], 1);
-		}
+		const int o = i / Ncell;
+		cblas_dscal(N, expV[1 - s[i]][o] / expX[i], &invB[i*N], 1);
 	}
 }
 

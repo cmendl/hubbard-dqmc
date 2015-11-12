@@ -37,17 +37,19 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 			{
 				for (p = 0; p < Norb; p++)
 				{
-					T[(i + j*Nx + o*Nx*Ny) + N*(i      + j     *Nx + p*Nx*Ny)] = params->t.aa[o + p * Norb];
-					T[(i + j*Nx + o*Nx*Ny) + N*(i_next + j     *Nx + p*Nx*Ny)] = params->t.ab[o + p * Norb];
-					T[(i + j*Nx + o*Nx*Ny) + N*(i      + j_next*Nx + p*Nx*Ny)] = params->t.ac[o + p * Norb];
-					T[(i + j*Nx + o*Nx*Ny) + N*(i_next + j_next*Nx + p*Nx*Ny)] = params->t.ad[o + p * Norb];
-					T[(i_next + j*Nx + o*Nx*Ny) + N*(i + j_next*Nx + p*Nx*Ny)] = params->t.bc[o + p * Norb];
+					// here, += is used to avoid overwriting some bonds that are repeated due to periodic
+					// boundary conditions, when Nx and/or Ny == 2.
+					T[(i + j*Nx + o*Nx*Ny) + (i      + j     *Nx + p*Nx*Ny)*N] += params->t.aa[o + p * Norb];
+					T[(i + j*Nx + o*Nx*Ny) + (i_next + j     *Nx + p*Nx*Ny)*N] += params->t.ab[o + p * Norb];
+					T[(i + j*Nx + o*Nx*Ny) + (i      + j_next*Nx + p*Nx*Ny)*N] += params->t.ac[o + p * Norb];
+					T[(i + j*Nx + o*Nx*Ny) + (i_next + j_next*Nx + p*Nx*Ny)*N] += params->t.ad[o + p * Norb];
+					T[(i_next + j*Nx + o*Nx*Ny) + (i + j_next*Nx + p*Nx*Ny)*N] += params->t.bc[o + p * Norb];
 
-					T[(i      + j     *Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] = params->t.aa[o + p * Norb];
-					T[(i_next + j     *Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] = params->t.ab[o + p * Norb];
-					T[(i      + j_next*Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] = params->t.ac[o + p * Norb];
-					T[(i_next + j_next*Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] = params->t.ad[o + p * Norb];
-					T[(i + j_next*Nx + p*Nx*Ny) + (i_next + j*Nx + p*Nx*Ny)*N] = params->t.bc[o + p * Norb];
+					T[(i      + j     *Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] += params->t.aa[o + p * Norb];
+					T[(i_next + j     *Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] += params->t.ab[o + p * Norb];
+					T[(i      + j_next*Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] += params->t.ac[o + p * Norb];
+					T[(i_next + j_next*Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] += params->t.ad[o + p * Norb];
+					T[(i + j_next*Nx + p*Nx*Ny) + (i_next + j*Nx + o*Nx*Ny)*N] += params->t.bc[o + p * Norb];
 				}
 			}
 		}
@@ -59,12 +61,12 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 		for (i = 0; i < Nx*Ny; i++)
 		{
 			const int index = i + o*Nx*Ny;
-			T[index + N * index] = params->mu + params->eps[o];
+			T[index + N * index] = -params->mu + params->eps[o];
 		}
 	}
 
-	//scale by dt
-	cblas_dscal(N*N, params->dt, T, 1);
+	// scale by -dt
+	cblas_dscal(N*N, -params->dt, T, 1);
 
 	kinetic->expK     = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	kinetic->inv_expK = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);

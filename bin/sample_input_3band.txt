@@ -1,0 +1,32 @@
+Norb	3
+Nx		4
+Ny		4
+
+# tpd = 1.13, tpp = 0.49
+# standard 3band phase factors
+t_aa	0,1,-1.13
+t_aa	0,2,+1.13
+t_aa	1,2,+0.49
+t_ab	1,0,+1.13
+t_ab	1,2,-0.49
+t_ac	2,0,-1.13
+t_ac	2,1,-0.49
+t_bc	2,1,+0.49
+
+# Udd = 8.5, Upp = 4.1
+U		8.5,4.1,4.1
+
+# explanation for site energies
+# 4.25 = 0.00 + 8.5/2
+# 5.29 = 3.24 + 4.1/2
+eps		4.25,5.29,5.29
+
+mu		-0.35
+
+dt		0.125
+L		64
+prodBlen	8
+nwraps	8
+nequil	512
+nsampl	512
+nuneqlt	0

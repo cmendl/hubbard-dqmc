@@ -116,7 +116,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 	const int Norb = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
 	const int N = meas_data->N;
-	const double nfac = 1.0 / N;
+	const double nfac = 1.0 / Ncell;
 
 	// product of the determinant signs of the Green's function matrices
 	const double sign = (double)(Gu->sgndet * Gd->sgndet);
@@ -146,7 +146,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 	// density and spin correlations
 
 	// sign and normalization factor
-	const double signfac = sign / N;
+	const double signfac = sign / Ncell;
 
 	for (o = 0; o < Norb; o++)
 	{
