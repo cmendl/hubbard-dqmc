@@ -223,6 +223,17 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 	if ((value = htGet(&params_table, "phonon_box_width")) != NULL) params->phonon_params.box_width = atof(value);
 	if ((value = htGet(&params_table, "phonon_nblock_updates")) != NULL) params->phonon_params.nblock_updates = atof(value);
 
+	params->use_phonons = false;
+	int o;
+	for (o = 0; o < Norb; o++)
+	{
+		if (params->phonon_params.g[o] != 0)
+		{
+			params->use_phonons = true;
+			break;
+		}
+	}
+
 	if ((value = htGet(&params_table, "dt"))       != NULL) params->dt       = atof(value);
 	if ((value = htGet(&params_table, "L"))        != NULL) params->L        = atoi(value);
 	if ((value = htGet(&params_table, "prodBlen")) != NULL) params->prodBlen = atoi(value);

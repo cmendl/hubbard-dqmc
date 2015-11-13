@@ -251,7 +251,7 @@ void InitPhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double 
 	// form products of the B matrices
 	for (l = 0; l < tsm->numBprod; l++)
 	{
-		MatrixProductSequence(N, tsm->prodBlen, (const double **)(tsm->B + l*tsm->prodBlen), tsm->Bprod[l]);
+		MatrixProductSequence(N, tsm->prodBlen, (tsm->B + l*tsm->prodBlen), tsm->Bprod[l]);
 	}
 }
 

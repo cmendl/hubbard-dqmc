@@ -111,8 +111,8 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		int j;
 		for (j = 0; j < N; j++)
 		{
-			int i = site_order[j];
-			int o = i / Ncell; // orbital number
+			const int i = site_order[j];
+			const int o = i / Ncell; // orbital number
 			assert(0 <= i && i < N);
 			// Eq. (13)
 			// suggest flipping s_{i,l}
@@ -161,7 +161,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	Profile_End("DQMCIter");
 }
 
-/*
+
 
 //________________________________________________________________________________________________________________________
 ///
@@ -192,6 +192,7 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	assert(tsm_u->N == tsm_d->N);
 	assert(tsm_u->L == tsm_d->L);
 	const int N = kinetic->N;
+	const int Ncell = kinetic->Ncell;
 	const int L = tsm_u->L;
 
 	// fast return for zero block updates
@@ -222,8 +223,13 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	int n;
 	for (n = 0; n < phonon_params->nblock_updates; n++)
 	{
-		// randomly select a lattice site
-		int i = (int)(Random_GetUint(seed) % (uint64_t)N);
+		// randomly select a lattice site. ignore sites without phonon coupling
+		int i = (int)(Random_GetBoundedUint(seed, N));
+		int o = i / Ncell;
+		if (phonon_params->g[o] == 0)
+		{
+			continue;
+		}
 
 		// backup X_{i,l} and corresponding exponential for all time slices
 		int l;
@@ -246,13 +252,13 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 		{
 			dEph += (dx + 2*X[i + l*N]);
 		}
-		dEph *= 0.5*square(phonon_params->omega) * dx;
+		dEph *= 0.5*square(phonon_params->omega[o]) * dx;
 
 		// actually shift phonon field entries
 		for (l = 0; l < L; l++)
 		{
 			   X[i + l*N] += dx;
-			expX[i + l*N] = exp(-dt*phonon_params->g * X[i + l*N]);
+			expX[i + l*N] = exp(-dt*phonon_params->g[o] * X[i + l*N]);
 		}
 
 		// calculate new time step matrices
@@ -337,6 +343,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	assert(tsm_u->N == Gd->N);
 	assert(tsm_u->L == tsm_d->L);
 	const int N = kinetic->N;
+	const int Ncell = kinetic->Ncell;
 	const int L = tsm_u->L;
 
 	assert(tsm_u->prodBlen == tsm_d->prodBlen);
@@ -352,7 +359,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	#endif
 
 	// pre-compute some constants
-	const double omega_ph_sqhalf = 0.5*square(phonon_params->omega);
+	//const double omega_ph_sqhalf = 0.5*square(phonon_params->omega);
 	const double inv_dt_sq = 1.0 / square(dt);
 
 	// random shuffle of lattice sites
@@ -412,21 +419,22 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		int j;
 		for (j = 0; j < N; j++)
 		{
-			int i = site_order[j];
+			const int i = site_order[j];
+			const int o = i / Ncell;
 			assert(0 <= i && i < N);
 			// Eq. (13)
 			// suggest flipping s_{i,l}
-			const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]];
-			const double dd = 1 + (1 - Gd->mat[i + i*N]) * stratonovich_params->delta[1-s[i + l*N]];
+			const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]][o];
+			const double dd = 1 + (1 - Gd->mat[i + i*N]) * stratonovich_params->delta[1-s[i + l*N]][o];
 			if (Random_GetUniform(seed) < fabs(du*dd))
 			{
 				// Eq. (15)
 				#pragma omp parallel sections
 				{
 					#pragma omp section
-					GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]], N, i, Gu->mat);
+					GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]][o], N, i, Gu->mat);
 					#pragma omp section
-					GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]], N, i, Gd->mat);
+					GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]][o], N, i, Gd->mat);
 				}
 				// correspondingly update determinants
 				Gu->logdet -= log(fabs(du));
@@ -447,18 +455,24 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		Random_Shuffle(seed, N, site_order);
 		for (j = 0; j < N; j++)
 		{
-			int i = site_order[j];
+			const int i = site_order[j];
 			assert(0 <= i && i < N);
+			const int o = i / Ncell;
+			// don't do anything for orbitals that have no phonon coupling
+			if (phonon_params->g[o] == 0.0)
+			{
+				continue;
+			}
 			// suggest a shift of X_{i,l}
 			const double dx = (Random_GetUniform(seed) - 0.5) * phonon_params->box_width;
 
 			// Eq. (19) in PRB 87, 235133 (2013)
-			const double delta = expm1(-dt*phonon_params->g * dx);
+			const double delta = expm1(-dt*phonon_params->g[o] * dx);
 			const double du = 1 + (1 - Gu->mat[i + i*N]) * delta;
 			const double dd = 1 + (1 - Gd->mat[i + i*N]) * delta;
 
 			// change of the phonon (lattice) energy
-			const double dEph = dx * (omega_ph_sqhalf*(dx + 2*X[i + l*N]) + inv_dt_sq*(dx - (X[i + l_next*N] - 2*X[i + l*N] + X[i + l_prev*N])));
+			const double dEph = dx * (0.5*square(phonon_params->omega[o])*(dx + 2*X[i + l*N]) + inv_dt_sq*(dx - (X[i + l_next*N] - 2*X[i + l*N] + X[i + l_prev*N])));
 
 			if (Random_GetUniform(seed) < fabs(du*dd) * exp(-dt * dEph))
 			{
@@ -478,7 +492,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 
 				// actually update the phonon field
 				   X[i + l*N] += dx;
-				expX[i + l*N] = exp(-dt*phonon_params->g * X[i + l*N]);
+				expX[i + l*N] = exp(-dt*phonon_params->g[o] * X[i + l*N]);
 			}
 		}
 
@@ -502,7 +516,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	DeleteGreensFunction(&Gu_old);
 	#endif
 }
-*/
+
 
 //________________________________________________________________________________________________________________________
 ///
@@ -539,17 +553,55 @@ void DQMCSimulation(const sim_params_t *restrict params,
 		s[i] = (Random_GetUniform(&seed) < 0.5 ? 0 : 1);
 	}
 
+	// random initial phonon field
+	double *X, *expX;
+	if (params->use_phonons) {
+		const int L = params->L;
+		X = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
+		expX = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
+		int l;
+		for (l = 0; l < L; l++)
+		{
+			for (i = 0; i < N; i++)
+			{
+				const int o = i / (params->Nx * params->Ny); // orbital number;
+				if (params->phonon_params.g[o] == 0.0) // set X to 0 if no coupling
+				{
+					X[i + l*N] = 0.0;
+				}
+				else
+				{
+					X[i + l*N] = (Random_GetUniform(&seed) - 0.5) * params->phonon_params.box_width;
+				}
+				expX[i + l*N] = exp(-params->dt*params->phonon_params.g[o] * X[i + l*N]);
+			}
+		}
+	}
+
 	// time step matrices
 	time_step_matrices_t tsm_u;
 	time_step_matrices_t tsm_d;
 	AllocateTimeStepMatrices(N, params->L, params->prodBlen, &tsm_u);
 	AllocateTimeStepMatrices(N, params->L, params->prodBlen, &tsm_d);
-	#pragma omp parallel sections
+	if (params->use_phonons)
 	{
-		#pragma omp section
-		InitTimeStepMatrices(&kinetic, stratonovich_params.expVu, s, &tsm_u);
-		#pragma omp section
-		InitTimeStepMatrices(&kinetic, stratonovich_params.expVd, s, &tsm_d);
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			InitPhononTimeStepMatrices(&kinetic, stratonovich_params.expVu, s, expX, &tsm_u);
+			#pragma omp section
+			InitPhononTimeStepMatrices(&kinetic, stratonovich_params.expVd, s, expX, &tsm_d);
+		}
+	}
+	else
+	{
+		#pragma omp parallel sections
+		{
+			#pragma omp section
+			InitTimeStepMatrices(&kinetic, stratonovich_params.expVu, s, &tsm_u);
+			#pragma omp section
+			InitTimeStepMatrices(&kinetic, stratonovich_params.expVd, s, &tsm_d);
+		}
 	}
 
 	// allocate Green's functions
@@ -571,8 +623,14 @@ void DQMCSimulation(const sim_params_t *restrict params,
 			GreenConstruct(&tsm_d, 0, &Gd);
 		}
 		Profile_End("DQMCIter_Grecomp");
-
-		DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+		if (params->use_phonons)
+		{
+			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
+		}
+		else
+		{
+			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+		}
 	}
 
 	// perform measurement iterations
@@ -603,7 +661,14 @@ void DQMCSimulation(const sim_params_t *restrict params,
 			Profile_End("DQMCSim_AccumulateUneqMeas");
 		}
 
-		DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+		if (params->use_phonons)
+		{
+			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
+		}
+		else
+		{
+			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+		}
 	}
 
 	// clean up
@@ -612,120 +677,10 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
 	MKL_free(s);
+	if (params->use_phonons)
+	{
+		MKL_free(expX);
+		MKL_free(X);
+	}
 	DeleteStratonovichParameters(&stratonovich_params);
 }
-
-/*
-//________________________________________________________________________________________________________________________
-///
-/// \brief Perform a Determinant Quantum Monte Carlo (DQMC) simulation, taking phonons into account
-///
-/// \param U                    Coulomb coupling constant in the Hubbard hamiltonian
-/// \param dt                   imaginary-time step
-/// \param L                    number of time steps
-/// \param kinetic              matrix exponential of kinetic energy operator
-/// \param prodBlen             largest number of B_l matrices multiplied together before performing a QR decomposition
-/// \param nwraps               number of "time slice wraps" before recomputing the Green's function
-/// \param phonon_params        phonon field parameters
-/// \param nequil               number of equilibration iterations
-/// \param nsampl               number of sample iterations
-/// \param nuneqlt              number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
-/// \param seed                 random number "seed" structure, will be updated during function call
-/// \param meas_data            measurement data structure for accumulating measurements
-/// \param meas_data_uneqlt     unequal time measurement data structure
-///
-void DQMCPhononSimulation(const double U, const double dt, const int L, const kinetic_t *restrict kinetic, const int prodBlen, const int nwraps, const phonon_params_t *restrict phonon_params,
-	const int nequil, const int nsampl, const int nuneqlt, randseed_t *restrict seed, measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt)
-{
-	int i;
-	const int N = kinetic->N;
-
-	// Hubbard-Stratonovich parameters
-	stratonovich_params_t stratonovich_params;
-	FillStratonovichParameters(U, dt, &stratonovich_params);
-
-	// random initial Hubbard-Stratonovich field
-	spin_field_t *s = (spin_field_t *)MKL_malloc(L*N * sizeof(spin_field_t), MEM_DATA_ALIGN);
-	for (i = 0; i < L*N; i++)
-	{
-		s[i] = (Random_GetUniform(seed) < 0.5 ? 0 : 1);
-	}
-
-	// random initial phonon field
-	double *X    = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *expX = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
-	for (i = 0; i < L*N; i++)
-	{
-		X[i] = (Random_GetUniform(seed) - 0.5) * phonon_params->box_width;
-		expX[i] = exp(-dt*phonon_params->g * X[i]);
-	}
-
-	// time step matrices
-	time_step_matrices_t tsm_u;
-	time_step_matrices_t tsm_d;
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_u);
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_d);
-	#pragma omp parallel sections
-	{
-		#pragma omp section
-		InitPhononTimeStepMatrices(kinetic, stratonovich_params.expVu, s, expX, &tsm_u);
-		#pragma omp section
-		InitPhononTimeStepMatrices(kinetic, stratonovich_params.expVd, s, expX, &tsm_d);
-	}
-
-	// allocate Green's functions
-	greens_func_t Gu, Gd;
-	AllocateGreensFunction(N, &Gu);
-	AllocateGreensFunction(N, &Gd);
-
-	// perform equilibration
-	duprintf("Starting equilibration iterations (including phonons)...\n");
-	for (i = 0; i < nequil; i++)
-	{
-		// construct initial Green's functions
-		#pragma omp parallel sections
-		{
-			#pragma omp section
-			GreenConstruct(&tsm_u, 0, &Gu);
-			#pragma omp section
-			GreenConstruct(&tsm_d, 0, &Gd);
-		}
-
-		DQMCPhononIteration(dt, kinetic, &stratonovich_params, phonon_params, nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
-	}
-
-	// perform measurement iterations
-	duprintf("Starting measurement iterations (including phonons)...\n");
-	for (i = 0; i < nsampl; i++)
-	{
-		// construct initial Green's functions
-		#pragma omp parallel sections
-		{
-			#pragma omp section
-			GreenConstruct(&tsm_u, 0, &Gu);
-			#pragma omp section
-			GreenConstruct(&tsm_d, 0, &Gd);
-		}
-
-		// perform measurements directly after constructing Green's functions to improve numerical accuracy
-		// accumulate equal time "measurement" data
-		AccumulateMeasurement(&Gu, &Gd, meas_data);
-		// accumulate unequal time "measurement" data
-		if (nuneqlt > 0 && (i % nuneqlt) == 0)
-		{
-			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
-		}
-
-		DQMCPhononIteration(dt, kinetic, &stratonovich_params, phonon_params, nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
-	}
-
-	// clean up
-	DeleteGreensFunction(&Gd);
-	DeleteGreensFunction(&Gu);
-	DeleteTimeStepMatrices(&tsm_d);
-	DeleteTimeStepMatrices(&tsm_u);
-	MKL_free(expX);
-	MKL_free(X);
-	MKL_free(s);
-}
-*/

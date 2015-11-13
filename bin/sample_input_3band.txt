@@ -21,6 +21,11 @@ U		8.5,4.1,4.1
 # 5.29 = 3.24 + 4.1/2
 eps		4.25,5.29,5.29
 
+# phonon_omega	0.0,1.0,1.0
+# phonon_g		0.0,2.0,2.0
+# phonon_box_width	1.0
+# phonon_nblock_updates	3
+
 mu		-0.35
 
 dt		0.125

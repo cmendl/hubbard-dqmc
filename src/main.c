@@ -79,9 +79,6 @@ int main(int argc, char *argv[])
 		return -2;
 	}
 
-	// inverse temperature
-	const double beta = params.L * params.dt;
-
 	// trying to create output directory corresponding to parameters
 	char path[1024];
 	makedir("output");
@@ -101,7 +98,7 @@ int main(int argc, char *argv[])
 
 	// base output file name
 	char fnbase[1024];
-	sprintf(fnbase, "output/sim_%lli/N%ix%i_beta%g_sim_%lli_ns%i", params.itime, params.Nx, params.Ny, beta, params.itime, params.nsampl);
+	sprintf(fnbase, "output/sim_%lli/N%ix%i_beta%g_sim_%lli_ns%i", params.itime, params.Nx, params.Ny, params.L * params.dt, params.itime, params.nsampl);
 
 	// open simulation log file for writing
 	sprintf(path, "%s_simulation.log", fnbase);
