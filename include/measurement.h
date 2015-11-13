@@ -52,7 +52,9 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 ///
 typedef struct
 {
-	int N;						//!< total number of lattice sites
+	int Norb;					//!< number of orbitals per unit cell
+	int Ncell;					//!< total number of unit cells
+	int N;						//!< total number of orbitals
 	int L;						//!< total number of time steps
 	int nsampl;					//!< number of accumulated samples
 	int *latt_sum_map;			//!< lattice site index of coordinate sum of two lattice sites; matrix of size N x N
@@ -76,7 +78,7 @@ typedef struct
 measurement_data_unequal_time_t;
 
 
-int AllocateUnequalTimeMeasurementData(const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data);
+int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data);
 
 void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict meas_data);
 

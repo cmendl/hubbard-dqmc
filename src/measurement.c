@@ -164,8 +164,8 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 			for (i = 0; i < Ncell; i++)
 			{
 				const int io = i + o * Ncell;
-				const double Gu_ii = Gu->mat[i + N*i];
-				const double Gd_ii = Gd->mat[i + N*i];
+				const double Gu_ii = Gu->mat[io + N*io];
+				const double Gd_ii = Gd->mat[io + N*io];
 
 				meas_data->zz_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
 				meas_data->xx_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
@@ -255,10 +255,13 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 ///
 /// \brief Allocate and initialize unequal time measurement data structure
 ///
-int AllocateUnequalTimeMeasurementData(const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data)
+int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data)
 {
-	// total number of lattice sites
-	const int N = Nx * Ny;
+	// lattice dimensions
+	meas_data->Norb = Norb;
+	const int Ncell = Nx * Ny;
+	meas_data->Ncell = Ncell;
+	const int N = Norb * Ncell;
 	meas_data->N = N;
 
 	// total number of time steps
@@ -277,13 +280,13 @@ int AllocateUnequalTimeMeasurementData(const int Nx, const int Ny, const int L, 
 	meas_data->Geqlt_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_d == NULL) { return -1; }
 
 	// construct lattice coordinate sum map
-	meas_data->latt_sum_map = (int *)MKL_malloc(N*N * sizeof(int), MEM_DATA_ALIGN);
+	meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
 	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
 
 	// density and spin correlation data for all time differences
-	meas_data->nn_corr = (double *)MKL_calloc(L*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->zz_corr = (double *)MKL_calloc(L*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->xx_corr = (double *)MKL_calloc(L*N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->nn_corr = (double *)MKL_calloc(L*Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->zz_corr = (double *)MKL_calloc(L*Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->xx_corr = (double *)MKL_calloc(L*Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 
 	meas_data->sign = 0;
 
@@ -324,10 +327,20 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 ///
 void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu, const double *const *Bd, measurement_data_unequal_time_t *restrict meas_data)
 {
-	int i, j, k, l;
+	int l;
+	int i, k;
+	int o, p;
 
+	const int Norb = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
 	const int N = meas_data->N;
 	const int L = meas_data->L;
+
+	// increment sample counter
+	meas_data->nsampl++;
+
+	// add current sign
+	meas_data->sign += sign;
 
 	// current spin-up unequal time Green's functions
 	double *curGtau0_u = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
@@ -361,38 +374,46 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 	// accumulate density and spin correlation data
 
 	// sign and normalization factor
-	const double signfac = sign / N;
+	const double signfac = sign / Ncell;
 
 	for (l = 0; l < L; l++)		// for all discrete time differences...
 	{
-		for (i = 0; i < N; i++)
+		for (o = 0; o < Norb; o++)
 		{
-			const double Gtt_u_ii = curGeqlt_u[i + N*(i + N*l)];
-			const double Gtt_d_ii = curGeqlt_d[i + N*(i + N*l)];
-
-			// special case l == 0 and k == 0
-			if (l == 0)
+			for (p = 0; p < Norb; p++)
 			{
-				meas_data->nn_corr[0] += signfac*(Gtt_u_ii + Gtt_d_ii);
-				meas_data->zz_corr[0] += signfac*(Gtt_u_ii + Gtt_d_ii);
-				meas_data->xx_corr[0] += signfac*(Gtt_u_ii + Gtt_d_ii);
-			}
+				const int offset = o*Ncell + p*Ncell*Norb + Ncell*Norb*Norb*l;
+				for (i = 0; i < Ncell; i++)
+				{
+					const int io = i + o * Ncell;
+					const double Gtt_u_ii = curGeqlt_u[io + N*(io + N*l)];
+					const double Gtt_d_ii = curGeqlt_d[io + N*(io + N*l)];
 
-			for (k = 0; k < N; k++)
-			{
-				j = meas_data->latt_sum_map[k + N*i];
+					// special case l == 0 and k == 0 and o == p
+					if (l == 0 && o == p)
+					{
+						meas_data->nn_corr[0 + offset] += signfac*(Gtt_u_ii + Gtt_d_ii);
+						meas_data->zz_corr[0 + offset] += signfac*(Gtt_u_ii + Gtt_d_ii);
+						meas_data->xx_corr[0 + offset] += signfac*(Gtt_u_ii + Gtt_d_ii);
+					}
 
-				const double G00_u_jj = curGeqlt_u[j + N*j];
-				const double G00_d_jj = curGeqlt_d[j + N*j];
+					for (k = 0; k < Ncell; k++)
+					{
+						const int jp = meas_data->latt_sum_map[k + Ncell*i] + p * Ncell;
 
-				const double Gt0_u_ij = curGtau0_u[i + N*(L*j + l)];
-				const double Gt0_d_ij = curGtau0_d[i + N*(L*j + l)];
-				const double G0t_u_ji = curG0tau_u[j + N*(i + N*l)];
-				const double G0t_d_ji = curG0tau_d[j + N*(i + N*l)];
+						const double G00_u_jj = curGeqlt_u[jp + N*jp];
+						const double G00_d_jj = curGeqlt_d[jp + N*jp];
 
-				meas_data->nn_corr[k + N*l] += signfac*((2 - Gtt_u_ii - Gtt_d_ii)*(2 - G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
-				meas_data->zz_corr[k + N*l] += signfac*((    Gtt_u_ii - Gtt_d_ii)*(    G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
-				meas_data->xx_corr[k + N*l] += signfac*(                                                    - (Gt0_u_ij*G0t_d_ji + Gt0_d_ij*G0t_u_ji));
+						const double Gt0_u_ij = curGtau0_u[io + N*(L*jp + l)];
+						const double Gt0_d_ij = curGtau0_d[io + N*(L*jp + l)];
+						const double G0t_u_ji = curG0tau_u[jp + N*(io + N*l)];
+						const double G0t_d_ji = curG0tau_d[jp + N*(io + N*l)];
+
+						meas_data->nn_corr[k + offset] += signfac*((2 - Gtt_u_ii - Gtt_d_ii)*(2 - G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
+						meas_data->zz_corr[k + offset] += signfac*((    Gtt_u_ii - Gtt_d_ii)*(    G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
+						meas_data->xx_corr[k + offset] += signfac*(                                                    - (Gt0_u_ij*G0t_d_ji + Gt0_d_ij*G0t_u_ji));
+					}
+				}
 			}
 		}
 	}
@@ -404,12 +425,6 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 	MKL_free(curGeqlt_u);
 	MKL_free(curG0tau_u);
 	MKL_free(curGtau0_u);
-
-	// add current sign
-	meas_data->sign += sign;
-
-	// increment sample counter
-	meas_data->nsampl++;
 }
 
 

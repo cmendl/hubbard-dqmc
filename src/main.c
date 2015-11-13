@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 	measurement_data_unequal_time_t meas_data_uneqlt;
 	if (params.nuneqlt > 0)
 	{
-		status = AllocateUnequalTimeMeasurementData(params.Nx, params.Ny, params.L, &meas_data_uneqlt);
+		status = AllocateUnequalTimeMeasurementData(params.Norb, params.Nx, params.Ny, params.L, &meas_data_uneqlt);
 		if (status < 0) {
 			duprintf("Could not allocate unequal time measurement data structure (probably out of memory), exiting...\n");
 			return -3;
