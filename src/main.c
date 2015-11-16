@@ -130,16 +130,6 @@ int main(int argc, char *argv[])
 
 	// perform simulation
 	DQMCSimulation(&params, &meas_data, &meas_data_uneqlt);
-	/*
-	if (!params.use_phonons)
-	{
-		DQMCSimulation(params.U, params.dt, params.L, &kinetic, params.prodBlen, params.nwraps, params.nequil, params.nsampl, params.nuneqlt, &seed, &meas_data, &meas_data_uneqlt);
-	}
-	else
-	{
-		DQMCPhononSimulation(params.U, params.dt, params.L, &kinetic, params.prodBlen, params.nwraps, &params.phonon_params, params.nequil, params.nsampl, params.nuneqlt, &seed, &meas_data, &meas_data_uneqlt);
-	}
-	*/
 
 	// normalize measurement data
 	NormalizeMeasurementData(&meas_data);
@@ -147,7 +137,6 @@ int main(int argc, char *argv[])
 	{
 		NormalizeUnequalTimeMeasurementData(&meas_data_uneqlt);
 	}
-
 
 	// stop timer
 	const clock_t t_end = clock();
