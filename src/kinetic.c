@@ -25,31 +25,39 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 	double *T = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
 
 	// set hopping terms in 'T'
-	for (j = 0; j < Ny; j++)
+	for (o = 0; o < Norb; o++)
 	{
-		const int j_next = (j < Ny-1 ? j + 1 : 0);
-
-		for (i = 0; i < Nx; i++)
+		for (p = 0; p < Norb; p++)
 		{
-			const int i_next = (i < Nx-1 ? i + 1 : 0);
-
-			for (o = 0; o < Norb; o++)
+			for (j = 0; j < Ny; j++)
 			{
-				for (p = 0; p < Norb; p++)
-				{
-					// here, += is used to avoid overwriting some bonds that are repeated due to periodic
-					// boundary conditions, when Nx and/or Ny == 2.
-					T[(i + j*Nx + o*Nx*Ny) + (i      + j     *Nx + p*Nx*Ny)*N] += params->t.aa[o + p * Norb];
-					T[(i + j*Nx + o*Nx*Ny) + (i_next + j     *Nx + p*Nx*Ny)*N] += params->t.ab[o + p * Norb];
-					T[(i + j*Nx + o*Nx*Ny) + (i      + j_next*Nx + p*Nx*Ny)*N] += params->t.ac[o + p * Norb];
-					T[(i + j*Nx + o*Nx*Ny) + (i_next + j_next*Nx + p*Nx*Ny)*N] += params->t.ad[o + p * Norb];
-					T[(i_next + j*Nx + o*Nx*Ny) + (i + j_next*Nx + p*Nx*Ny)*N] += params->t.bc[o + p * Norb];
+				const int j_next = (j < Ny-1 ? j + 1 : 0);
 
-					T[(i      + j     *Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] += params->t.aa[o + p * Norb];
-					T[(i_next + j     *Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] += params->t.ab[o + p * Norb];
-					T[(i      + j_next*Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] += params->t.ac[o + p * Norb];
-					T[(i_next + j_next*Nx + p*Nx*Ny) + (i + j*Nx + o*Nx*Ny)*N] += params->t.ad[o + p * Norb];
-					T[(i + j_next*Nx + p*Nx*Ny) + (i_next + j*Nx + o*Nx*Ny)*N] += params->t.bc[o + p * Norb];
+				for (i = 0; i < Nx; i++)
+				{
+					const int i_next = (i < Nx-1 ? i + 1 : 0);
+
+					const int a = i      + j     *Nx;
+					const int b = i_next + j     *Nx;
+					const int c = i      + j_next*Nx;
+					const int d = i_next + j_next*Nx;
+
+					// here, -= is used to avoid overwriting some bonds that are repeated due to periodic
+					// boundary conditions, when Nx and/or Ny == 2.
+					T[(a + o*Nx*Ny)   + (a + p*Nx*Ny)*N] -= params->t.aa[o + p * Norb];
+					T[(a + o*Nx*Ny)*N + (a + p*Nx*Ny)  ] -= params->t.aa[o + p * Norb];
+
+					T[(a + o*Nx*Ny)   + (b + p*Nx*Ny)*N] -= params->t.ab[o + p * Norb];
+					T[(a + o*Nx*Ny)*N + (b + p*Nx*Ny)  ] -= params->t.ab[o + p * Norb];
+
+					T[(a + o*Nx*Ny)   + (c + p*Nx*Ny)*N] -= params->t.ac[o + p * Norb];
+					T[(a + o*Nx*Ny)*N + (c + p*Nx*Ny)  ] -= params->t.ac[o + p * Norb];
+
+					T[(a + o*Nx*Ny)   + (d + p*Nx*Ny)*N] -= params->t.ad[o + p * Norb];
+					T[(a + o*Nx*Ny)*N + (d + p*Nx*Ny)  ] -= params->t.ad[o + p * Norb];
+
+					T[(b + o*Nx*Ny)   + (c + p*Nx*Ny)*N] -= params->t.bc[o + p * Norb];
+					T[(b + o*Nx*Ny)*N + (c + p*Nx*Ny)  ] -= params->t.bc[o + p * Norb];
 				}
 			}
 		}
