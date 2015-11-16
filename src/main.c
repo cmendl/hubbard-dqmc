@@ -156,13 +156,24 @@ int main(int argc, char *argv[])
 
 	// show some simulation results
 	duprintf("_______________________________________________________________________________\n");
-	duprintf("Summary of simulation results (for orbital 0)\n\n");
+	duprintf("Summary of simulation results\n\n");
 	duprintf("                    average sign: %g\n", meas_data.sign);
-	duprintf("           average total density: %g\n", meas_data.density_u[0] + meas_data.density_d[0]);
-	duprintf("         average spin-up density: %g\n", meas_data.density_u[0]);
-	duprintf("       average spin-down density: %g\n", meas_data.density_d[0]);
-	duprintf("        average double occupancy: %g\n", meas_data.doubleocc[0]);
-	duprintf("            average local moment: %g\n", meas_data.density_u[0] + meas_data.density_d[0] - 2.0*meas_data.doubleocc[0]);
+	double total_density = 0.0;
+	int i;
+	for (i = 0; i < params.Norb; i++)
+	{
+		total_density += meas_data.density_u[i] + meas_data.density_d[i];
+	}
+	duprintf("           average total density: %g\n", total_density);
+	for (i = 0; i < params.Norb; i++)
+	{
+		duprintf("\nResults for orbital %d\n", i);
+		duprintf("           average total density: %g\n", meas_data.density_u[i] + meas_data.density_d[i]);
+		duprintf("         average spin-up density: %g\n", meas_data.density_u[i]);
+		duprintf("       average spin-down density: %g\n", meas_data.density_d[i]);
+		duprintf("        average double occupancy: %g\n", meas_data.doubleocc[i]);
+		duprintf("            average local moment: %g\n", meas_data.density_u[i] + meas_data.density_d[i] - 2.0*meas_data.doubleocc[i]);
+	}
 
 	// save simulation results as binary data to disk
 	duprintf("\nSaving simulation results to disk...");
