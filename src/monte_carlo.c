@@ -36,6 +36,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	assert(tsm_u->L == tsm_d->L);
 	const int N = kinetic->N;
 	const int Ncell = kinetic->Ncell;
+	const int L = tsm_u->L;
 
 	assert(tsm_u->prodBlen == tsm_d->prodBlen);
 	assert(nwraps % tsm_u->prodBlen == 0);	// must be a multiple of 'prodBlen'
@@ -55,46 +56,8 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 
 	// iterate over time slices
 	int l;
-	for (l = 0; l < tsm_u->L; l++)
+	for (l = 0; l < L; l++)
 	{
-		// recompute Green's function after several time slice "wraps"
-		if (l > 0 && (l % nwraps) == 0)
-		{
-			Profile_Begin("DQMCIter_Grecomp");
-			// store current Green's function matrices to compare with newly constructed ones
-			#if defined(DEBUG) | defined(_DEBUG)
-			CopyGreensFunction(Gu, &Gu_old);
-			CopyGreensFunction(Gd, &Gd_old);
-			#endif
-
-			#pragma omp parallel sections
-			{
-				#pragma omp section
-				GreenConstruct(tsm_u, l, Gu);
-				#pragma omp section
-				GreenConstruct(tsm_d, l, Gd);
-			}
-
-			#if defined(DEBUG) | defined(_DEBUG)
-			// deviation of matrix entries
-			double err_u = UniformDistance(N*N, Gu_old.mat, Gu->mat);
-			double err_d = UniformDistance(N*N, Gd_old.mat, Gd->mat);
-			if (err_u > 1e-8*N || err_d > 1e-8*N) {
-				duprintf("Warning: after calling 'GreenConstruct()', largest entrywise distance between previous and new Green's functions is %g (up) and %g (down).\n", err_u, err_d);
-			}
-			// deviation of matrix determinants
-			err_u = fabs(Gu_old.logdet - Gu->logdet);
-			err_d = fabs(Gd_old.logdet - Gd->logdet);
-			if (err_u > 1e-8 || err_d > 1e-8) {
-				duprintf("Warning: after calling 'GreenConstruct()', largest distance between logarithm of previous and new Green's function determinants is %g (up) and %g (down).\n", err_u, err_d);
-			}
-			if (Gu_old.sgndet != Gu->sgndet || Gd_old.sgndet != Gd->sgndet) {
-				duprintf("Warning: after calling 'GreenConstruct()', determinant sign has changed.\n");
-			}
-			#endif
-			Profile_End("DQMCIter_Grecomp");
-		}
-
 		Profile_Begin("DQMCIter_Wraps");
 		#pragma omp parallel sections
 		{
@@ -150,6 +113,45 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 			UpdateTimeStepMatrices(kinetic, stratonovich_params->expVd, s, l, tsm_d);
 		}
 		Profile_End("DQMCIter_Brecomp");
+
+		// recompute Green's function after several time slice "wraps"
+		if ((l + 1) % nwraps == 0)
+		{
+			Profile_Begin("DQMCIter_Grecomp");
+			// store current Green's function matrices to compare with newly constructed ones
+			#if defined(DEBUG) | defined(_DEBUG)
+			CopyGreensFunction(Gu, &Gu_old);
+			CopyGreensFunction(Gd, &Gd_old);
+			#endif
+
+			#pragma omp parallel sections
+			{
+				#pragma omp section
+				GreenConstruct(tsm_u, (l + 1) % L, Gu);
+				#pragma omp section
+				GreenConstruct(tsm_d, (l + 1) % L, Gd);
+			}
+
+			#if defined(DEBUG) | defined(_DEBUG)
+			// deviation of matrix entries
+			double err_u = UniformDistance(N*N, Gu_old.mat, Gu->mat);
+			double err_d = UniformDistance(N*N, Gd_old.mat, Gd->mat);
+			if (err_u > 1e-8*N || err_d > 1e-8*N) {
+				duprintf("Warning: after calling 'GreenConstruct()', largest entrywise distance between previous and new Green's functions is %g (up) and %g (down).\n", err_u, err_d);
+			}
+			// deviation of matrix determinants
+			err_u = fabs(Gu_old.logdet - Gu->logdet);
+			err_d = fabs(Gd_old.logdet - Gd->logdet);
+			if (err_u > 1e-8 || err_d > 1e-8) {
+				duprintf("Warning: after calling 'GreenConstruct()', largest distance between logarithm of previous and new Green's function determinants is %g (up) and %g (down).\n", err_u, err_d);
+			}
+			if (Gu_old.sgndet != Gu->sgndet || Gd_old.sgndet != Gd->sgndet) {
+				duprintf("Warning: after calling 'GreenConstruct()', determinant sign has changed.\n");
+			}
+			#endif
+			Profile_End("DQMCIter_Grecomp");
+		}
+
 	}
 
 	// clean up
@@ -370,42 +372,6 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	int l;
 	for (l = 0; l < L; l++)
 	{
-		// recompute Green's function after several time slice "wraps"
-		if (l > 0 && (l % nwraps) == 0)
-		{
-			// store current Green's function matrices to compare with newly constructed ones
-			#if defined(DEBUG) | defined(_DEBUG)
-			CopyGreensFunction(Gu, &Gu_old);
-			CopyGreensFunction(Gd, &Gd_old);
-			#endif
-
-			#pragma omp parallel sections
-			{
-				#pragma omp section
-				GreenConstruct(tsm_u, l, Gu);
-				#pragma omp section
-				GreenConstruct(tsm_d, l, Gd);
-			}
-
-			#if defined(DEBUG) | defined(_DEBUG)
-			// deviation of matrix entries
-			double err_u = UniformDistance(N*N, Gu_old.mat, Gu->mat);
-			double err_d = UniformDistance(N*N, Gd_old.mat, Gd->mat);
-			if (err_u > 1e-8*N || err_d > 1e-8*N) {
-				duprintf("Warning: after calling 'GreenConstruct()', largest entrywise distance between previous and new Green's functions is %g (up) and %g (down).\n", err_u, err_d);
-			}
-			// deviation of matrix determinants
-			err_u = fabs(Gu_old.logdet - Gu->logdet);
-			err_d = fabs(Gd_old.logdet - Gd->logdet);
-			if (err_u > 1e-8 || err_d > 1e-8) {
-				duprintf("Warning: after calling 'GreenConstruct()', largest distance between logarithm of previous and new Green's function determinants is %g (up) and %g (down).\n", err_u, err_d);
-			}
-			if (Gu_old.sgndet != Gu->sgndet || Gd_old.sgndet != Gd->sgndet) {
-				duprintf("Warning: after calling 'GreenConstruct()', determinant sign has changed.\n");
-			}
-			#endif
-		}
-
 		#pragma omp parallel sections
 		{
 			#pragma omp section
@@ -503,6 +469,42 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			UpdatePhononTimeStepMatrices(kinetic, stratonovich_params->expVu, s, expX, l, tsm_u);
 			#pragma omp section
 			UpdatePhononTimeStepMatrices(kinetic, stratonovich_params->expVd, s, expX, l, tsm_d);
+		}
+
+		// recompute Green's function after several time slice "wraps"
+		if ((l + 1) % nwraps == 0)
+		{
+			// store current Green's function matrices to compare with newly constructed ones
+			#if defined(DEBUG) | defined(_DEBUG)
+			CopyGreensFunction(Gu, &Gu_old);
+			CopyGreensFunction(Gd, &Gd_old);
+			#endif
+
+			#pragma omp parallel sections
+			{
+				#pragma omp section
+				GreenConstruct(tsm_u, (l + 1) % L, Gu);
+				#pragma omp section
+				GreenConstruct(tsm_d, (l + 1) % L, Gd);
+			}
+
+			#if defined(DEBUG) | defined(_DEBUG)
+			// deviation of matrix entries
+			double err_u = UniformDistance(N*N, Gu_old.mat, Gu->mat);
+			double err_d = UniformDistance(N*N, Gd_old.mat, Gd->mat);
+			if (err_u > 1e-8*N || err_d > 1e-8*N) {
+				duprintf("Warning: after calling 'GreenConstruct()', largest entrywise distance between previous and new Green's functions is %g (up) and %g (down).\n", err_u, err_d);
+			}
+			// deviation of matrix determinants
+			err_u = fabs(Gu_old.logdet - Gu->logdet);
+			err_d = fabs(Gd_old.logdet - Gd->logdet);
+			if (err_u > 1e-8 || err_d > 1e-8) {
+				duprintf("Warning: after calling 'GreenConstruct()', largest distance between logarithm of previous and new Green's function determinants is %g (up) and %g (down).\n", err_u, err_d);
+			}
+			if (Gu_old.sgndet != Gu->sgndet || Gd_old.sgndet != Gd->sgndet) {
+				duprintf("Warning: after calling 'GreenConstruct()', determinant sign has changed.\n");
+			}
+			#endif
 		}
 	}
 
@@ -609,20 +611,19 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	AllocateGreensFunction(N, &Gu);
 	AllocateGreensFunction(N, &Gd);
 
+	// construct initial Green's functions
+	#pragma omp parallel sections
+	{
+		#pragma omp section
+		GreenConstruct(&tsm_u, 0, &Gu);
+		#pragma omp section
+		GreenConstruct(&tsm_d, 0, &Gd);
+	}
+
 	// perform equilibration
 	duprintf("Starting equilibration iterations...\n");
 	for (i = 0; i < params->nequil; i++)
 	{
-		// construct initial Green's functions
-		Profile_Begin("DQMCIter_Grecomp");
-		#pragma omp parallel sections
-		{
-			#pragma omp section
-			GreenConstruct(&tsm_u, 0, &Gu);
-			#pragma omp section
-			GreenConstruct(&tsm_d, 0, &Gd);
-		}
-		Profile_End("DQMCIter_Grecomp");
 		if (params->use_phonons)
 		{
 			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
@@ -637,16 +638,14 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	duprintf("Starting measurement iterations...\n");
 	for (i = 0; i < params->nsampl; i++)
 	{
-		// construct initial Green's functions
-		Profile_Begin("DQMCIter_Grecomp");
-		#pragma omp parallel sections
+		if (params->use_phonons)
 		{
-			#pragma omp section
-			GreenConstruct(&tsm_u, 0, &Gu);
-			#pragma omp section
-			GreenConstruct(&tsm_d, 0, &Gd);
+			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 		}
-		Profile_End("DQMCIter_Grecomp");
+		else
+		{
+			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+		}
 
 		// perform measurements directly after constructing Green's functions to improve numerical accuracy
 		// accumulate equal time "measurement" data
@@ -659,15 +658,6 @@ void DQMCSimulation(const sim_params_t *restrict params,
 			Profile_Begin("DQMCSim_AccumulateUneqMeas");
 			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
 			Profile_End("DQMCSim_AccumulateUneqMeas");
-		}
-
-		if (params->use_phonons)
-		{
-			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
-		}
-		else
-		{
-			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
 		}
 	}
 
