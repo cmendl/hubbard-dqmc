@@ -4,9 +4,9 @@
 //associative array using a hash table and linked lists for collisions
 //NOT THREAD-SAFE
 
-typedef struct ht_entry_t
+typedef struct ht_entry_s
 {
-	struct ht_entry_t *next;
+	struct ht_entry_s *next;
 	char *key;
 	void *val;
 }
@@ -24,7 +24,7 @@ void htInit(ht_t *ht, const int n_buckets);
 
 void htFree(ht_t *ht);
 
-int htInsert(ht_t *ht, const char *key, void *val);
+void *htInsert(ht_t *ht, const char *key, void *val);
 
 void *htGet(const ht_t *ht, const char *key);
 

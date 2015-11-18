@@ -54,20 +54,20 @@ static uint32_t fnv_1a(const char *key)
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Inserts an entry into hash table. val should be a pointer returned by MKL_malloc.
-/// If key already exists, deallocate and replace previous val and return 1.
+/// \brief Inserts an entry into hash table; if key already exists,
+// replace previous value and return pointer to old value, otherwise return NULL
 ///
-int htInsert(ht_t *ht, const char *key, void *val)
+void *htInsert(ht_t *ht, const char *key, void *val)
 {
 	const int i = fnv_1a(key) % ht->n_buckets;
 	ht_entry_t **p_entry, *entry; //p_entry is whatever was pointing at entry.
 	for (p_entry = ht->buckets + i; (entry = *p_entry) != NULL; p_entry = &(entry->next))
 	{
-		if (!strcmp(key, entry->key)) //entry already exists!
+		if (!strcmp(key, entry->key)) // entry already exists!
 		{
-			MKL_free(entry->val);
+			void *ret = entry->val;
 			entry->val = val;
-			return 1;
+			return ret;
 		}
 	}
 	//not found, insert.
@@ -78,7 +78,8 @@ int htInsert(ht_t *ht, const char *key, void *val)
 	entry->next = NULL;
 	*p_entry = entry;
 	ht->n_entries++;
-	return 0;
+
+	return NULL;
 }
 
 

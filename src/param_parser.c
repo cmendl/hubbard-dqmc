@@ -5,62 +5,131 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Reads a list like "1.2,3.4,5.6;7.8,9.0" into a double array. Commas and semi-colons are treated equivalently.
+/// \brief Allocate memory for bond hoppings
 ///
-static int ReadList(const int Norb, double *a, char *list)
+void AllocateBondHoppings(const int Norb, bond_hoppings_t *bonds)
 {
-	char *value = strtok(list, ",;");
+	bonds->aa = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
+	bonds->ab = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
+	bonds->ac = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
+	bonds->ad = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
+	bonds->bc = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Free memory for bond hoppings
+///
+void DeleteBondHoppings(bond_hoppings_t *bonds)
+{
+	MKL_free(bonds->bc);
+	MKL_free(bonds->ad);
+	MKL_free(bonds->ac);
+	MKL_free(bonds->ab);
+	MKL_free(bonds->aa);
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Temporary structure for storing parameter values
+///
+typedef struct
+{
+	char *str[1024];		//!< string values
+	int num;				//!< number of values
+}
+value_list_t;
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Append parameter values to a list
+///
+static void AppendValues(value_list_t *list, const value_list_t *ap)
+{
 	int i;
-	for (i = 0; i < Norb; i++)
+	for (i = 0; i < ap->num; i++)
 	{
-		// if value == NULL inside the loop, that means the list had too few entries
-		if (value == NULL)
-		{
-			duprintf("ReadList() failed: too few entries in list.\n");
-			return -1;
-		}
-		a[i] = atof(value);
-		value = strtok(NULL, ",;");
+		assert(0 <= list->num && list->num < 1024);
+		list->str[list->num] = (char *)MKL_malloc((strlen(ap->str[i]) + 1) * sizeof(char), MEM_DATA_ALIGN);
+		strcpy(list->str[list->num], ap->str[i]);
+		list->num++;
+	}
+}
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Delete parameter value list
+///
+static void DeleteValueList(value_list_t *list)
+{
+	int i;
+	for (i = 0; i < list->num; i++)
+	{
+		MKL_free(list->str[i]);
 	}
 
-	// if value is not NULL here, that means the list had too many entries
-	if (value != NULL)
+	list->num = 0;
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Read a string list like { "0", "2", "3.4", "1", "5", "2.1" } into the array t;
+/// for this example, we'd have t[0 + 2 * Norb] = 3.4 and t[1 + 5 * Norb] = 2.1.
+///
+static int ReadHoppings(const int Norb, const value_list_t *list, double *t)
+{
+	// must be triplets of the form i j d with i and j integers and d a floating-point number
+	if (list->num % 3 != 0)
 	{
-		duprintf("ReadList() failed: too many entries in list.\n");
-		return -2;
+		return -1;
 	}
+
+	int i;
+	for (i = 0; i < list->num; i += 3)
+	{
+		 // orbital indices
+		const int a = atoi(list->str[i]    );
+		const int b = atoi(list->str[i + 1]);
+		if (a < 0 || a >= Norb || b < 0 || b >= Norb)
+		{
+			return -2;	// orbital index out of bounds
+		}
+
+		// update the t array with bond information
+		t[a + Norb*b] = atof(list->str[i + 2]);
+	}
+
 	return 0;
 }
 
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Reads a list like "0,2,3.456;1,5,3.141" into the array t. For this example,
-///        we'd have t[0 + 2 * Norb] = 3.456 and t[1 + 5 * Norb] = 3.141.
+/// \brief Reads a string list like { "1.2", "3.4", "5.6" } into a double array
 ///
-static int ReadHoppingList(const int Norb, double *t, char *list)
+static int ReadList(const int Norb, const value_list_t *list, double *a)
 {
-	unsigned a, b; // orbital indices
-	double tt;
-	char *p = strtok(list, ";");
-	while (p != NULL)
+	// check if number of values matches
+	if (list->num != Norb)
 	{
-		if (sscanf(p, " %u , %u , %lf ", &a, &b, &tt) != 3)
-		{
-			return -1; // bad format
-		}
-		if (a >= Norb || b >= Norb)
-		{
-			return -2; // orbital number out of bounds
-		}
-		// update the t array with bond information
-		t[a + b * Norb] = tt;
-		p = strtok(NULL, ";");
+		return -1;
 	}
+
+	int i;
+	for (i = 0; i < Norb; i++)
+	{
+		a[i] = atof(list->str[i]);
+	}
+
 	return 0;
 }
 
@@ -78,18 +147,23 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 	}
 
 	// load the input file into a hash table
-	ht_t params_table;
-	htInit(&params_table, 64); // 64 buckets
+	ht_t hashtable;
+	htInit(&hashtable, 64); // 64 buckets
 
 	// read file line by line
 	char line[1024];
 	while (fgets(line, sizeof(line), fd) != NULL)
 	{
 		// skip text after a comment character
-		strtok(line, "#");
+		char *csharp = strchr(line, '#');
+		if (csharp != NULL)
+		{
+			// replace '#' by '\0';
+			*csharp = '\0';
+		}
 
 		// delimiter characters
-		const char *delim = " =:\t\r\n";
+		const char *delim = " =:,;\t\r\n";
 
 		// parameter name
 		char *name = strtok(line, delim);
@@ -97,193 +171,201 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			continue;
 		}
 
-		// parameter value
-		char *value = strtok(NULL, delim);
-		if (value == NULL)
+		// parameter value(s)
+		value_list_t value;
+		value.num = 0;
+		while ((value.str[value.num] = strtok(NULL, delim)) != NULL)
+		{
+			value.num++;
+		}
+		if (value.num == 0)
 		{
 			duprintf("Warning: Missing value for parameter '%s' in input file '%s'.\n", name, filename);
 			continue;
 		}
 
-		// add the (name, value) pair to the hash table.
-		// if hash table already has an entry for the parameter, append a semicolon and the new value.
-		// this is so that multiple lines of t_ab or so can be concatenated.
-		char *previous_value, *new_value;
-		if ((previous_value = (char *)htGet(&params_table, name)) == NULL)
+		// add the (name, value) pair to the hash table;
+		// if the hash table already has an entry for the parameter name, concatenate values
+		value_list_t *val_prev = (value_list_t *)htGet(&hashtable, name);
+		if (val_prev == NULL)	// not in hash table yet
 		{
-			new_value = (char *)MKL_malloc(strlen(value) + 1, MEM_DATA_ALIGN);
-			strcpy(new_value, value);
+			value_list_t *v = MKL_calloc(1, sizeof(value_list_t), MEM_DATA_ALIGN);
+			AppendValues(v, &value);
+			htInsert(&hashtable, name, v);
 		}
 		else
 		{
-			new_value = (char *)MKL_malloc(strlen(previous_value) + strlen(value) + 2, MEM_DATA_ALIGN);
-			sprintf(new_value, "%s;%s", previous_value, value);
+			AppendValues(val_prev, &value);
 		}
-		htInsert(&params_table, name, new_value); // this also frees previous_value
 	}
+
 	fclose(fd);
 
-	// update params with values from hash table
-	char *value;
+	// update parameters with values from hash table
 	int Norb;
-
-	if ((value = htGet(&params_table, "Norb")) != NULL)
+	value_list_t *value;
+	if ((value = htGet(&hashtable, "Norb")) != NULL)
 	{
-		Norb = atoi(value);
+		assert(value->num > 0);
+		Norb = atoi(value->str[0]);
 		if (Norb <= 0)
 		{
 			duprintf("Parameter 'Norb' must be positive.");
 			return -2;
 		}
-		params->Norb = Norb;
-		AllocateParameters(params);
+		AllocateSimulationParameters(Norb, params);
 	}
 	else
 	{
 		duprintf("Parameter 'Norb' not found in input file '%s'.", filename);
 		return -2;
 	}
-	if ((value = htGet(&params_table, "Nx")) != NULL) params->Nx = atoi(value);
-	if ((value = htGet(&params_table, "Ny")) != NULL) params->Ny = atoi(value);
 
-	if ((value = htGet(&params_table, "t_aa")) != NULL)
+	if ((value = htGet(&hashtable, "Nx")) != NULL) { params->Nx = atoi(value->str[0]); }
+	if ((value = htGet(&hashtable, "Ny")) != NULL) { params->Ny = atoi(value->str[0]); }
+
+	if ((value = htGet(&hashtable, "t_aa")) != NULL)
 	{
-		if (ReadHoppingList(Norb, params->t.aa, value) != 0)
+		if (ReadHoppings(Norb, value, params->t.aa) != 0)
 		{
 			duprintf("Error reading list for parameter 't_aa'.\n");
 			return -3;
 		}
 	}
-	if ((value = htGet(&params_table, "t_ab")) != NULL)
+	if ((value = htGet(&hashtable, "t_ab")) != NULL)
 	{
-		if (ReadHoppingList(Norb, params->t.ab, value) != 0)
+		if (ReadHoppings(Norb, value, params->t.ab) != 0)
 		{
 			duprintf("Error reading list for parameter 't_ab'.\n");
 			return -3;
 		}
 	}
-	if ((value = htGet(&params_table, "t_ac")) != NULL)
+	if ((value = htGet(&hashtable, "t_ac")) != NULL)
 	{
-		if (ReadHoppingList(Norb, params->t.ac, value) != 0)
+		if (ReadHoppings(Norb, value, params->t.ac) != 0)
 		{
 			duprintf("Error reading list for parameter 't_ac'.\n");
 			return -3;
 		}
 	}
-	if ((value = htGet(&params_table, "t_ad")) != NULL)
+	if ((value = htGet(&hashtable, "t_ad")) != NULL)
 	{
-		if (ReadHoppingList(Norb, params->t.ad, value) != 0)
+		if (ReadHoppings(Norb, value, params->t.ad) != 0)
 		{
 			duprintf("Error reading list for parameter 't_ad'.\n");
 			return -3;
 		}
 	}
-	if ((value = htGet(&params_table, "t_bc")) != NULL)
+	if ((value = htGet(&hashtable, "t_bc")) != NULL)
 	{
-		if (ReadHoppingList(Norb, params->t.bc, value) != 0)
+		if (ReadHoppings(Norb, value, params->t.bc) != 0)
 		{
 			duprintf("Error reading list for parameter 't_bc'.\n");
 			return -3;
 		}
 	}
-	if ((value = htGet(&params_table, "U")) != NULL)
+	if ((value = htGet(&hashtable, "U")) != NULL)
 	{
-		if (ReadList(Norb, params->U, value) != 0)
+		if (ReadList(Norb, value, params->U) != 0)
 		{
 			duprintf("Error reading list for parameter 'U'.\n");
 			return -3;
 		}
 	}
-	if ((value = htGet(&params_table, "eps")) != NULL)
+	if ((value = htGet(&hashtable, "eps")) != NULL)
 	{
-		if (ReadList(Norb, params->eps, value) != 0)
+		if (ReadList(Norb, value, params->eps) != 0)
 		{
 			duprintf("Error reading list for parameter 'eps'.\n");
 			return -3;
 		}
 	}
-	if ((value = htGet(&params_table, "mu")) != NULL) params->mu = atof(value);
+	if ((value = htGet(&hashtable, "mu")) != NULL) { params->mu = atof(value->str[0]); }
 
-	if ((value = htGet(&params_table, "phonon_omega")) != NULL)
+	// phonons
+
+	if ((value = htGet(&hashtable, "use_phonons")) != NULL)
 	{
-		if (ReadList(Norb, params->phonon_params.omega, value) != 0)
+		assert(value->num > 0);
+
+		if (strcmp(value->str[0], "true") == 0 || strcmp(value->str[0], "1") == 0) {
+			params->use_phonons = true;
+		}
+		else if (strcmp(value->str[0], "false") == 0 || strcmp(value->str[0], "0") == 0) {
+			params->use_phonons = false;
+		}
+		else {
+			duprintf("Warning: unrecognized 'use_phonons = %s' in file '%s', should be either 'true'/'1' or 'false'/'0'.\n", value->str[0], filename);
+		}
+	}
+
+	if ((value = htGet(&hashtable, "phonon_omega")) != NULL)
+	{
+		if (ReadList(Norb, value, params->phonon_params.omega) != 0)
 		{
 			duprintf("Error reading list for parameter 'phonon_omega'.\n");
 			return -3;
 		}
 	}
-	if ((value = htGet(&params_table, "phonon_g")) != NULL)
+	if ((value = htGet(&hashtable, "phonon_g")) != NULL)
 	{
-		if (ReadList(Norb, params->phonon_params.g, value) != 0)
+		if (ReadList(Norb, value, params->phonon_params.g) != 0)
 		{
 			duprintf("Error reading list for parameter 'phonon_g'.\n");
 			return -3;
 		}
 	}
-	if ((value = htGet(&params_table, "phonon_box_width")) != NULL) params->phonon_params.box_width = atof(value);
-	if ((value = htGet(&params_table, "phonon_nblock_updates")) != NULL) params->phonon_params.nblock_updates = atof(value);
+	if ((value = htGet(&hashtable, "phonon_box_width")) != NULL)      { params->phonon_params.box_width      = atof(value->str[0]); }
+	if ((value = htGet(&hashtable, "phonon_nblock_updates")) != NULL) { params->phonon_params.nblock_updates = atoi(value->str[0]); }
 
-	params->use_phonons = false;
-	int o;
-	for (o = 0; o < Norb; o++)
-	{
-		if (params->phonon_params.g[o] != 0)
-		{
-			params->use_phonons = true;
-			break;
-		}
-	}
+	// time flow parameters
+	if ((value = htGet(&hashtable, "dt"))       != NULL) { params->dt       = atof(value->str[0]); }
+	if ((value = htGet(&hashtable, "L"))        != NULL) { params->L        = atoi(value->str[0]); }
+	if ((value = htGet(&hashtable, "prodBlen")) != NULL) { params->prodBlen = atoi(value->str[0]); }
+	if ((value = htGet(&hashtable, "nwraps"))   != NULL) { params->nwraps   = atoi(value->str[0]); }
 
-	if ((value = htGet(&params_table, "dt"))       != NULL) params->dt       = atof(value);
-	if ((value = htGet(&params_table, "L"))        != NULL) params->L        = atoi(value);
-	if ((value = htGet(&params_table, "prodBlen")) != NULL) params->prodBlen = atoi(value);
-	if ((value = htGet(&params_table, "nwraps"))   != NULL) params->nwraps   = atoi(value);
-
-	if ((value = htGet(&params_table, "nequil"))   != NULL) params->nequil  = atoi(value);
-	if ((value = htGet(&params_table, "nsampl"))   != NULL) params->nsampl  = atoi(value);
-	if ((value = htGet(&params_table, "nuneqlt"))  != NULL) params->nuneqlt = atoi(value);
-	if ((value = htGet(&params_table, "itime"))    != NULL) params->itime   = atoi(value);
+	if ((value = htGet(&hashtable, "nequil"))   != NULL) { params->nequil  = atoi(value->str[0]); }
+	if ((value = htGet(&hashtable, "nsampl"))   != NULL) { params->nsampl  = atoi(value->str[0]); }
+	if ((value = htGet(&hashtable, "nuneqlt"))  != NULL) { params->nuneqlt = atoi(value->str[0]); }
+	if ((value = htGet(&hashtable, "itime"))    != NULL) { params->itime   = atoi(value->str[0]); }
 
 	// deallocate everything in the hash table
-	htFree(&params_table);
+	htFree(&hashtable);
+	//// TODO: still have to call 'DeleteValueList()' for each entry
+
 	return 0;
 }
 
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Allocate memory for parameters struct. Assumes params->Norb is already initialized.
+/// \brief Allocate memory for the simulation parameters
 ///
-void AllocateParameters(sim_params_t *params)
+void AllocateSimulationParameters(const int Norb, sim_params_t *params)
 {
-	const int Norb = params->Norb;
-	params->t.aa                = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
-	params->t.ab                = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
-	params->t.ac                = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
-	params->t.ad                = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
-	params->t.bc                = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
-	params->U                   = (double *)MKL_calloc(Norb,        sizeof(double), MEM_DATA_ALIGN);
-	params->eps                 = (double *)MKL_calloc(Norb,        sizeof(double), MEM_DATA_ALIGN);
-	params->phonon_params.omega = (double *)MKL_calloc(Norb,        sizeof(double), MEM_DATA_ALIGN);
-	params->phonon_params.g     = (double *)MKL_calloc(Norb,        sizeof(double), MEM_DATA_ALIGN);
+	params->Norb = Norb;
+
+	AllocateBondHoppings(Norb, &params->t);
+
+	params->U                   = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	params->eps                 = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	params->phonon_params.omega = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	params->phonon_params.g     = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
 }
 
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Free memory for parameters struct.
+/// \brief Free memory for parameters struct
 ///
-void DeleteParameters(sim_params_t *params)
+void DeleteSimulationParameters(sim_params_t *params)
 {
-	MKL_free(params->t.aa);
-	MKL_free(params->t.ab);
-	MKL_free(params->t.ac);
-	MKL_free(params->t.ad);
-	MKL_free(params->t.bc);
-	MKL_free(params->U);
-	MKL_free(params->eps);
-	MKL_free(params->phonon_params.omega);
 	MKL_free(params->phonon_params.g);
+	MKL_free(params->phonon_params.omega);
+	MKL_free(params->eps);
+	MKL_free(params->U);
+
+	DeleteBondHoppings(&params->t);
 }
 
 
@@ -310,9 +392,9 @@ int ValidateSimulationParameters(const sim_params_t *params)
 	for (i = 0; i < Norb; i++)
 	{
 		// within a unit cell, bonds must be between different orbitals
-		if (params->t.aa[i + i*Norb] != 0.0)
+		if (params->t.aa[i + i*Norb] != 0)
 		{
-			duprintf("Invalid parameter t_aa: cannot have hopping between same orbital.\n");
+			duprintf("Invalid parameter t_aa: cannot have hopping between same orbital %i.\n", i);
 			return -1;
 		}
 
@@ -320,9 +402,9 @@ int ValidateSimulationParameters(const sim_params_t *params)
 		int j;
 		for (j = i + 1; j < Norb; j++)
 		{
-			if (params->t.aa[i + j * Norb] != 0.0 && params->t.aa[j + i * Norb] != 0.0)
+			if (params->t.aa[i + j*Norb] != 0 && params->t.aa[j + i*Norb] != 0)
 			{
-				duprintf("Invalid parameter t_aa: redundant intra-cell bond definitions.\n");
+				duprintf("Invalid parameter t_aa: redundant intra-cell %i <-> %i bond definitions.\n", i, j);
 				return -1;
 			}
 		}
@@ -350,83 +432,75 @@ int ValidateSimulationParameters(const sim_params_t *params)
 }
 
 
-static void WriteList(const int Norb, const double *a, char *list)
+//________________________________________________________________________________________________________________________
+///
+/// \brief Print the entries of a list
+///
+static inline void PrintList(const int num, const double *x)
 {
-	list[0] = '\0';
-	char buf[32];
 	int i;
-	for (i = 0; i < Norb; i++)
+	for (i = 0; i < num-1; i++)
 	{
-		snprintf(buf, sizeof(buf), "%g,", a[i]);
-		strcat(list, buf);
+		duprintf("%g, ", x[i]);
 	}
-	// remove last comma
-	list[strlen(list) - 1] = '\0';
+	// avoid trailing comma
+	duprintf("%g", x[num-1]);
 }
 
 
-static void WriteHoppingList(const int Norb, const double *t, char *list)
+//________________________________________________________________________________________________________________________
+///
+/// \brief Print the non-zero entries of a matrix as index-value tuples
+///
+static inline void PrintMatrix(const int num, const double *mat)
 {
-	list[0] = '\0';
-	double tt;
-	char buf[32];
 	int i, j;
-	for (i = 0; i < Norb; i++)
+
+	// print in row-major order
+	for (i = 0; i < num; i++)
 	{
-		for (j = 0; j < Norb; j++)
+		for (j = 0; j < num; j++)
 		{
-			tt = t[i + j * Norb];
-			if (tt != 0.0)
+			const double x = mat[i + j*num];
+			if (x != 0)
 			{
-				snprintf(buf, sizeof(buf), "%d,%d,%g;", i, j, tt);
-				strcat(list, buf);
+				duprintf("(%d,%d,%g) ", i, j, x);
 			}
 		}
 	}
-	// remove last semicolon
-	list[strlen(list) - 1] = '\0';
 }
+
 
 //________________________________________________________________________________________________________________________
 ///
 /// \brief Print simulation parameters
 ///
-void PrintParameters(const sim_params_t *params)
+void PrintSimulationParameters(const sim_params_t *params)
 {
 	const int Norb = params->Norb;
-	char list_buffer[512];
 
 	duprintf("Simulation parameters\n\n");
 	duprintf("              number of orbitals: %i\n", Norb);
 	duprintf("               lattice dimension: %i x %i\n", params->Nx, params->Ny);
-	WriteList(Norb, params->U, list_buffer);
-	duprintf("                               U: %s\n", list_buffer);
-	WriteList(Norb, params->eps, list_buffer);
-	duprintf("                             eps: %s\n", list_buffer);
-	WriteHoppingList(Norb, params->t.aa, list_buffer);
-	duprintf("                            t_aa: %s\n", list_buffer);
-	WriteHoppingList(Norb, params->t.ab, list_buffer);
-	duprintf("                            t_ab: %s\n", list_buffer);
-	WriteHoppingList(Norb, params->t.ac, list_buffer);
-	duprintf("                            t_ac: %s\n", list_buffer);
-	WriteHoppingList(Norb, params->t.ad, list_buffer);
-	duprintf("                            t_ad: %s\n", list_buffer);
-	WriteHoppingList(Norb, params->t.bc, list_buffer);
-	duprintf("                            t_bc: %s\n", list_buffer);
+	duprintf("                               U: ");   PrintList(Norb, params->U);       duprintf("\n");
+	duprintf("                             eps: ");   PrintList(Norb, params->eps);     duprintf("\n");
+	duprintf("                            t_aa: ");   PrintMatrix(Norb, params->t.aa);  duprintf("\n");
+	duprintf("                            t_ab: ");   PrintMatrix(Norb, params->t.ab);  duprintf("\n");
+	duprintf("                            t_ac: ");   PrintMatrix(Norb, params->t.ac);  duprintf("\n");
+	duprintf("                            t_ad: ");   PrintMatrix(Norb, params->t.ad);  duprintf("\n");
+	duprintf("                            t_bc: ");   PrintMatrix(Norb, params->t.bc);  duprintf("\n");
 	duprintf("                              mu: %g\n", params->mu);
 	duprintf("                   using phonons: %i\n", params->use_phonons);
 	if (params->use_phonons)
 	{
-		WriteList(Norb, params->phonon_params.omega, list_buffer);
-		duprintf("                phonon frequency: %s\n", list_buffer);
-		WriteList(Norb, params->phonon_params.g, list_buffer);
-		duprintf("               electron-phonon g: %s\n", list_buffer);
+		duprintf("                phonon frequency: ");   PrintList(Norb, params->phonon_params.omega);  duprintf("\n");
+		duprintf("               electron-phonon g: ");   PrintList(Norb, params->phonon_params.g);      duprintf("\n");
 		duprintf("         phonon update box width: %g\n", params->phonon_params.box_width);
 		duprintf("  number of phonon block updates: %i\n", params->phonon_params.nblock_updates);
 	}
 	duprintf("                       time step: %g\n", params->dt);
 	duprintf("                               L: %i\n", params->L);
-	duprintf("                            beta: %g\n", params->L * params->dt);	// inverse temperature
+	duprintf("                            beta: %g\n", params->L*params->dt);	// inverse temperature
 	duprintf("                        prodBlen: %i\n", params->prodBlen);
 	duprintf("                          nwraps: %i\n", params->nwraps);
 

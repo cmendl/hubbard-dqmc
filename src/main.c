@@ -115,13 +115,13 @@ int main(int argc, char *argv[])
 	fd_log = fopen(path, "w");
 	if (fd_log == NULL)
 	{
-		duprintf("Cannot open log file '%s'.\nCheck if output directory exists.\nexiting...\n", path);
+		duprintf("Cannot open log file '%s', check if output directory exists; exiting...\n", path);
 		return -3;
 	}
 
 	duprintf("Hubbard model DQMC\n------------------\n");
 	duprintf("_______________________________________________________________________________\n");
-	PrintParameters(&params);
+	PrintSimulationParameters(&params);
 
 	// allocate and initialize equal time measurement data structure
 	measurement_data_t meas_data;
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 		DeleteUnequalTimeMeasurementData(&meas_data_uneqlt);
 	}
 	DeleteMeasurementData(&meas_data);
-	DeleteParameters(&params);
+	DeleteSimulationParameters(&params);
 
 	return 0;
 }
