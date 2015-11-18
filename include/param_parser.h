@@ -1,7 +1,7 @@
 #ifndef PARAM_PARSER_H
 #define PARAM_PARSER_H
 
-#include <time.h>
+#include <stdint.h>
 #include <stdbool.h>
 
 
@@ -80,7 +80,7 @@ typedef struct
 	int nsampl;						//!< number of sampling iterations
 	int nuneqlt;					//!< number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
 
-	time_t itime;					//!< UNIX time, used as seed for the random number generator
+	uint64_t itime;					//!< initial UNIX time, used as seed for the random number generator
 }
 sim_params_t;
 

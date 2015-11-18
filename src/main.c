@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
 	// zero simulation parameters and set initial time for random seed.
 	sim_params_t params = { 0 };
-	params.itime = time(NULL);
+	params.itime = GetTicks();
 
 	// read parameters from input file.
 	duprintf("Reading simulation parameters from file '%s'...\n", argv[1]);
@@ -79,30 +79,45 @@ int main(int argc, char *argv[])
 		return -2;
 	}
 
-	// trying to create output directory corresponding to parameters
+	// create output directory or read from 2nd command line argument
 	char path[1024];
-	makedir("output");
-	sprintf(path, "output/sim_%lli", params.itime);
-	while (makedir(path) < 0)
+	if (argc < 3)
 	{
-		duprintf("Cannot create output directory '%s', changing 'itime'...\n", path);
-		#ifdef _WIN32
-		Sleep(15000);
-		#else
-		sleep(15);
-		#endif
-		params.itime += (clock() % 16) + 15;
-		sprintf(path, "output/sim_%lli", params.itime);
+		duprintf("No output directory specified.\n");
+		duprintf("Creating default directory based on parameters and initial seed...\n");
+		makedir("output");
+		sprintf(path, "output/N%ix%i_beta%g_mu%g_sim_%llu", params.Nx, params.Ny, params.L * params.dt, params.mu, params.itime);
+		while (makedir(path) < 0)
+		{
+			duprintf("Cannot create output directory '%s', changing 'itime'...\n", path);
+			#ifdef _WIN32
+			Sleep(2000);
+			#else
+			sleep(2);
+			#endif
+			params.itime += (clock() % 16) + 15;
+			sprintf(path, "output/N%ix%i_beta%g_mu%g_sim_%llu", params.Nx, params.Ny, params.L * params.dt, params.mu, params.itime);
+		}
+		duprintf("Created output directory '%s'.\n\n", path);
 	}
-	duprintf("Created output directory '%s'...\n\n", path);
-
+	else
+	{
+		strcpy(path, argv[2]);
+		duprintf("Using output directory '%s'.\n\n", path);
+	}
+	
 	// base output file name
 	char fnbase[1024];
-	sprintf(fnbase, "output/sim_%lli/N%ix%i_beta%g_sim_%lli_ns%i", params.itime, params.Nx, params.Ny, params.L * params.dt, params.itime, params.nsampl);
+	sprintf(fnbase, "%s/sim_%llu", path, params.itime);
 
 	// open simulation log file for writing
 	sprintf(path, "%s_simulation.log", fnbase);
 	fd_log = fopen(path, "w");
+	if (fd_log == NULL)
+	{
+		duprintf("Cannot open log file '%s'.\nCheck if output directory exists.\nexiting...\n", path);
+		return -3;
+	}
 
 	duprintf("Hubbard model DQMC\n------------------\n");
 	duprintf("_______________________________________________________________________________\n");
@@ -119,7 +134,7 @@ int main(int argc, char *argv[])
 		status = AllocateUnequalTimeMeasurementData(params.Norb, params.Nx, params.Ny, params.L, &meas_data_uneqlt);
 		if (status < 0) {
 			duprintf("Could not allocate unequal time measurement data structure (probably out of memory), exiting...\n");
-			return -3;
+			return -4;
 		}
 	}
 

@@ -3,20 +3,20 @@
 #include "profiler.h"
 #include "hash_table.h"
 #include "dupio.h"
+#include "util.h"
+#include <stdint.h>
 #include <mkl.h>
 #include <omp.h>
 
 #ifdef _WIN32
 #include <windows.h>
-#else
-#include <time.h>
 #endif
 
 typedef struct
 {
-	long long start_tick;
+	uint64_t start_tick;
 	int calls;
-	long long total;
+	uint64_t total;
 }
 profile_entry_t;
 
@@ -24,25 +24,7 @@ profile_entry_t;
 static ht_t profile_table;
 
 // for total wall time calculation
-static long long main_start_tick;
-
-
-//________________________________________________________________________________________________________________________
-///
-/// \brief Get current time tick
-///
-static inline long long get_ticks(void)
-{
-#ifdef _WIN32
-	LARGE_INTEGER t;
-	QueryPerformanceCounter(&t);
-	return t.QuadPart;
-#else
-	struct timespec t;
-	clock_gettime(CLOCK_MONOTONIC, &t);
-	return 1000000000LL * t.tv_sec + t.tv_nsec;
-#endif
-}
+static uint64_t main_start_tick;
 
 
 //________________________________________________________________________________________________________________________
@@ -53,7 +35,7 @@ void Profile_Start(void)
 {
 	const int n_buckets = 32;
 	htInit(&profile_table, n_buckets);
-	main_start_tick = get_ticks();
+	main_start_tick = GetTicks();
 }
 
 
@@ -88,7 +70,7 @@ void Profile_Begin(const char *name)
 		if (p->start_tick == 0)
 		{
 			p->calls++;
-			p->start_tick = get_ticks();
+			p->start_tick = GetTicks();
 		}
 	}
 }
@@ -117,7 +99,7 @@ void Profile_End(const char *name)
 		// p should never be NULL unless Profile_End is called before Profile_Begin.
 		if (p != NULL)
 		{
-			p->total += get_ticks() - p->start_tick;
+			p->total += GetTicks() - p->start_tick;
 			p->start_tick = 0; // reset to 0 to indicate completion of a profiling block
 		}
 	}
@@ -132,7 +114,7 @@ static int entry_compare(const void *a, const void *b)
 	ht_entry_t *eb = *(ht_entry_t **)b;
 	profile_entry_t *pa = (profile_entry_t *)ea->val;
 	profile_entry_t *pb = (profile_entry_t *)eb->val;
-	long long diff = pb->total - pa->total;
+	uint64_t diff = pb->total - pa->total;
 	return (diff > 0) ? 1 : (diff < 0) ? -1 : 0; // in case casting to int overflows.
 }
 */
@@ -154,14 +136,14 @@ static int entry_compare(const void *a, const void *b)
 void Profile_Stop(void)
 {
 	// get total wall time
-	long long main_total = get_ticks() - main_start_tick;
+	uint64_t main_total = GetTicks() - main_start_tick;
 
 	// get the tick resolution
 #ifdef _WIN32
 	LARGE_INTEGER freq;
 	QueryPerformanceFrequency(&freq);
 	const double ticks_per_sec = (double)freq.QuadPart;
-#else
+#else // clock_gettime has nanosecond resolution
 	const double ticks_per_sec = (double)1000000000;
 #endif
 

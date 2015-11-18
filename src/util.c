@@ -65,3 +65,30 @@ int WriteData(const char *filename, const void *data, const size_t size, const s
 
 	return 0;
 }
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Get current time tick
+///
+#ifdef _WIN32
+#include <windows.h>
+
+uint64_t GetTicks(void)
+{
+	LARGE_INTEGER t;
+	QueryPerformanceCounter(&t);
+	return (uint64_t)(t.QuadPart);
+}
+
+#else
+
+#include <time.h>
+
+uint64_t GetTicks(void)
+{
+	struct timespec t;
+	clock_gettime(CLOCK_MONOTONIC, &t);
+	return (uint64_t)(1000000000ULL * t.tv_sec + t.tv_nsec);
+}
+
+#endif
