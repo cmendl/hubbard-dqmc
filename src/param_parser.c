@@ -330,8 +330,16 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 	if ((value = htGet(&hashtable, "itime"))    != NULL) { params->itime   = atoi(value->str[0]); }
 
 	// deallocate everything in the hash table
+	int i;
+	for (i = 0; i < hashtable.n_buckets; i++)
+	{
+		ht_entry_t *entry;
+		for (entry = hashtable.buckets[i]; entry != NULL; entry = entry->next)
+		{
+			DeleteValueList((value_list_t *)entry->val);
+		}
+	}
 	htFree(&hashtable);
-	//// TODO: still have to call 'DeleteValueList()' for each entry
 
 	return 0;
 }
