@@ -167,8 +167,11 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 				const double Gu_ii = Gu->mat[io + N*io];
 				const double Gd_ii = Gd->mat[io + N*io];
 
-				meas_data->zz_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
-				meas_data->xx_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
+				if (o == p)
+				{
+					meas_data->zz_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
+					meas_data->xx_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
+				}
 
 				for (k = 0; k < Ncell; k++)
 				{
@@ -182,8 +185,8 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 					const double Gd_ji = Gd->mat[jp + N*io];
 
 					// k = 0 is special
-					meas_data->uu_corr[k + offset] += signfac*(k == 0 ? (1 - Gu_ii) : (1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
-					meas_data->dd_corr[k + offset] += signfac*(k == 0 ? (1 - Gd_ii) : (1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
+					meas_data->uu_corr[k + offset] += signfac*((k == 0 && o == p) ? (1 - Gu_ii) : (1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
+					meas_data->dd_corr[k + offset] += signfac*((k == 0 && o == p) ? (1 - Gd_ii) : (1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
 					meas_data->ud_corr[k + offset] += signfac*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
 
 					meas_data->zz_corr[k + offset] += signfac*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
