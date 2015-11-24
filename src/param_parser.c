@@ -424,6 +424,12 @@ int ValidateSimulationParameters(const sim_params_t *params)
 		return -1;
 	}
 
+	if (params->prodBlen <= 0)
+	{
+		duprintf("Invalid parameter prodBlen = %i: 'prodBlen' must be positive.\n", params->prodBlen);
+		return -1;
+	}
+
 	if (params->L % params->prodBlen != 0 || params->L / params->prodBlen <= 0)
 	{
 		duprintf("Invalid parameters L = %i, prodBlen = %i: 'L' must be divisible by 'prodBlen' and 'L/prodBlen' must be positive.\n", params->L, params->prodBlen);

@@ -7,7 +7,7 @@
 ///
 /// \brief Fill and allocate the Stratonovich parameter structure
 ///
-void FillStratonovichParameters(int Norb, const double *U, const double dt, stratonovich_params_t *params)
+void FillStratonovichParameters(const int Norb, const double *U, const double dt, stratonovich_params_t *params)
 {
 	params->expVu[0] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
 	params->expVu[1] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
@@ -42,12 +42,17 @@ void FillStratonovichParameters(int Norb, const double *U, const double dt, stra
 	}
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Free memory of the Stratonovich parameter structure
+///
 void DeleteStratonovichParameters(stratonovich_params_t *params)
 {
-	MKL_free(params->expVu[0]);
-	MKL_free(params->expVu[1]);
-	MKL_free(params->expVd[0]);
-	MKL_free(params->expVd[1]);
-	MKL_free(params->delta[0]);
 	MKL_free(params->delta[1]);
+	MKL_free(params->delta[0]);
+	MKL_free(params->expVd[1]);
+	MKL_free(params->expVd[0]);
+	MKL_free(params->expVu[1]);
+	MKL_free(params->expVu[0]);
 }

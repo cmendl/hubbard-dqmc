@@ -31,10 +31,10 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	__assume_aligned(s, MEM_DATA_ALIGN);
 
 	// dimension consistency checks
-	assert(tsm_u->N == kinetic->N);
+	assert(tsm_u->N == kinetic->Ncell * kinetic->Norb);
 	assert(tsm_u->N == tsm_d->N);
 	assert(tsm_u->L == tsm_d->L);
-	const int N = kinetic->N;
+	const int N = tsm_u->N;
 	const int Ncell = kinetic->Ncell;
 	const int L = tsm_u->L;
 
@@ -190,10 +190,10 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	__assume_aligned(expX, MEM_DATA_ALIGN);
 
 	// dimension consistency checks
-	assert(tsm_u->N == kinetic->N);
+	assert(tsm_u->N == kinetic->Ncell * kinetic->Norb);
 	assert(tsm_u->N == tsm_d->N);
 	assert(tsm_u->L == tsm_d->L);
-	const int N = kinetic->N;
+	const int N = tsm_u->N;
 	const int Ncell = kinetic->Ncell;
 	const int L = tsm_u->L;
 
@@ -339,12 +339,12 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd)
 {
 	// dimension consistency checks
-	assert(tsm_u->N == kinetic->N);
+	assert(tsm_u->N == kinetic->Ncell * kinetic->Norb);
 	assert(tsm_u->N == tsm_d->N);
 	assert(tsm_u->N == Gu->N);
 	assert(tsm_u->N == Gd->N);
 	assert(tsm_u->L == tsm_d->L);
-	const int N = kinetic->N;
+	const int N = tsm_u->N;
 	const int Ncell = kinetic->Ncell;
 	const int L = tsm_u->L;
 

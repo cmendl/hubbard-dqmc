@@ -6,15 +6,14 @@
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Matrix exponential of the kinetic energy operator
+/// \brief Matrix exponential of the kinetic energy operator; total number of orbitals (matrix dimension) is N = Norb*Ncell
 ///
 typedef struct
 {
 	double *expK;			//!< exp(-dt K)
 	double *inv_expK;		//!< exp( dt K)
 	int Norb;				//!< number of orbitals per unit cell
-	int Ncell;				//!< total number of unit cells
-	int N;					//!< total number of orbitals
+	int Ncell;				//!< total number of unit cells of the lattice
 }
 kinetic_t;
 

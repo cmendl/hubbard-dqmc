@@ -21,7 +21,7 @@ typedef struct
 stratonovich_params_t;
 
 
-void FillStratonovichParameters(int Norb, const double *U, const double dt, stratonovich_params_t *params);
+void FillStratonovichParameters(const int Norb, const double *U, const double dt, stratonovich_params_t *params);
 
 void DeleteStratonovichParameters(stratonovich_params_t *params);
 

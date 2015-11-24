@@ -7,25 +7,36 @@
 
 int KineticTest()
 {
+	// single-orbital simulation parameters
+	sim_params_t params;
+	AllocateSimulationParameters(1, &params);
+
 	// lattice dimension
-	const int Nx = 4;
-	const int Ny = 6;
+	params.Nx = 4;
+	params.Ny = 6;
 	// total number of lattice sites
-	const int N = Nx * Ny;
+	const int N = params.Nx * params.Ny;
 
 	// imaginary-time step size
-	const double dt = 1.0/7;
+	params.dt = 1.0/7;
+
+	// t (nearest neighbor) hopping parameter
+	const double t = 1.0;
+	params.t.ab[0] = t;
+	params.t.ac[0] = t;
 
 	// t' (next-nearest neighbor) hopping parameter
 	const double tp = -2.0/13;
+	params.t.ad[0] = tp;
+	params.t.bc[0] = tp;
 
 	// chemical potential
-	const double mu = 2.0/9;
+	params.mu = 2.0/9;
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
-	printf("Calculating matrix exponential of the kinetic nearest and next-nearest neighbor hopping matrix on a %i x %i lattice...\n", Nx, Ny);
+	printf("Calculating matrix exponential of the kinetic nearest and next-nearest neighbor hopping matrix on a %i x %i lattice...\n", params.Nx, params.Ny);
 	kinetic_t kinetic;
-	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
+	RectangularKineticExponential(&params, &kinetic);
 
 	// load reference data from disk
 	double *expK_ref     = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
@@ -43,6 +54,7 @@ int KineticTest()
 	MKL_free(inv_expK_ref);
 	MKL_free(expK_ref);
 	DeleteKineticExponential(&kinetic);
+	DeleteSimulationParameters(&params);
 
 	return (err < 2e-15 ? 0 : 1);
 }

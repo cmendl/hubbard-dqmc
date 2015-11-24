@@ -16,8 +16,8 @@ static inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, cons
 {
 	__assume_aligned(B, MEM_DATA_ALIGN);
 
-	const int N = kinetic->N;
 	const int Ncell = kinetic->Ncell;
+	const int N     = kinetic->Ncell * kinetic->Norb;
 
 	// copy kinetic energy matrix
 	__assume_aligned(kinetic->expK, MEM_DATA_ALIGN);
@@ -40,8 +40,8 @@ static inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kineti
 {
 	__assume_aligned(invB, MEM_DATA_ALIGN);
 
-	const int N = kinetic->N;
 	const int Ncell = kinetic->Ncell;
+	const int N     = kinetic->Ncell * kinetic->Norb;
 
 	// copy inverse kinetic energy matrix
 	__assume_aligned(kinetic->inv_expK, MEM_DATA_ALIGN);
@@ -65,8 +65,8 @@ static inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic
 {
 	__assume_aligned(B, MEM_DATA_ALIGN);
 
-	const int N = kinetic->N;
 	const int Ncell = kinetic->Ncell;
+	const int N     = kinetic->Ncell * kinetic->Norb;
 
 	// copy kinetic energy matrix
 	__assume_aligned(kinetic->expK, MEM_DATA_ALIGN);
@@ -89,8 +89,8 @@ static inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict 
 {
 	__assume_aligned(invB, MEM_DATA_ALIGN);
 
-	const int N = kinetic->N;
 	const int Ncell = kinetic->Ncell;
+	const int N     = kinetic->Ncell * kinetic->Norb;
 
 	// copy inverse kinetic energy matrix
 	__assume_aligned(kinetic->inv_expK, MEM_DATA_ALIGN);
@@ -214,7 +214,7 @@ void CopyTimeStepMatrices(time_step_matrices_t *restrict src, time_step_matrices
 void InitTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, time_step_matrices_t *restrict tsm)
 {
 	int l;
-	const int N = kinetic->N;
+	const int N = kinetic->Ncell * kinetic->Norb;
 	assert(tsm->N == N);
 
 	// calculate B and B^{-1} matrices
@@ -238,7 +238,7 @@ void InitTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const
 void InitPhononTimeStepMatrices(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, time_step_matrices_t *restrict tsm)
 {
 	int l;
-	const int N = kinetic->N;
+	const int N = kinetic->Ncell * kinetic->Norb;
 	assert(tsm->N == N);
 
 	// calculate B and B^{-1} matrices

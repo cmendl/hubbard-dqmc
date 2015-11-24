@@ -5,22 +5,23 @@
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Allocate and calculate matrix exponential of the kinetic nearest and next-nearest
-/// neighbor hopping matrix for a rectangular lattice geometry with periodic boundary conditions.
+/// \brief Allocate and calculate matrix exponential of the kinetic hopping matrix
+/// for a rectangular lattice geometry with periodic boundary conditions
 ///
 void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_t *restrict kinetic)
 {
 	const int Norb = params->Norb;
-	const int Nx = params->Nx;
-	const int Ny = params->Ny;
-	const int N = Norb*Nx*Ny;
+	const int Nx   = params->Nx;
+	const int Ny   = params->Ny;
 
-	kinetic->Norb = Norb;
-	kinetic->Ncell = Nx*Ny;
-	kinetic->N = N;
+	const int Ncell = Nx*Ny;
+	const int N     = Norb*Ncell;
 
-	int i, j; // spatial indices
-	int o, p; // these are orbital numbers
+	kinetic->Norb  = Norb;
+	kinetic->Ncell = Ncell;
+
+	int i, j;	// spatial lattice indices
+	int o, p;	// orbital indices
 
 	double *T = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
 
@@ -37,27 +38,34 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 				{
 					const int i_next = (i < Nx-1 ? i + 1 : 0);
 
+					// cell indices
+					//  c    d
+					//  |\  /
+					//  | \/
+					//  | /\
+					//  |/  \
+					//  a----b
 					const int a = i      + j     *Nx;
 					const int b = i_next + j     *Nx;
 					const int c = i      + j_next*Nx;
 					const int d = i_next + j_next*Nx;
 
-					// here, -= is used to avoid overwriting some bonds that are repeated due to periodic
-					// boundary conditions, when Nx and/or Ny == 2.
-					T[(a + o*Nx*Ny)   + (a + p*Nx*Ny)*N] -= params->t.aa[o + p * Norb];
-					T[(a + o*Nx*Ny)*N + (a + p*Nx*Ny)  ] -= params->t.aa[o + p * Norb];
+					// here, -= is used to avoid overwriting some bonds that are repeated due to
+					// periodic boundary conditions, when Nx and/or Ny == 2
+					T[(a + o*Ncell)   + (a + p*Ncell)*N] -= params->t.aa[o + p * Norb];
+					T[(a + o*Ncell)*N + (a + p*Ncell)  ] -= params->t.aa[o + p * Norb];
 
-					T[(a + o*Nx*Ny)   + (b + p*Nx*Ny)*N] -= params->t.ab[o + p * Norb];
-					T[(a + o*Nx*Ny)*N + (b + p*Nx*Ny)  ] -= params->t.ab[o + p * Norb];
+					T[(a + o*Ncell)   + (b + p*Ncell)*N] -= params->t.ab[o + p * Norb];
+					T[(a + o*Ncell)*N + (b + p*Ncell)  ] -= params->t.ab[o + p * Norb];
 
-					T[(a + o*Nx*Ny)   + (c + p*Nx*Ny)*N] -= params->t.ac[o + p * Norb];
-					T[(a + o*Nx*Ny)*N + (c + p*Nx*Ny)  ] -= params->t.ac[o + p * Norb];
+					T[(a + o*Ncell)   + (c + p*Ncell)*N] -= params->t.ac[o + p * Norb];
+					T[(a + o*Ncell)*N + (c + p*Ncell)  ] -= params->t.ac[o + p * Norb];
 
-					T[(a + o*Nx*Ny)   + (d + p*Nx*Ny)*N] -= params->t.ad[o + p * Norb];
-					T[(a + o*Nx*Ny)*N + (d + p*Nx*Ny)  ] -= params->t.ad[o + p * Norb];
+					T[(a + o*Ncell)   + (d + p*Ncell)*N] -= params->t.ad[o + p * Norb];
+					T[(a + o*Ncell)*N + (d + p*Ncell)  ] -= params->t.ad[o + p * Norb];
 
-					T[(b + o*Nx*Ny)   + (c + p*Nx*Ny)*N] -= params->t.bc[o + p * Norb];
-					T[(b + o*Nx*Ny)*N + (c + p*Nx*Ny)  ] -= params->t.bc[o + p * Norb];
+					T[(b + o*Ncell)   + (c + p*Ncell)*N] -= params->t.bc[o + p * Norb];
+					T[(b + o*Ncell)*N + (c + p*Ncell)  ] -= params->t.bc[o + p * Norb];
 				}
 			}
 		}
@@ -66,10 +74,10 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 	// set diagonal entries in 'T' (shift by chemical potential and site energies)
 	for (o = 0; o < Norb; o++)
 	{
-		for (i = 0; i < Nx*Ny; i++)
+		for (i = 0; i < Ncell; i++)
 		{
-			const int index = i + o*Nx*Ny;
-			T[index + N * index] = -params->mu + params->eps[o];
+			const int index = i + o*Ncell;
+			T[index + N*index] = -params->mu + params->eps[o];
 		}
 	}
 
