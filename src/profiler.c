@@ -21,7 +21,7 @@ typedef struct
 profile_entry_t;
 
 // hash table of all keys and profile entries.
-static ht_t profile_table;
+static hash_table_t profile_table;
 
 // for total wall time calculation
 static uint64_t main_start_tick;
@@ -34,7 +34,7 @@ static uint64_t main_start_tick;
 void Profile_Start(void)
 {
 	const int n_buckets = 32;
-	htInit(&profile_table, n_buckets);
+	AllocateHashTable(&profile_table, n_buckets);
 	main_start_tick = GetTicks();
 }
 
@@ -50,20 +50,20 @@ void Profile_Begin(const char *name)
 	int thread_num = omp_get_thread_num();
 	if (thread_num > 0)
 	{
-		snprintf(name2, 128, "%s-%d", name, thread_num);
+		sprintf(name2, "%s-%d", name, thread_num);
 		name = name2;
 	}
 
 	#pragma omp critical(profiler)
 	{
 		// pointer to corresponding profile entry.
-		profile_entry_t *p = (profile_entry_t *)htGet(&profile_table, name);
+		profile_entry_t *p = (profile_entry_t *)HashTableGet(&profile_table, name);
 
 		// initializes everything the first time around
 		if (p == NULL)
 		{
 			p = (profile_entry_t *)MKL_calloc(1, sizeof(profile_entry_t), MEM_DATA_ALIGN);
-			htInsert(&profile_table, name, p);
+			HashTableInsert(&profile_table, name, p);
 		}
 
 		// don't do anything if a profiling block with the same name is already running
@@ -87,14 +87,14 @@ void Profile_End(const char *name)
 	int thread_num = omp_get_thread_num();
 	if (thread_num > 0)
 	{
-		snprintf(name2, 128, "%s-%d", name, thread_num);
+		sprintf(name2, "%s-%d", name, thread_num);
 		name = name2;
 	}
 
 	#pragma omp critical(profiler)
 	{
 		// pointer to corresponding profile entry.
-		profile_entry_t *p = (profile_entry_t *)htGet(&profile_table, name);
+		profile_entry_t *p = (profile_entry_t *)HashTableGet(&profile_table, name);
 
 		// p should never be NULL unless Profile_End is called before Profile_Begin.
 		if (p != NULL)
@@ -176,7 +176,7 @@ void Profile_Stop(void)
 
 	// free all allocated memory used for profiling.
 	MKL_free(entries_table);
-	htFree(&profile_table);
+	DeleteHashTable(&profile_table, MKL_free);
 }
 
 

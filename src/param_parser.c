@@ -68,8 +68,10 @@ static void AppendValues(value_list_t *list, const value_list_t *ap)
 ///
 /// \brief Delete parameter value list
 ///
-static void DeleteValueList(value_list_t *list)
+static void DeleteValueList(void *ptr)
 {
+	value_list_t *list = (value_list_t *)ptr;
+
 	int i;
 	for (i = 0; i < list->num; i++)
 	{
@@ -147,8 +149,8 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 	}
 
 	// load the input file into a hash table
-	ht_t hashtable;
-	htInit(&hashtable, 64); // 64 buckets
+	hash_table_t hashtable;
+	AllocateHashTable(&hashtable, 64); // 64 buckets
 
 	// read file line by line
 	char line[1024];
@@ -186,12 +188,12 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 
 		// add the (name, value) pair to the hash table;
 		// if the hash table already has an entry for the parameter name, concatenate values
-		value_list_t *val_prev = (value_list_t *)htGet(&hashtable, name);
+		value_list_t *val_prev = (value_list_t *)HashTableGet(&hashtable, name);
 		if (val_prev == NULL)	// not in hash table yet
 		{
 			value_list_t *v = MKL_calloc(1, sizeof(value_list_t), MEM_DATA_ALIGN);
 			AppendValues(v, &value);
-			htInsert(&hashtable, name, v);
+			HashTableInsert(&hashtable, name, v);
 		}
 		else
 		{
@@ -204,7 +206,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 	// update parameters with values from hash table
 	int Norb;
 	value_list_t *value;
-	if ((value = htGet(&hashtable, "Norb")) != NULL)
+	if ((value = HashTableGet(&hashtable, "Norb")) != NULL)
 	{
 		assert(value->num > 0);
 		Norb = atoi(value->str[0]);
@@ -221,10 +223,10 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 		return -2;
 	}
 
-	if ((value = htGet(&hashtable, "Nx")) != NULL) { params->Nx = atoi(value->str[0]); }
-	if ((value = htGet(&hashtable, "Ny")) != NULL) { params->Ny = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "Nx")) != NULL) { params->Nx = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "Ny")) != NULL) { params->Ny = atoi(value->str[0]); }
 
-	if ((value = htGet(&hashtable, "t_aa")) != NULL)
+	if ((value = HashTableGet(&hashtable, "t_aa")) != NULL)
 	{
 		if (ReadHoppings(Norb, value, params->t.aa) != 0)
 		{
@@ -232,7 +234,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = htGet(&hashtable, "t_ab")) != NULL)
+	if ((value = HashTableGet(&hashtable, "t_ab")) != NULL)
 	{
 		if (ReadHoppings(Norb, value, params->t.ab) != 0)
 		{
@@ -240,7 +242,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = htGet(&hashtable, "t_ac")) != NULL)
+	if ((value = HashTableGet(&hashtable, "t_ac")) != NULL)
 	{
 		if (ReadHoppings(Norb, value, params->t.ac) != 0)
 		{
@@ -248,7 +250,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = htGet(&hashtable, "t_ad")) != NULL)
+	if ((value = HashTableGet(&hashtable, "t_ad")) != NULL)
 	{
 		if (ReadHoppings(Norb, value, params->t.ad) != 0)
 		{
@@ -256,7 +258,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = htGet(&hashtable, "t_bc")) != NULL)
+	if ((value = HashTableGet(&hashtable, "t_bc")) != NULL)
 	{
 		if (ReadHoppings(Norb, value, params->t.bc) != 0)
 		{
@@ -264,7 +266,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = htGet(&hashtable, "U")) != NULL)
+	if ((value = HashTableGet(&hashtable, "U")) != NULL)
 	{
 		if (ReadList(Norb, value, params->U) != 0)
 		{
@@ -272,7 +274,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = htGet(&hashtable, "eps")) != NULL)
+	if ((value = HashTableGet(&hashtable, "eps")) != NULL)
 	{
 		if (ReadList(Norb, value, params->eps) != 0)
 		{
@@ -280,11 +282,11 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = htGet(&hashtable, "mu")) != NULL) { params->mu = atof(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "mu")) != NULL) { params->mu = atof(value->str[0]); }
 
 	// phonons
 
-	if ((value = htGet(&hashtable, "use_phonons")) != NULL)
+	if ((value = HashTableGet(&hashtable, "use_phonons")) != NULL)
 	{
 		assert(value->num > 0);
 
@@ -299,7 +301,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 		}
 	}
 
-	if ((value = htGet(&hashtable, "phonon_omega")) != NULL)
+	if ((value = HashTableGet(&hashtable, "phonon_omega")) != NULL)
 	{
 		if (ReadList(Norb, value, params->phonon_params.omega) != 0)
 		{
@@ -307,7 +309,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = htGet(&hashtable, "phonon_g")) != NULL)
+	if ((value = HashTableGet(&hashtable, "phonon_g")) != NULL)
 	{
 		if (ReadList(Norb, value, params->phonon_params.g) != 0)
 		{
@@ -315,31 +317,22 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = htGet(&hashtable, "phonon_box_width")) != NULL)      { params->phonon_params.box_width      = atof(value->str[0]); }
-	if ((value = htGet(&hashtable, "phonon_nblock_updates")) != NULL) { params->phonon_params.nblock_updates = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "phonon_box_width")) != NULL)      { params->phonon_params.box_width      = atof(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "phonon_nblock_updates")) != NULL) { params->phonon_params.nblock_updates = atoi(value->str[0]); }
 
 	// time flow parameters
-	if ((value = htGet(&hashtable, "dt"))       != NULL) { params->dt       = atof(value->str[0]); }
-	if ((value = htGet(&hashtable, "L"))        != NULL) { params->L        = atoi(value->str[0]); }
-	if ((value = htGet(&hashtable, "prodBlen")) != NULL) { params->prodBlen = atoi(value->str[0]); }
-	if ((value = htGet(&hashtable, "nwraps"))   != NULL) { params->nwraps   = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "dt"))       != NULL) { params->dt       = atof(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "L"))        != NULL) { params->L        = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "prodBlen")) != NULL) { params->prodBlen = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "nwraps"))   != NULL) { params->nwraps   = atoi(value->str[0]); }
 
-	if ((value = htGet(&hashtable, "nequil"))   != NULL) { params->nequil  = atoi(value->str[0]); }
-	if ((value = htGet(&hashtable, "nsampl"))   != NULL) { params->nsampl  = atoi(value->str[0]); }
-	if ((value = htGet(&hashtable, "nuneqlt"))  != NULL) { params->nuneqlt = atoi(value->str[0]); }
-	if ((value = htGet(&hashtable, "itime"))    != NULL) { params->itime   = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "nequil"))   != NULL) { params->nequil  = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "nsampl"))   != NULL) { params->nsampl  = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "nuneqlt"))  != NULL) { params->nuneqlt = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "itime"))    != NULL) { params->itime   = atoi(value->str[0]); }
 
 	// deallocate everything in the hash table
-	int i;
-	for (i = 0; i < hashtable.n_buckets; i++)
-	{
-		ht_entry_t *entry;
-		for (entry = hashtable.buckets[i]; entry != NULL; entry = entry->next)
-		{
-			DeleteValueList((value_list_t *)entry->val);
-		}
-	}
-	htFree(&hashtable);
+	DeleteHashTable(&hashtable, DeleteValueList);
 
 	return 0;
 }

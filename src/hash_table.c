@@ -6,35 +6,37 @@
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Allocates memory for a hash table
+/// \brief Allocate memory for a hash table
 ///
-void htInit(ht_t *ht, const int n_buckets)
+void AllocateHashTable(hash_table_t *ht, const int n_buckets)
 {
-	ht->buckets = (ht_entry_t **)MKL_malloc(n_buckets * sizeof(ht_entry_t *), MEM_DATA_ALIGN);
-	memset(ht->buckets, 0, n_buckets * sizeof(ht_entry_t *));
-	ht->n_entries = 0;
 	ht->n_buckets = n_buckets;
+	ht->n_entries = 0;
+
+	ht->buckets = (ht_entry_t **)MKL_calloc(n_buckets, sizeof(ht_entry_t *), MEM_DATA_ALIGN);
 }
 
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Frees memory for everything in a hash table
+/// \brief Free memory for everything in a hash table
 ///
-void htFree(ht_t *ht)
+void DeleteHashTable(hash_table_t *ht, FreeFuncPtr *free_func)
 {
 	int i;
 	for (i = 0; i < ht->n_buckets; i++)
 	{
-		ht_entry_t *entry, *temp = ht->buckets[i];
-		while ((entry = temp) != NULL)
+		ht_entry_t *entry = ht->buckets[i];
+		while (entry != NULL)
 		{
 			MKL_free(entry->key);
-			MKL_free(entry->val); //assumes this is sufficient for deallocating val
-			temp = entry->next;
+			free_func(entry->val);
+			ht_entry_t *next = entry->next;
 			MKL_free(entry);
+			entry = next;
 		}
 	}
+
 	MKL_free(ht->buckets);
 }
 
@@ -43,35 +45,45 @@ void htFree(ht_t *ht)
 ///
 /// \brief Public domain FNV-1a (32-bit) hash algorithm from http://www.isthe.com/chongo/tech/comp/fnv/index.html
 ///
-static uint32_t fnv_1a(const char *key)
+static uint32_t FNV1a(const char *key)
 {
 	uint32_t hash = 2166136261;
 	while (*key)
-		hash = (hash ^ *key++) * 16777619;
+	{
+		hash = (hash ^ (*key)) * 16777619;
+		key++;
+	}
 	return hash;
 }
 
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Inserts an entry into hash table; if key already exists,
-// replace previous value and return pointer to old value, otherwise return NULL
+/// \brief Insert an entry into the hash table; if key already exists,
+/// replace previous value and return pointer to old value, otherwise return NULL
 ///
-void *htInsert(ht_t *ht, const char *key, void *val)
+void *HashTableInsert(hash_table_t *ht, const char *key, void *val)
 {
-	const int i = fnv_1a(key) % ht->n_buckets;
-	ht_entry_t **p_entry, *entry; //p_entry is whatever was pointing at entry.
-	for (p_entry = ht->buckets + i; (entry = *p_entry) != NULL; p_entry = &(entry->next))
+	// compute hash value of 'key'
+	const int i = FNV1a(key) % ht->n_buckets;
+
+	ht_entry_t **p_entry = &ht->buckets[i];		// p_entry is whatever was pointing at entry
+	for (; (*p_entry) != NULL; p_entry = &(*p_entry)->next)
 	{
-		if (!strcmp(key, entry->key)) // entry already exists!
+		// current entry
+		ht_entry_t *entry = *p_entry;
+
+		if (strcmp(key, entry->key) == 0) // entry already exists!
 		{
 			void *ret = entry->val;
 			entry->val = val;
 			return ret;
 		}
 	}
-	//not found, insert.
-	entry = (ht_entry_t *)MKL_malloc(sizeof(ht_entry_t), MEM_DATA_ALIGN);
+
+	// key not found, insert
+	ht_entry_t *entry = (ht_entry_t *)MKL_malloc(sizeof(ht_entry_t), MEM_DATA_ALIGN);
+	// copy key string
 	entry->key = (char *)MKL_malloc(strlen(key) + 1, MEM_DATA_ALIGN);
 	strcpy(entry->key, key);
 	entry->val = val;
@@ -85,41 +97,55 @@ void *htInsert(ht_t *ht, const char *key, void *val)
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Returns val, which is a pointer to the actual value. If key not found, return NULL.
+/// \brief Return a pointer to the value corresponding to 'key'; if the key is not found, return NULL
 ///
-void *htGet(const ht_t *ht, const char *key)
+void *HashTableGet(const hash_table_t *ht, const char *key)
 {
-	const int i = fnv_1a(key) % ht->n_buckets;
+	// compute hash value of 'key'
+	const int i = FNV1a(key) % ht->n_buckets;
+
 	ht_entry_t *entry;
 	for (entry = ht->buckets[i]; entry != NULL; entry = entry->next)
 	{
-		if (!strcmp(key, entry->key))
+		if (strcmp(key, entry->key) == 0) {
 			return entry->val;
+		}
 	}
-	//not found
+
+	// not found
 	return NULL;
 }
 
+
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Removes and deallocates entry from hash table. If key not found, return 1.
+/// \brief Remove entry with given key from hash table and return corresponding value; if the key cannot be not found, return NULL
 ///
-int htDelete(ht_t *ht, const char *key)
+void *HashTableRemove(hash_table_t *ht, const char *key)
 {
-	const int i = fnv_1a(key) % ht->n_buckets;
-	ht_entry_t **p_entry, *entry; //p_entry is whatever was pointing at entry.
-	for (p_entry = ht->buckets + i; (entry = *p_entry) != NULL; p_entry = &(entry->next))
+	// compute hash value of 'key'
+	const int i = FNV1a(key) % ht->n_buckets;
+
+	ht_entry_t **p_entry = &ht->buckets[i];		// p_entry is whatever was pointing at current entry
+	for (; (*p_entry) != NULL; p_entry = &(*p_entry)->next)
 	{
-		if (!strcmp(key, entry->key))
+		// current entry
+		ht_entry_t *entry = *p_entry;
+
+		if (strcmp(key, entry->key) == 0)
 		{
-			*p_entry = entry->next;
-			MKL_free(entry->key);
-			MKL_free(entry->val);
+			// key found
+
+			(*p_entry) = entry->next;		// redirect pointer, effectively removing current entry from linked list
+			void *val = entry->val;			// keep reference to current value
+			MKL_free(entry->key);			// delete current entry
 			MKL_free(entry);
 			ht->n_entries--;
-			return 0;
+
+			return val;
 		}
 	}
-	//not found
-	return 1;
+
+	// not found
+	return NULL;
 }
