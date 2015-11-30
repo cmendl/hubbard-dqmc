@@ -9,6 +9,8 @@
 ///
 void FillStratonovichParameters(const int Norb, const double *U, const double dt, stratonovich_params_t *params)
 {
+	params->Norb = Norb;
+
 	params->expVu[0] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
 	params->expVu[1] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
 	params->expVd[0] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);

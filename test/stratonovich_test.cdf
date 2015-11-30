@@ -23,10 +23,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[      1064,         20]
-NotebookDataLength[      4543,        171]
-NotebookOptionsPosition[      4806,        157]
-NotebookOutlinePosition[      5150,        172]
-CellTagsIndexPosition[      5107,        169]
+NotebookDataLength[      6215,        222]
+NotebookOptionsPosition[      6437,        207]
+NotebookOutlinePosition[      6780,        222]
+CellTagsIndexPosition[      6737,        219]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -84,7 +84,13 @@ Cell[BoxData["0"], "Output"]
 Cell[BoxData[{
  RowBox[{
   RowBox[{
-   SubscriptBox["U", "val"], "=", "4"}], ";"}], "\[IndentingNewLine]", 
+   SubscriptBox["U", "val"], "=", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"21", "/", "5"}], ",", 
+     RowBox[{"27", "/", "10"}], ",", 
+     RowBox[{"51", "/", "10"}], ",", 
+     RowBox[{"19", "/", "5"}]}], "}"}]}], ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
    SubscriptBox["\[Tau]", "val"], "=", 
@@ -105,12 +111,36 @@ Cell[BoxData[{
  RowBox[{"N", "[", "%", "]"}]}], "Input"],
 
 Cell[BoxData[
- RowBox[{"ArcCosh", "[", 
-  SuperscriptBox["\[ExponentialE]", 
-   RowBox[{"2", "/", "11"}]], "]"}]], "Output"],
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"ArcCosh", "[", 
+    SuperscriptBox["\[ExponentialE]", 
+     RowBox[{"21", "/", "110"}]], "]"}], ",", 
+   RowBox[{"ArcCosh", "[", 
+    SuperscriptBox["\[ExponentialE]", 
+     RowBox[{"27", "/", "220"}]], "]"}], ",", 
+   RowBox[{"ArcCosh", "[", 
+    SuperscriptBox["\[ExponentialE]", 
+     RowBox[{"51", "/", "220"}]], "]"}], ",", 
+   RowBox[{"ArcCosh", "[", 
+    SuperscriptBox["\[ExponentialE]", 
+     RowBox[{"19", "/", "110"}]], "]"}]}], "}"}]], "Output"],
 
-Cell[BoxData["0.6214513424467174`"], "Output"]
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+  "0.6377500503954737`", ",", "0.5056270073617484`", ",", 
+   "0.7074957248939457`", ",", "0.6048110364152367`"}], "}"}]], "Output"]
 }, Open  ]],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   SubscriptBox["fn", "base"], "=", 
+   RowBox[{
+    RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
+    RowBox[{"FileBaseName", "[", 
+     RowBox[{"NotebookFileName", "[", "]"}], "]"}]}]}], ";"}]], "Input"],
 
 Cell[BoxData[
  RowBox[{
@@ -119,44 +149,64 @@ Cell[BoxData[
    " ", "*)"}], "\[IndentingNewLine]", 
   RowBox[{
    RowBox[{
-    RowBox[{"Block", "[", 
+    RowBox[{"Export", "[", 
      RowBox[{
-      RowBox[{"{", 
-       RowBox[{"\[Lambda]", "=", 
-        SubscriptBox["\[Lambda]", "val"]}], "}"}], ",", 
+      RowBox[{
+       SubscriptBox["fn", "base"], "<>", "\"\<_expVu.dat\>\""}], ",", 
       RowBox[{"N", "[", 
        RowBox[{
-        RowBox[{"{", 
-         RowBox[{
-          RowBox[{"Exp", "[", 
-           RowBox[{"-", "\[Lambda]"}], "]"}], ",", 
-          RowBox[{"Exp", "[", "\[Lambda]", "]"}], ",", 
-          RowBox[{"Exp", "[", "\[Lambda]", "]"}], ",", 
-          RowBox[{"Exp", "[", 
-           RowBox[{"-", "\[Lambda]"}], "]"}], ",", 
+        RowBox[{"Flatten", "[", 
+         RowBox[{"{", 
           RowBox[{
            RowBox[{"Exp", "[", 
-            RowBox[{"2", "\[Lambda]"}], "]"}], "-", "1"}], ",", 
-          RowBox[{
+            RowBox[{"-", 
+             SubscriptBox["\[Lambda]", "val"]}], "]"}], ",", 
            RowBox[{"Exp", "[", 
-            RowBox[{
-             RowBox[{"-", "2"}], "\[Lambda]"}], "]"}], "-", "1"}]}], "}"}], 
-        ",", 
-        RowBox[{"2", "MachinePrecision"}]}], "]"}]}], "]"}], ";"}], 
-   "\[IndentingNewLine]", 
+            SubscriptBox["\[Lambda]", "val"], "]"}]}], "}"}], "]"}], ",", 
+        RowBox[{"2", "MachinePrecision"}]}], "]"}], ",", "\"\<Real64\>\""}], 
+     "]"}], ";"}], "\[IndentingNewLine]", 
    RowBox[{
     RowBox[{"Export", "[", 
      RowBox[{
       RowBox[{
-       RowBox[{"NotebookDirectory", "[", "]"}], "<>", 
-       RowBox[{"FileBaseName", "[", 
-        RowBox[{"NotebookFileName", "[", "]"}], "]"}], "<>", "\"\<.dat\>\""}],
-       ",", 
-      RowBox[{"N", "[", "%", "]"}], ",", "\"\<Real64\>\""}], "]"}], 
-    ";"}]}]}]], "Input"]
+       SubscriptBox["fn", "base"], "<>", "\"\<_expVd.dat\>\""}], ",", 
+      RowBox[{"N", "[", 
+       RowBox[{
+        RowBox[{"Flatten", "[", 
+         RowBox[{"{", 
+          RowBox[{
+           RowBox[{"Exp", "[", 
+            SubscriptBox["\[Lambda]", "val"], "]"}], ",", 
+           RowBox[{"Exp", "[", 
+            RowBox[{"-", 
+             SubscriptBox["\[Lambda]", "val"]}], "]"}]}], "}"}], "]"}], ",", 
+        RowBox[{"2", "MachinePrecision"}]}], "]"}], ",", "\"\<Real64\>\""}], 
+     "]"}], ";"}], "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"Export", "[", 
+     RowBox[{
+      RowBox[{
+       SubscriptBox["fn", "base"], "<>", "\"\<_delta.dat\>\""}], ",", 
+      RowBox[{"N", "[", 
+       RowBox[{
+        RowBox[{"Flatten", "[", 
+         RowBox[{"{", 
+          RowBox[{
+           RowBox[{
+            RowBox[{"Exp", "[", 
+             RowBox[{"2", 
+              SubscriptBox["\[Lambda]", "val"]}], "]"}], "-", "1"}], ",", 
+           RowBox[{
+            RowBox[{"Exp", "[", 
+             RowBox[{
+              RowBox[{"-", "2"}], 
+              SubscriptBox["\[Lambda]", "val"]}], "]"}], "-", "1"}]}], "}"}], 
+         "]"}], ",", 
+        RowBox[{"2", "MachinePrecision"}]}], "]"}], ",", "\"\<Real64\>\""}], 
+     "]"}], ";"}]}]}]], "Input"]
 },
-WindowSize->{1199, 583},
-WindowMargins->{{196, Automatic}, {Automatic, 183}},
+WindowSize->{1358, 764},
+WindowMargins->{{279, Automatic}, {86, Automatic}},
 FrontEndVersion->"10.0 for Microsoft Windows (64-bit) (July 1, 2014)",
 StyleDefinitions->"Default.nb"
 ]
@@ -179,17 +229,18 @@ Cell[CellGroupData[{
 Cell[1828, 52, 762, 26, 39, "Input"],
 Cell[2593, 80, 28, 0, 31, "Output"]
 }, Open  ]],
-Cell[2636, 83, 217, 7, 52, "Input"],
+Cell[2636, 83, 396, 13, 52, "Input"],
 Cell[CellGroupData[{
-Cell[2878, 94, 313, 10, 52, "Input"],
-Cell[3194, 106, 124, 3, 33, "Output"],
-Cell[3321, 111, 46, 0, 31, "Output"]
+Cell[3057, 100, 313, 10, 52, "Input"],
+Cell[3373, 112, 509, 14, 33, "Output"],
+Cell[3885, 128, 172, 4, 31, "Output"]
 }, Open  ]],
-Cell[3382, 114, 1420, 41, 72, "Input"]
+Cell[4072, 135, 242, 7, 31, "Input"],
+Cell[4317, 144, 2116, 61, 92, "Input"]
 }
 ]
 *)
 
 (* End of internal cache information *)
 
-(* NotebookSignature Twp0db5c0jf8RBK#iHdURVJv *)
+(* NotebookSignature vv0ZZxkOOIw4UCgw9rY1Zqst *)

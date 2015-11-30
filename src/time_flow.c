@@ -27,7 +27,8 @@ static inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, cons
 	int i;
 	for (i = 0; i < N; i++)
 	{
-		const int o = i / Ncell; // orbital number
+		const int o = i / Ncell;	// orbital index
+		assert(0 <= o && o < kinetic->Norb);
 		cblas_dscal(N, expV[s[i]][o], &B[i], N);
 	}
 }
@@ -51,7 +52,8 @@ static inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kineti
 	int i;
 	for (i = 0; i < N; i++)
 	{
-		const int o = i / Ncell;
+		const int o = i / Ncell;	// orbital index
+		assert(0 <= o && o < kinetic->Norb);
 		cblas_dscal(N, expV[1 - s[i]][o], &invB[i*N], 1);
 	}
 }
@@ -76,7 +78,8 @@ static inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic
 	int i;
 	for (i = 0; i < N; i++)
 	{
-		const int o = i / Ncell;
+		const int o = i / Ncell;	// orbital index
+		assert(0 <= o && o < kinetic->Norb);
 		cblas_dscal(N, expV[s[i]][o] * expX[i], &B[i], N);
 	}
 }
@@ -100,7 +103,8 @@ static inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict 
 	int i;
 	for (i = 0; i < N; i++)
 	{
-		const int o = i / Ncell;
+		const int o = i / Ncell;	// orbital index
+		assert(0 <= o && o < kinetic->Norb);
 		cblas_dscal(N, expV[1 - s[i]][o] / expX[i], &invB[i*N], 1);
 	}
 }
