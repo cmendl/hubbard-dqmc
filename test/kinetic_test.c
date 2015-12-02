@@ -8,7 +8,7 @@
 int KineticTest()
 {
 	// single-orbital simulation parameters
-	sim_params_t params;
+	sim_params_t params = { 0 };
 	AllocateSimulationParameters(1, &params);
 
 	// lattice dimension
