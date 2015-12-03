@@ -26,7 +26,9 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd);
 
 
-void DQMCSimulation(const sim_params_t *restrict params, measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt);
+void DQMCSimulation(const sim_params_t *restrict params,
+	measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt,
+	int *restrict i_start, randseed_t *restrict seed, spin_field_t *restrict s);
 
 
 

@@ -3,6 +3,8 @@
 #include "util.h"
 #include "dupio.h"
 #include "profiler.h"
+#include "checkpoint.h"
+#include "progress.h"
 #include <mkl.h>
 #include <math.h>
 #include <stdlib.h>
@@ -527,10 +529,13 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 /// \param params               simulation parameters
 /// \param meas_data            measurement data structure for accumulating measurements
 /// \param meas_data_uneqlt     unequal time measurement data structure
+/// \param iteration            pointer to iteration number (i.e. number of iterations completed from previous runs)
+/// \param seed                 random number generator seed
+/// \param s                    Hubbard-Stratonovich field
 ///
 void DQMCSimulation(const sim_params_t *restrict params,
-	measurement_data_t *restrict meas_data,
-	measurement_data_unequal_time_t *restrict meas_data_uneqlt)
+	measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt,
+	int *restrict iteration, randseed_t *restrict seed, spin_field_t *restrict s)
 {
 	int i;
 	const int Norb = params->Norb;
@@ -543,17 +548,6 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	// pre-calculate some stuff related to the Hubbard-Stratonovich field, for every orbital
 	stratonovich_params_t stratonovich_params;
 	FillStratonovichParameters(Norb, params->U, params->dt, &stratonovich_params);
-
-	// random generator seed; multiplicative constant from Pierre L'Ecuyer's paper
-	randseed_t seed;
-	Random_SeedInit(1865811235122147685LL * (uint64_t)params->itime, &seed);
-
-	// random initial Hubbard-Stratonovich field
-	spin_field_t *s = (spin_field_t *)MKL_malloc(params->L * N * sizeof(spin_field_t), MEM_DATA_ALIGN);
-	for (i = 0; i < params->L*N; i++)
-	{
-		s[i] = (Random_GetUniform(&seed) < 0.5 ? 0 : 1);
-	}
 
 	// random initial phonon field
 	double *X, *expX;
@@ -573,7 +567,7 @@ void DQMCSimulation(const sim_params_t *restrict params,
 				}
 				else
 				{
-					X[i + l*N] = (Random_GetUniform(&seed) - 0.5) * params->phonon_params.box_width;
+					X[i + l*N] = (Random_GetUniform(seed) - 0.5) * params->phonon_params.box_width;
 				}
 				expX[i + l*N] = exp(-params->dt*params->phonon_params.g[o] * X[i + l*N]);
 			}
@@ -620,45 +614,48 @@ void DQMCSimulation(const sim_params_t *restrict params,
 		GreenConstruct(&tsm_d, 0, &Gd);
 	}
 
-	// perform equilibration
-	duprintf("Starting equilibration iterations...\n");
-	for (i = 0; i < params->nequil; i++)
-	{
-		if (params->use_phonons)
-		{
-			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
-		}
-		else
-		{
-			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
-		}
-	}
+	// register a signal handler to stop simulation on SIGINT
+	StopOnSIGINT();
 
-	// perform measurement iterations
-	duprintf("Starting measurement iterations...\n");
-	for (i = 0; i < params->nsampl; i++)
+	// first call to UpdateProgress to indicate completion of initialization phase
+	UpdateProgress();
+
+	// perform dqmc iterations
+	duprintf("Starting DQMC iterations...\n");
+	for (; *iteration < params->nequil + params->nsampl; (*iteration)++)
 	{
+		if (stopped == 1)
+		{
+			duprintf("Stopping DQMC iterations early.\n");
+			break;
+		}
+
 		if (params->use_phonons)
 		{
-			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
+			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 		}
 		else
 		{
-			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
 		}
 
 		// perform measurements directly after constructing Green's functions to improve numerical accuracy
-		// accumulate equal time "measurement" data
-		Profile_Begin("DQMCSim_AccumulateEqMeas");
-		AccumulateMeasurement(&Gu, &Gd, meas_data);
-		Profile_End("DQMCSim_AccumulateEqMeas");
-		// accumulate unequal time "measurement" data
-		if (params->nuneqlt > 0 && (i % params->nuneqlt) == 0)
+		if (*iteration >= params->nequil)
 		{
-			Profile_Begin("DQMCSim_AccumulateUneqMeas");
-			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
-			Profile_End("DQMCSim_AccumulateUneqMeas");
+			// accumulate equal time "measurement" data
+			Profile_Begin("DQMCSim_AccumulateEqMeas");
+			AccumulateMeasurement(&Gu, &Gd, meas_data);
+			Profile_End("DQMCSim_AccumulateEqMeas");
+			// accumulate unequal time "measurement" data
+			if (params->nuneqlt > 0 && (*iteration % params->nuneqlt) == 0)
+			{
+				Profile_Begin("DQMCSim_AccumulateUneqMeas");
+				AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
+				Profile_End("DQMCSim_AccumulateUneqMeas");
+			}
 		}
+
+		UpdateProgress();
 	}
 
 	// clean up
@@ -666,7 +663,6 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
-	MKL_free(s);
 	if (params->use_phonons)
 	{
 		MKL_free(expX);

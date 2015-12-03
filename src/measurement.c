@@ -78,6 +78,7 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measure
 	meas_data->uu_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->dd_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->ud_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->ff_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 
 	// spin correlation data
 	meas_data->zz_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
@@ -93,6 +94,7 @@ void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 {
 	MKL_free(meas_data->xx_corr);
 	MKL_free(meas_data->zz_corr);
+	MKL_free(meas_data->ff_corr);
 	MKL_free(meas_data->ud_corr);
 	MKL_free(meas_data->dd_corr);
 	MKL_free(meas_data->uu_corr);
@@ -188,6 +190,8 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 					meas_data->uu_corr[k + offset] += signfac*((k == 0 && o == p) ? (1 - Gu_ii) : (1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
 					meas_data->dd_corr[k + offset] += signfac*((k == 0 && o == p) ? (1 - Gd_ii) : (1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
 					meas_data->ud_corr[k + offset] += signfac*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
+					const int delta = (k == 0 && o == p);
+					meas_data->ff_corr[k + offset] += signfac*((delta - Gu_ji) * Gu_ij + (delta - Gd_ji) * Gd_ij);
 
 					meas_data->zz_corr[k + offset] += signfac*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
 					meas_data->xx_corr[k + offset] += signfac*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
@@ -204,7 +208,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 ///
 void NormalizeMeasurementData(measurement_data_t *meas_data)
 {
-	// total number of lattice sites
+	// total number of orbitals and cells
 	const int Norb = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
 
@@ -224,13 +228,64 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 		meas_data->uu_corr[i] *= nfac;
 		meas_data->dd_corr[i] *= nfac;
 		meas_data->ud_corr[i] *= nfac;
-
+		meas_data->ff_corr[i] *= nfac;
 		meas_data->zz_corr[i] *= nfac;
 		meas_data->xx_corr[i] *= nfac;
 	}
 
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Print a summary of basic measurements
+///
+void SummarizeMeasurementData(measurement_data_t *meas_data)
+{
+	duprintf("_______________________________________________________________________________\n");
+	duprintf("Summary of simulation results\n\n");
+	duprintf("                    average sign: %g\n", meas_data->sign);
+	double total_density = 0.0;
+	int i;
+	for (i = 0; i < meas_data->Norb; i++)
+	{
+		total_density += meas_data->density_u[i] + meas_data->density_d[i];
+	}
+	duprintf("           average total density: %g\n", total_density);
+	for (i = 0; i < meas_data->Norb; i++)
+	{
+		duprintf("\nResults for orbital %d\n", i);
+		duprintf("           average total density: %g\n", meas_data->density_u[i] + meas_data->density_d[i]);
+		duprintf("         average spin-up density: %g\n", meas_data->density_u[i]);
+		duprintf("       average spin-down density: %g\n", meas_data->density_d[i]);
+		duprintf("        average double occupancy: %g\n", meas_data->doubleocc[i]);
+		duprintf("            average local moment: %g\n", meas_data->density_u[i] + meas_data->density_d[i] - 2.0*meas_data->doubleocc[i]);
+	}
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Load equal time measurement data structure
+///
+void LoadMeasurementData(const char *fnbase, const measurement_data_t *meas_data)
+{
+	const int Norb = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
+	char path[1024];
+	sprintf(path, "%s_sign.dat",      fnbase); ReadData(path, (void *)&meas_data->sign, sizeof(double), 1);
+	sprintf(path, "%s_nsampl.dat",    fnbase); ReadData(path, (void *)&meas_data->nsampl, sizeof(int), 1);
+	sprintf(path, "%s_density_u.dat", fnbase); ReadData(path, meas_data->density_u, sizeof(double), Norb);
+	sprintf(path, "%s_density_d.dat", fnbase); ReadData(path, meas_data->density_d, sizeof(double), Norb);
+	sprintf(path, "%s_doubleocc.dat", fnbase); ReadData(path, meas_data->doubleocc, sizeof(double), Norb);
+	sprintf(path, "%s_uu_corr.dat",   fnbase); ReadData(path, meas_data->uu_corr,   sizeof(double), Ncell*Norb*Norb);
+	sprintf(path, "%s_dd_corr.dat",   fnbase); ReadData(path, meas_data->dd_corr,   sizeof(double), Ncell*Norb*Norb);
+	sprintf(path, "%s_ud_corr.dat",   fnbase); ReadData(path, meas_data->ud_corr,   sizeof(double), Ncell*Norb*Norb);
+	sprintf(path, "%s_ff_corr.dat",   fnbase); ReadData(path, meas_data->ff_corr,   sizeof(double), Ncell*Norb*Norb);
+	sprintf(path, "%s_zz_corr.dat",   fnbase); ReadData(path, meas_data->zz_corr,   sizeof(double), Ncell*Norb*Norb);
+	sprintf(path, "%s_xx_corr.dat",   fnbase); ReadData(path, meas_data->xx_corr,   sizeof(double), Ncell*Norb*Norb);
 }
 
 
@@ -244,15 +299,18 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 	const int Ncell = meas_data->Ncell;
 	char path[1024];
 	sprintf(path, "%s_sign.dat",      fnbase); WriteData(path, &meas_data->sign,     sizeof(double), 1, false);
+	sprintf(path, "%s_nsampl.dat",    fnbase); WriteData(path, &meas_data->nsampl,   sizeof(int),    1, false);
 	sprintf(path, "%s_density_u.dat", fnbase); WriteData(path, meas_data->density_u, sizeof(double), Norb, false);
 	sprintf(path, "%s_density_d.dat", fnbase); WriteData(path, meas_data->density_d, sizeof(double), Norb, false);
 	sprintf(path, "%s_doubleocc.dat", fnbase); WriteData(path, meas_data->doubleocc, sizeof(double), Norb, false);
 	sprintf(path, "%s_uu_corr.dat",   fnbase); WriteData(path, meas_data->uu_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_dd_corr.dat",   fnbase); WriteData(path, meas_data->dd_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_ud_corr.dat",   fnbase); WriteData(path, meas_data->ud_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_ff_corr.dat",   fnbase); WriteData(path, meas_data->ff_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_zz_corr.dat",   fnbase); WriteData(path, meas_data->zz_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_xx_corr.dat",   fnbase); WriteData(path, meas_data->xx_corr,   sizeof(double), Ncell*Norb*Norb, false);
 }
+
 
 //________________________________________________________________________________________________________________________
 ///
@@ -437,6 +495,10 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 ///
 void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_data)
 {
+	// total number of orbitals and cells
+	const int Norb = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
+
 	// total number of lattice sites
 	const int N = meas_data->N;
 
@@ -455,12 +517,39 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 	cblas_dscal(L*N*N, nfac, meas_data->Geqlt_d, 1);
 
 	// divide density and spin correlations by sign
-	cblas_dscal(L*N, nfac, meas_data->nn_corr, 1);
-	cblas_dscal(L*N, nfac, meas_data->zz_corr, 1);
-	cblas_dscal(L*N, nfac, meas_data->xx_corr, 1);
+	cblas_dscal(L*Ncell*Norb*Norb, nfac, meas_data->nn_corr, 1);
+	cblas_dscal(L*Ncell*Norb*Norb, nfac, meas_data->zz_corr, 1);
+	cblas_dscal(L*Ncell*Norb*Norb, nfac, meas_data->xx_corr, 1);
 
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Load unequal time measurement data structure
+///
+void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data)
+{
+	const int Norb = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
+	const int N = meas_data->N;
+	const int L = meas_data->L;
+	char path[1024];
+	sprintf(path, "%s_uneqlt_sign.dat",    fnbase); ReadData(path, (void *)&meas_data->sign,   sizeof(double), 1);
+	sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase); ReadData(path, (void *)&meas_data->nsampl, sizeof(int), 1);
+
+	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); ReadData(path, meas_data->Gtau0_u, sizeof(double), L*N*N);
+	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); ReadData(path, meas_data->G0tau_u, sizeof(double), L*N*N);
+	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); ReadData(path, meas_data->Geqlt_u, sizeof(double), L*N*N);
+	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); ReadData(path, meas_data->Gtau0_d, sizeof(double), L*N*N);
+	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); ReadData(path, meas_data->G0tau_d, sizeof(double), L*N*N);
+	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); ReadData(path, meas_data->Geqlt_d, sizeof(double), L*N*N);
+
+	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); ReadData(path, meas_data->nn_corr, sizeof(double), L*Ncell*Norb*Norb);
+	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); ReadData(path, meas_data->zz_corr, sizeof(double), L*Ncell*Norb*Norb);
+	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); ReadData(path, meas_data->xx_corr, sizeof(double), L*Ncell*Norb*Norb);
 }
 
 
@@ -470,6 +559,8 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 ///
 void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data)
 {
+	const int Norb = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
 	const int N = meas_data->N;
 	const int L = meas_data->L;
 	char path[1024];
@@ -483,7 +574,7 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); WriteData(path, meas_data->G0tau_d, sizeof(double), L*N*N, false);
 	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); WriteData(path, meas_data->Geqlt_d, sizeof(double), L*N*N, false);
 
-	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); WriteData(path, meas_data->nn_corr, sizeof(double), L*N, false);
-	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); WriteData(path, meas_data->zz_corr, sizeof(double), L*N, false);
-	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); WriteData(path, meas_data->xx_corr, sizeof(double), L*N, false);
+	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); WriteData(path, meas_data->nn_corr, sizeof(double), L*Ncell*Norb*Norb, false);
+	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); WriteData(path, meas_data->zz_corr, sizeof(double), L*Ncell*Norb*Norb, false);
+	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); WriteData(path, meas_data->xx_corr, sizeof(double), L*Ncell*Norb*Norb, false);
 }

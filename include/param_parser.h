@@ -86,7 +86,7 @@ typedef struct
 	int nsampl;						//!< number of sampling iterations
 	int nuneqlt;					//!< number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
 
-	uint64_t itime;					//!< initial UNIX time, used as seed for the random number generator
+	uint64_t itime;					//!< initial time tick, used as seed for the random number generator
 }
 sim_params_t;
 

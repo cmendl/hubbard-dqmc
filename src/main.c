@@ -1,13 +1,18 @@
 #include "monte_carlo.h"
 #include "kinetic.h"
 #include "param_parser.h"
+#include "random.h"
+#include "stratonovich.h"
 #include "profiler.h"
+#include "checkpoint.h"
+#include "progress.h"
 #include "util.h"
 #include "dupio.h"
 #include <mkl.h>
 #include <math.h>
 #include <omp.h>
 #include <time.h>
+#include <string.h>
 
 // for sleep function and creating directories
 #ifdef _WIN32
@@ -87,17 +92,18 @@ int main(int argc, char *argv[])
 		duprintf("Creating default directory based on parameters and initial seed...\n");
 		makedir("output");
 		sprintf(path, "output/N%ix%i_beta%g_mu%g_sim_%llu", params.Nx, params.Ny, params.L * params.dt, params.mu, params.itime);
-		while (makedir(path) < 0)
-		{
-			duprintf("Cannot create output directory '%s', changing 'itime'...\n", path);
-			#ifdef _WIN32
-			Sleep(2000);
-			#else
-			sleep(2);
-			#endif
-			params.itime += (clock() % 16) + 15;
-			sprintf(path, "output/N%ix%i_beta%g_mu%g_sim_%llu", params.Nx, params.Ny, params.L * params.dt, params.mu, params.itime);
-		}
+		makedir(path);
+		//while (makedir(path) < 0)
+		//{
+		//	duprintf("Cannot create output directory '%s', changing 'itime'...\n", path);
+		//	#ifdef _WIN32
+		//	Sleep(2000);
+		//	#else
+		//	sleep(2);
+		//	#endif
+		//	params.itime += (clock() % 16) + 15;
+		//	sprintf(path, "output/N%ix%i_beta%g_mu%g_sim_%llu", params.Nx, params.Ny, params.L * params.dt, params.mu, params.itime);
+		//}
 		duprintf("Created output directory '%s'.\n\n", path);
 	}
 	else
@@ -112,13 +118,14 @@ int main(int argc, char *argv[])
 
 	// open simulation log file for writing
 	sprintf(path, "%s_simulation.log", fnbase);
-	fd_log = fopen(path, "w");
+	fd_log = fopen(path, "a");
 	if (fd_log == NULL)
 	{
 		duprintf("Cannot open log file '%s', check if output directory exists; exiting...\n", path);
 		return -3;
 	}
 
+	// print a header and the parameters
 	duprintf("Hubbard model DQMC\n------------------\n");
 	duprintf("_______________________________________________________________________________\n");
 	PrintSimulationParameters(&params);
@@ -138,49 +145,73 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	duprintf("\nStarting DQMC simulation...\n");
+	// state variables for DQMC simulation. these are also the variables stored in a checkpoint.
+	int iteration = 0;
+	randseed_t seed;
+	const int LxN = params.L * params.Norb * params.Nx * params.Ny;
+	spin_field_t *s = (spin_field_t *)MKL_malloc(LxN * sizeof(spin_field_t), MEM_DATA_ALIGN);
+
+	// check for previous data in output directory
+	if (SearchCheckpoint(fnbase) == 0) // found a previous checkpoint, so load the previous state
+	{
+		LoadCheckpoint(fnbase, &iteration, &seed, s, LxN);
+		// load previous measurement data
+		LoadMeasurementData(fnbase, &meas_data);
+		if (params.nuneqlt > 0)
+		{
+			LoadUnequalTimeMeasurementData(fnbase, &meas_data_uneqlt);
+		}
+		duprintf("Loaded checkpoint from iteration %d of previous run.", iteration);
+	}
+	else // no previous data found, start from scratch
+	{
+		// random generator seed; multiplicative constant from Pierre L'Ecuyer's paper
+		Random_SeedInit(1865811235122147685LL * params.itime, &seed);
+
+		// random initial Hubbard-Stratonovich field
+		int i;
+		for (i = 0; i < params.L * params.Norb * params.Nx * params.Ny; i++)
+		{
+			s[i] = (Random_GetUniform(&seed) < 0.5 ? 0 : 1);
+		}
+	}
+	
+	// enable progress tracking (progress of simulation is shown whenever a SIGUSR1 signal is received)
+	InitProgressTracking(&iteration, params.nequil, params.nsampl);
 
 	// start timer
 	const clock_t t_start = clock();
 
 	// perform simulation
-	DQMCSimulation(&params, &meas_data, &meas_data_uneqlt);
-
-	// normalize measurement data
-	NormalizeMeasurementData(&meas_data);
-	if (params.nuneqlt > 0)
-	{
-		NormalizeUnequalTimeMeasurementData(&meas_data_uneqlt);
-	}
+	duprintf("\nStarting DQMC simulation...\n");
+	DQMCSimulation(&params, &meas_data, &meas_data_uneqlt, &iteration, &seed, s);
 
 	// stop timer
 	const clock_t t_end = clock();
 	double cpu_time = (double)(t_end - t_start) / CLOCKS_PER_SEC;
-	duprintf("Finished simulation, CPU time: %g\n", cpu_time);
+	duprintf("%d iterations completed, CPU time: %g\n", iteration, cpu_time);
 
-	// show some simulation results
-	duprintf("_______________________________________________________________________________\n");
-	duprintf("Summary of simulation results\n\n");
-	duprintf("                    average sign: %g\n", meas_data.sign);
-	double total_density = 0.0;
-	int i;
-	for (i = 0; i < params.Norb; i++)
+	// at end of simulation, normalize measurement data and show summary of results
+	if (iteration == params.nequil + params.nsampl)
 	{
-		total_density += meas_data.density_u[i] + meas_data.density_d[i];
+		duprintf("All iterations completed.\n");
+		NormalizeMeasurementData(&meas_data);
+		if (params.nuneqlt > 0)
+		{
+			NormalizeUnequalTimeMeasurementData(&meas_data_uneqlt);
+		}
+		// show some simulation results
+		SummarizeMeasurementData(&meas_data);
 	}
-	duprintf("           average total density: %g\n", total_density);
-	for (i = 0; i < params.Norb; i++)
-	{
-		duprintf("\nResults for orbital %d\n", i);
-		duprintf("           average total density: %g\n", meas_data.density_u[i] + meas_data.density_d[i]);
-		duprintf("         average spin-up density: %g\n", meas_data.density_u[i]);
-		duprintf("       average spin-down density: %g\n", meas_data.density_d[i]);
-		duprintf("        average double occupancy: %g\n", meas_data.doubleocc[i]);
-		duprintf("            average local moment: %g\n", meas_data.density_u[i] + meas_data.density_d[i] - 2.0*meas_data.doubleocc[i]);
-	}
+
+	// save checkpoint for next run. even if simulation is finished, saving the HS field
+	// is helpful if someone wants to extend the simulation further.
+	duprintf("Saving checkpoint to disk...");
+	SaveCheckpoint(fnbase, &iteration, &seed, s, LxN);
+	duprintf(" done.\n");
 
 	// save simulation results as binary data to disk
-	duprintf("\nSaving simulation results to disk...");
+	duprintf("Saving simulation results to disk...");
 	SaveMeasurementData(fnbase, &meas_data);
 	if (params.nuneqlt > 0)
 	{
@@ -191,6 +222,7 @@ int main(int argc, char *argv[])
 	// clean up
 	Profile_Stop();
 	fclose(fd_log);
+	MKL_free(s);
 	if (params.nuneqlt > 0)
 	{
 		DeleteUnequalTimeMeasurementData(&meas_data_uneqlt);
@@ -198,5 +230,5 @@ int main(int argc, char *argv[])
 	DeleteMeasurementData(&meas_data);
 	DeleteSimulationParameters(&params);
 
-	return 0;
+	return stopped; // 0 if simulation ran to completion, 1 if stopped by SIGINT
 }
