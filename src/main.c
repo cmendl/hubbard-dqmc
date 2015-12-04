@@ -92,25 +92,13 @@ int main(int argc, char *argv[])
 		duprintf("Creating default directory based on parameters and initial seed...\n");
 		makedir("output");
 		sprintf(path, "output/N%ix%i_beta%g_mu%g_sim_%llu", params.Nx, params.Ny, params.L * params.dt, params.mu, params.itime);
-		makedir(path);
-		//while (makedir(path) < 0)
-		//{
-		//	duprintf("Cannot create output directory '%s', changing 'itime'...\n", path);
-		//	#ifdef _WIN32
-		//	Sleep(2000);
-		//	#else
-		//	sleep(2);
-		//	#endif
-		//	params.itime += (clock() % 16) + 15;
-		//	sprintf(path, "output/N%ix%i_beta%g_mu%g_sim_%llu", params.Nx, params.Ny, params.L * params.dt, params.mu, params.itime);
-		//}
-		duprintf("Created output directory '%s'.\n\n", path);
 	}
 	else
 	{
 		strcpy(path, argv[2]);
-		duprintf("Using output directory '%s'.\n\n", path);
 	}
+	makedir(path);
+	duprintf("Using output directory '%s'.\n\n", path);
 	
 	// base output file name
 	char fnbase[1024];
@@ -121,7 +109,7 @@ int main(int argc, char *argv[])
 	fd_log = fopen(path, "a");
 	if (fd_log == NULL)
 	{
-		duprintf("Cannot open log file '%s', check if output directory exists; exiting...\n", path);
+		duprintf("Cannot open log file '%s', exiting...\n", path);
 		return -3;
 	}
 
