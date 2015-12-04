@@ -125,11 +125,6 @@ int main(int argc, char *argv[])
 		return -3;
 	}
 
-	// print a header and the parameters
-	duprintf("Hubbard model DQMC\n------------------\n");
-	duprintf("_______________________________________________________________________________\n");
-	PrintSimulationParameters(&params);
-
 	// allocate and initialize equal time measurement data structure
 	measurement_data_t meas_data;
 	AllocateMeasurementData(params.Norb, params.Nx, params.Ny, &meas_data);
@@ -152,18 +147,7 @@ int main(int argc, char *argv[])
 	spin_field_t *s = (spin_field_t *)MKL_malloc(LxN * sizeof(spin_field_t), MEM_DATA_ALIGN);
 
 	// check for previous data in output directory
-	if (SearchCheckpoint(fnbase) == 0) // found a previous checkpoint, so load the previous state
-	{
-		LoadCheckpoint(fnbase, &iteration, &seed, s, LxN);
-		// load previous measurement data
-		LoadMeasurementData(fnbase, &meas_data);
-		if (params.nuneqlt > 0)
-		{
-			LoadUnequalTimeMeasurementData(fnbase, &meas_data_uneqlt);
-		}
-		duprintf("Loaded checkpoint from iteration %d of previous run.", iteration);
-	}
-	else // no previous data found, start from scratch
+	if (SearchCheckpoint(fnbase) != 0) // no previous data found, start from scratch
 	{
 		// random generator seed; multiplicative constant from Pierre L'Ecuyer's paper
 		Random_SeedInit(1865811235122147685LL * params.itime, &seed);
@@ -174,8 +158,33 @@ int main(int argc, char *argv[])
 		{
 			s[i] = (Random_GetUniform(&seed) < 0.5 ? 0 : 1);
 		}
+
+		// print a header and the parameters
+		duprintf("Hubbard model DQMC\n------------------\n");
+		duprintf("_______________________________________________________________________________\n");
+		PrintSimulationParameters(&params);
+
+		duprintf("Starting DQMC simulation...\n");
 	}
-	
+	else // found a previous checkpoint, so load the previous state
+	{
+		LoadCheckpoint(fnbase, &iteration, &seed, s, LxN);
+		duprintf("Loaded checkpoint.\n");
+		if (iteration == params.nequil + params.nsampl)
+		{
+			duprintf("All iterations already completed in previous checkpoint. Exiting...\n");
+		}
+
+		// load previous measurement data
+		LoadMeasurementData(fnbase, &meas_data);
+		if (params.nuneqlt > 0)
+		{
+			LoadUnequalTimeMeasurementData(fnbase, &meas_data_uneqlt);
+		}
+
+		duprintf("Resuming DQMC simulation at iteration %d.\n", iteration);
+	}
+
 	// enable progress tracking (progress of simulation is shown whenever a SIGUSR1 signal is received)
 	InitProgressTracking(&iteration, params.nequil, params.nsampl);
 
@@ -183,7 +192,6 @@ int main(int argc, char *argv[])
 	const clock_t t_start = clock();
 
 	// perform simulation
-	duprintf("\nStarting DQMC simulation...\n");
 	DQMCSimulation(&params, &meas_data, &meas_data_uneqlt, &iteration, &seed, s);
 
 	// stop timer

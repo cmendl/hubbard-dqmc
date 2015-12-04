@@ -12,7 +12,7 @@ typedef struct
 {
 	enum {INIT, EQUILIB, MEASURE, OUTPUT} state;	//!< current state
 	int nequil, nsampl;								//!< total number of equilibration and measurement sweeps
-	int niter;										//!< number of iterations in current state
+	int niter;										//!< number of iterations in current state and current run
 	int *iteration;									//!< pointer to number of total iterations (i.e. including previous checkpoints')
 	uint64_t t_start;								//!< starting time (in nanoseconds)
 	uint64_t t_equilib_start;						//!< starting time of warmup iterations
@@ -34,7 +34,7 @@ static void PrintProgress(int signum)
 		duprintf("Simulation is initializing.\n");
 		break;
 	case EQUILIB:
-		duprintf("Completed equilibration iterations: %d out of %d\n", p.niter, p.nequil);
+		duprintf("Completed equilibration iterations: %d out of %d\n", *p.iteration, p.nequil);
 		if (p.niter > 0)
 		{
 			double time_per_iter = (double)(p.t_last_iter - p.t_equilib_start) / p.niter;
@@ -44,7 +44,7 @@ static void PrintProgress(int signum)
 		break;
 	case MEASURE:
 		duprintf("Equilibration completed.\n");
-		duprintf("Completed measurement iterations: %d out of %d\n", p.niter, p.nsampl);
+		duprintf("Completed measurement iterations: %d out of %d\n", *p.iteration - p.nequil, p.nsampl);
 		if (p.niter > 0)
 		{
 			double time_per_iter = (double)(p.t_last_iter - p.t_measure_start) / p.niter;
@@ -89,7 +89,8 @@ void UpdateProgress(void)
 	case EQUILIB:
 		p.t_last_iter = t_current;
 		p.niter++;
-		if (p.niter == p.nequil)
+		// + 1 because UpdateProgress is called before the for loop increments *p.iteration
+		if (*p.iteration + 1 == p.nequil)
 		{
 			p.state = MEASURE;
 			p.niter = 0;
@@ -99,7 +100,7 @@ void UpdateProgress(void)
 	case MEASURE:
 		p.t_last_iter = t_current;
 		p.niter++;
-		if (p.niter == p.nsampl)
+		if (*p.iteration + 1 == p.nequil + p.nsampl)
 		{
 			p.state = OUTPUT;
 		}
