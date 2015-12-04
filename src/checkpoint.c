@@ -27,38 +27,48 @@ int SearchCheckpoint(const char *fnbase)
 	struct stat st;
 
 	sprintf(path, "%s_iteration.dat", fnbase);
-	if (stat(path, &st) != 0) return -1;
+	if (stat(path, &st) != 0) { return -1; }
 
 	sprintf(path, "%s_randseed.dat", fnbase);
-	if (stat(path, &st) != 0) return -1;
+	if (stat(path, &st) != 0) { return -1; }
 
 	sprintf(path, "%s_hsfield.dat", fnbase);
-	if (stat(path, &st) != 0) return -1;
+	if (stat(path, &st) != 0) { return -1; }
 
 	return 0;
 }
 
 
-void LoadCheckpoint(const char *restrict fnbase, int *restrict iteration, randseed_t *restrict seed, spin_field_t *restrict s, const int LxN)
+int LoadCheckpoint(const char *restrict fnbase, int *restrict iteration, randseed_t *restrict seed, spin_field_t *restrict s, const int LxN)
 {
+	int status = 0;
 	char path[1024];
+
 	sprintf(path, "%s_iteration.dat", fnbase);
-	ReadData(path, iteration, sizeof(int), 1);
+	status = ReadData(path, iteration, sizeof(int), 1);
+	if (status < 0) { return status; }
 
 	sprintf(path, "%s_randseed.dat", fnbase);
-	ReadData(path, seed->s, sizeof(uint64_t), 16);
+	status = ReadData(path, seed->s, sizeof(uint64_t), 16);
+	if (status < 0) { return status; }
 	seed->p = 0;
 
 	sprintf(path, "%s_hsfield.dat", fnbase);
-	ReadData(path, s, sizeof(spin_field_t), LxN);
+	status = ReadData(path, s, sizeof(spin_field_t), LxN);
+	if (status < 0) { return status; }
+
+	return 0;
 }
 
 
-void SaveCheckpoint(const char *restrict fnbase, const int *restrict iteration, const randseed_t *restrict seed, const spin_field_t *restrict s, const int LxN)
+int SaveCheckpoint(const char *restrict fnbase, const int *restrict iteration, const randseed_t *restrict seed, const spin_field_t *restrict s, const int LxN)
 {
+	int status = 0;
 	char path[1024];
+
 	sprintf(path, "%s_iteration.dat", fnbase);
-	WriteData(path, iteration, sizeof(int), 1, false);
+	status = WriteData(path, iteration, sizeof(int), 1, false);
+	if (status < 0) { return status; }
 
 	// instead of storing seed->p, just save a permutation of seed->s where the 0th element is the p'th element of seed->s.
 	sprintf(path, "%s_randseed.dat", fnbase);
@@ -68,8 +78,12 @@ void SaveCheckpoint(const char *restrict fnbase, const int *restrict iteration, 
 	{
 		a[i] = seed->s[(i - seed->p + 16) % 16];
 	}
-	WriteData(path, a, sizeof(uint64_t), 16, false);
+	status = WriteData(path, a, sizeof(uint64_t), 16, false);
+	if (status < 0) { return status; }
 
 	sprintf(path, "%s_hsfield.dat", fnbase);
-	WriteData(path, s, sizeof(spin_field_t), LxN, false);
+	status = WriteData(path, s, sizeof(spin_field_t), LxN, false);
+	if (status < 0) { return status; }
+
+	return 0;
 }

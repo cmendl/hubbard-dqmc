@@ -156,12 +156,18 @@ int main(int argc, char *argv[])
 	}
 	else // found a previous checkpoint, so load the previous state
 	{
-		LoadCheckpoint(fnbase, &iteration, &seed, s, LxN);
+		status = LoadCheckpoint(fnbase, &iteration, &seed, s, LxN);
+		if (status < 0)
+		{
+			duprintf("Failed to load previous checkpoint, exiting...\n");
+			return -5;
+		}
 		duprintf("Loaded checkpoint.\n");
+
 		if (iteration == params.nequil + params.nsampl)
 		{
-			duprintf("All iterations already completed in previous checkpoint. Exiting...\n");
-			return -5;
+			duprintf("All iterations already completed in previous checkpoint, exiting...\n");
+			return -6;
 		}
 
 		// load previous measurement data
@@ -204,7 +210,12 @@ int main(int argc, char *argv[])
 	// save checkpoint for next run. even if simulation is finished, saving the HS field
 	// is helpful if someone wants to extend the simulation further.
 	duprintf("Saving checkpoint to disk...");
-	SaveCheckpoint(fnbase, &iteration, &seed, s, LxN);
+	status = SaveCheckpoint(fnbase, &iteration, &seed, s, LxN);
+	if (status < 0)
+	{
+		duprintf("\nFailed to save checkpoint, exiting...\n");
+		return -7;
+	}
 	duprintf(" done.\n");
 
 	// save simulation results as binary data to disk
