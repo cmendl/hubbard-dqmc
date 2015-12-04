@@ -173,6 +173,7 @@ int main(int argc, char *argv[])
 		if (iteration == params.nequil + params.nsampl)
 		{
 			duprintf("All iterations already completed in previous checkpoint. Exiting...\n");
+			return -5;
 		}
 
 		// load previous measurement data
