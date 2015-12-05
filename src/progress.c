@@ -55,6 +55,10 @@ static void PrintProgress(int signum)
 		duprintf("Simulation completed, outputting data.\n");
 		break;
 	}
+
+	#ifdef _WIN32
+	signal(SIGBREAK, PrintProgress);
+	#endif
 }
 
 int InitProgressTracking(int *iteration, const int nequil, const int nsampl)
@@ -69,11 +73,11 @@ int InitProgressTracking(int *iteration, const int nequil, const int nsampl)
 	p.t_measure_start = p.t_start;
 	p.t_last_iter = p.t_start;
 
-#ifdef _WIN32
+	#ifdef _WIN32
 	return (signal(SIGBREAK, PrintProgress) == SIG_ERR) ? -1 : 0;
-#else
+	#else
 	return sigaction(SIGUSR1, &(struct sigaction){.sa_handler = PrintProgress}, NULL);
-#endif
+	#endif
 }
 
 void UpdateProgress(void)
