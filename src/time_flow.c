@@ -12,7 +12,7 @@
 ///
 /// \brief Compute a time step B matrix (product of a potential and kinetic energy matrix)
 ///
-static inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict B)
+inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict B)
 {
 	__assume_aligned(B, MEM_DATA_ALIGN);
 
@@ -37,7 +37,7 @@ static inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, cons
 ///
 /// \brief Compute an inverse time step matrix
 ///
-static inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict invB)
+inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict invB)
 {
 	__assume_aligned(invB, MEM_DATA_ALIGN);
 
@@ -61,9 +61,9 @@ static inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kineti
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Compute a time step B matrix (product of a potential and kinetic energy matrix), including phonons 
+/// \brief Compute a time step B matrix (product of a potential and kinetic energy matrix), including phonons
 ///
-static inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict B)
+inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict B)
 {
 	__assume_aligned(B, MEM_DATA_ALIGN);
 
@@ -88,7 +88,7 @@ static inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic
 ///
 /// \brief Compute an inverse time step matrix including phonons
 ///
-static inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict invB)
+inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict invB)
 {
 	__assume_aligned(invB, MEM_DATA_ALIGN);
 

@@ -11,43 +11,51 @@
 int GreensFuncInitTest3()
 {
 	int i;
+	sim_params_t params = { 0 };
+	AllocateSimulationParameters(1, &params);
 
 	// lattice field dimensions
-	#define Nx 4
-	#define Ny 6
+	params.Nx = 4;
+	params.Ny = 6;
+
 	// total number of lattice sites
-	#define N  (Nx * Ny)
+	const int N = params.Norb * params.Nx*params.Ny;
 
 	// imaginary-time step size
-	const double dt = 1.0/8;
+	params.dt = 1.0/8;
 
-	// t' (next-nearest neighbor) hopping parameter
-	const double tp = -1.0/7;
+	// hopping parameters
+	params.t.aa[0] = 0.0;
+	params.t.ab[0] = 1.0;
+	params.t.ac[0] = 1.0;
+	params.t.ad[0] = -1.0/7.0;
+	params.t.bc[0] = -1.0/7.0;
 
 	// chemical potential
-	const double mu = -2.0/13;
+	params.mu = -2.0/13.0;
+	params.eps[0] = 0;
 
 	// electron-phonon interaction strength
 	const double g = 0.7;
 
 	// number of time steps
-	#define L 16
+	params.L = 16;
 
 	// largest number of B_l matrices multiplied together before performing a QR decomposition; must divide L
-	const int prodBlen = 4;
+	params.prodBlen = 4;
 
 	const double lambda = 0.75;
-	const double expV[2] = {
-		exp(-lambda),
-		exp( lambda)
-	};
+	const double expV0 = exp(-lambda);
+	const double expV1 = exp( lambda);
+	const double *expV[2] = {&expV0, &expV1};
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
+	RectangularKineticExponential(&params, &kinetic);
 
 	// Hubbard-Stratonovich field
-	const spin_field_t s[L*N] = {
+	// TODO: replace with malloc and load this from a file
+	const spin_field_t s[16 * 4 * 6] = {
 		1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
 		0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0,
 		0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1,
@@ -67,21 +75,21 @@ int GreensFuncInitTest3()
 	};
 
 	// phonon field
-	double *X    = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *expX = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
-	ReadData("../test/greens_func_init_test3_X.dat", X, sizeof(double), L*N);
-	for (i = 0; i < L*N; i++)
+	double *X    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *expX = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	ReadData("../test/greens_func_init_test3_X.dat", X, sizeof(double), params.L*N);
+	for (i = 0; i < params.L*N; i++)
 	{
-		expX[i] = exp(-dt*g * X[i]);
+		expX[i] = exp(-params.dt*g * X[i]);
 	}
 
 	// allocate and initialize time step matrices
 	time_step_matrices_t tsm;
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm);
+	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm);
 	InitPhononTimeStepMatrices(&kinetic, expV, s, expX, &tsm);
 
 	// construct the Green's function matrix
-	printf("Constructing Green's function including phonons for a %i x %i lattice at beta = %g...\n", Nx, Ny, L*dt);
+	printf("Constructing Green's function including phonons for a %i x %i lattice at beta = %g...\n", params.Nx, params.Ny, params.L*params.dt);
 	greens_func_t G;
 	AllocateGreensFunction(N, &G);
 	GreenConstruct(&tsm, 0, &G);
@@ -115,6 +123,7 @@ int GreensFuncInitTest3()
 	MKL_free(expX);
 	MKL_free(X);
 	DeleteKineticExponential(&kinetic);
+	DeleteSimulationParameters(&params);
 
 	return (err_rel < 1e-11 && err_abs < 2e-14 && err_det < 1e-13 ? 0 : 1);
 }

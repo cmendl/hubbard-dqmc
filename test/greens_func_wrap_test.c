@@ -6,41 +6,50 @@
 #include <stdio.h>
 
 
-void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, double *restrict B);
+extern void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict B);
 
-void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double expV[2], const spin_field_t *restrict s, double *restrict invB);
+extern void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict invB);
 
 
 int GreensFuncWrapTest()
 {
+	sim_params_t params = { 0 };
+	AllocateSimulationParameters(1, &params);
+
 	// lattice field dimensions
-	#define Nx 4
-	#define Ny 6
+	params.Nx = 4;
+	params.Ny = 6;
+
 	// total number of lattice sites
-	#define N  (Nx * Ny)
+	const int N = params.Norb * params.Nx*params.Ny;
 
 	// imaginary-time step size
-	const double dt = 1.0/8;
+	params.dt = 1.0/8;
 
-	// t' (next-nearest neighbor) hopping parameter
-	const double tp = 0;
+	// hopping parameters
+	params.t.aa[0] = 0.0;
+	params.t.ab[0] = 1.0;
+	params.t.ac[0] = 1.0;
+	params.t.ad[0] = 0.0;
+	params.t.bc[0] = 0.0;
 
 	// chemical potential
-	const double mu = -1.0/5;
+	params.mu = -1.0/5.0;
+	params.eps[0] = 0;
 
 	// lambda parameter (depends on U in Hamiltonian)
 	const double lambda = 0.75;
-	const double expV[2] = {
-		exp(-lambda),
-		exp( lambda)
-	};
+	const double expV0 = exp(-lambda);
+	const double expV1 = exp( lambda);
+	const double *expV[2] = {&expV0, &expV1};
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
+	RectangularKineticExponential(&params, &kinetic);
 
 	// Hubbard-Stratonovich field
-	const spin_field_t s[N] = { 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1 };
+	// TODO: replace with malloc and load this from a file
+	const spin_field_t s[4 * 6] = { 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1 };
 
 	// calculate B and B^{-1}
 	double *B    = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
@@ -53,7 +62,7 @@ int GreensFuncWrapTest()
 	ReadData("../test/greens_func_wrap_test_G0.dat", G, sizeof(double), N*N);
 
 	// perform a time slice wrap of the Green's function matrix
-	printf("Performing a time slice wrap of the Green's function matrix on a %i x %i lattice...\n", Nx, Ny);
+	printf("Performing a time slice wrap of the Green's function matrix on a %i x %i lattice...\n", params.Nx, params.Ny);
 	GreenTimeSliceWrap(N, B, invB, G);
 
 	// load reference data from disk
@@ -78,6 +87,7 @@ int GreensFuncWrapTest()
 	MKL_free(invB);
 	MKL_free(B);
 	DeleteKineticExponential(&kinetic);
+	DeleteSimulationParameters(&params);
 
 	return (err_rel < 4e-12 && err_abs < 2e-14 ? 0 : 1);
 }

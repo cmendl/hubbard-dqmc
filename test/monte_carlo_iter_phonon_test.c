@@ -8,50 +8,59 @@
 
 int MonteCarloIterPhononTest()
 {
+	sim_params_t params = { 0 };
+	AllocateSimulationParameters(1, &params);
+
 	// lattice field dimensions
-	#define Nx 4
-	#define Ny 6
+	params.Nx = 4;
+	params.Ny = 6;
+
 	// total number of lattice sites
-	#define N  (Nx * Ny)
+	const int N = params.Norb * params.Nx*params.Ny;
 
 	// coupling constant in the Hubbard hamiltonian
-	const double U = 4.5;
+	params.U[0] = 4.5;
 
 	// imaginary-time step size
-	const double dt = 1.0/8;
+	params.dt = 1.0/8;
 
-	// t' (next-nearest neighbor) hopping parameter
-	const double tp = -1.0/12;
+	// hopping parameters
+	params.t.aa[0] = 0.0;
+	params.t.ab[0] = 1.0;
+	params.t.ac[0] = 1.0;
+	params.t.ad[0] = -1.0/12.0;
+	params.t.bc[0] = -1.0/12.0;
 
 	// chemical potential
-	const double mu = -2.0/17;
+	params.mu = -2.0/17.0;
+	params.eps[0] = 0;
 
 	// number of time steps
-	#define L 16
+	params.L = 16;
 
 	// largest number of B_l matrices multiplied together before performing a QR decomposition
-	const int prodBlen = 4;
+	params.prodBlen = 4;
 
 	// number of "time slice wraps" before recomputing the Green's function
-	const int nwraps = 8;
+	params.nwraps = 8;
 
 	// Hubbard-Stratonovich parameters
 	stratonovich_params_t stratonovich_params;
-	FillStratonovichParameters(U, dt, &stratonovich_params);
+	FillStratonovichParameters(params.Norb, params.U, params.dt, &stratonovich_params);
 
 	// phonon parameters
-	phonon_params_t phonon_params;
-	phonon_params.omega = 1.3;
-	phonon_params.g = 0.7;
-	phonon_params.box_width = 12;
-	phonon_params.nblock_updates = 0;	// disable block updates
+	params.phonon_params.omega[0] = 1.3;
+	params.phonon_params.g[0] = 0.7;
+	params.phonon_params.box_width = 12;
+	params.phonon_params.nblock_updates = 0;	// disable block updates
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
+	RectangularKineticExponential(&params, &kinetic);
 
 	// initial Hubbard-Stratonovich field
-	spin_field_t s[L*N] = {
+	// TODO: replace with malloc and load this from a file
+	spin_field_t s[16 * 4 * 6] = {
 		1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
 		0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0,
 		0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1,
@@ -71,21 +80,21 @@ int MonteCarloIterPhononTest()
 	};
 
 	// initial phonon field
-	double *X    = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *expX = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *X    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *expX = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
 	int status;
-	status = ReadData("../test/monte_carlo_iter_phonon_test_X0.dat", X, sizeof(double), L*N); if (status != 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_X0.dat", X, sizeof(double), params.L*N); if (status != 0) { return status; }
 	int i;
-	for (i = 0; i < L*N; i++)
+	for (i = 0; i < params.L*N; i++)
 	{
-		expX[i] = exp(-dt*phonon_params.g * X[i]);
+		expX[i] = exp(-params.dt*params.phonon_params.g[0] * X[i]);
 	}
 
 	// time step matrices
 	time_step_matrices_t tsm_u;
 	time_step_matrices_t tsm_d;
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_u);
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_d);
+	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm_u);
+	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm_d);
 	InitPhononTimeStepMatrices(&kinetic, stratonovich_params.expVu, s, expX, &tsm_u);
 	InitPhononTimeStepMatrices(&kinetic, stratonovich_params.expVd, s, expX, &tsm_d);
 
@@ -97,18 +106,18 @@ int MonteCarloIterPhononTest()
 	GreenConstruct(&tsm_d, 0, &Gd);
 
 	// artificial UNIX time
-	time_t itime = 1420000241;
+	params.itime = 1420000241;
 
 	// random generator seed; multiplicative constant from Pierre L'Ecuyer's paper
 	randseed_t seed;
-	Random_SeedInit(1865811235122147685LL * (uint64_t)itime, &seed);
+	Random_SeedInit(1865811235122147685LL * params.itime, &seed);
 
 	// perform a Determinant Quantum Monte Carlo (DQMC) iteration
-	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice at beta = %g, taking phonons into account...\n", Nx, Ny, L*dt);
-	DQMCPhononIteration(dt, &kinetic, &stratonovich_params, &phonon_params, nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
+	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice at beta = %g, taking phonons into account...\n", params.Nx, params.Ny, params.L*params.dt);
+	DQMCPhononIteration(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, params.nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
-	spin_field_t s_ref[L*N] = {
+	spin_field_t s_ref[16 * 4 * 6] = {
 		0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0,
 		1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1,
 		1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0,
@@ -129,19 +138,19 @@ int MonteCarloIterPhononTest()
 
 	// number of deviating Hubbard-Stratonovich field entries
 	int err_field = 0;
-	for (i = 0; i < L*N; i++)
+	for (i = 0; i < params.L*N; i++)
 	{
 		err_field += abs(s[i] - s_ref[i]);
 	}
 	printf("Number of deviating Hubbard-Stratonovich field entries: %i\n", err_field);
 
 	// load reference phonon field from disk
-	double X_ref[L*N];
-	status = ReadData("../test/monte_carlo_iter_phonon_test_X1.dat", X_ref, sizeof(double), L*N); if (status != 0) { return status; }
+	double X_ref[params.L*N];
+	status = ReadData("../test/monte_carlo_iter_phonon_test_X1.dat", X_ref, sizeof(double), params.L*N); if (status != 0) { return status; }
 
 	// entrywise absolute error of the phonon field
 	double errX = 0;
-	for (i = 0; i < L*N; i++)
+	for (i = 0; i < params.L*N; i++)
 	{
 		errX = fmax(errX, fabs(X[i] - X_ref[i]));
 	}
@@ -187,6 +196,7 @@ int MonteCarloIterPhononTest()
 	MKL_free(expX);
 	MKL_free(X);
 	DeleteKineticExponential(&kinetic);
+	DeleteSimulationParameters(&params);
 
 	return (err_field == 0 && errX < 1e-15 && errG_rel < 8e-8 && errG_abs < 1e-10 && err_detG < 1e-11 ? 0 : 1);
 }

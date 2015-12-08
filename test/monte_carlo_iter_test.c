@@ -8,43 +8,53 @@
 
 int MonteCarloIterTest()
 {
+	sim_params_t params = { 0 };
+	AllocateSimulationParameters(1, &params);
+
 	// lattice field dimensions
-	#define Nx 4
-	#define Ny 6
+	params.Nx = 4;
+	params.Ny = 6;
+
 	// total number of lattice sites
-	#define N  (Nx * Ny)
+	const int N = params.Norb * params.Nx*params.Ny;
 
 	// coupling constant in the Hubbard hamiltonian
-	const double U = 4.5;
+	params.U[0] = 4.5;
 
 	// imaginary-time step size
-	const double dt = 1.0/8;
+	params.dt = 1.0/8;
 
-	// t' (next-nearest neighbor) hopping parameter
-	const double tp = 0;
+	// hopping parameters
+	params.t.aa[0] = 0.0;
+	params.t.ab[0] = 1.0;
+	params.t.ac[0] = 1.0;
+	params.t.ad[0] = 0.0;
+	params.t.bc[0] = 0.0;
 
 	// chemical potential
-	const double mu = 0;
+	params.mu = 0.0;
+	params.eps[0] = 0;
 
 	// number of time steps
-	#define L 16
+	params.L = 16;
 
 	// largest number of B_l matrices multiplied together before performing a QR decomposition
-	const int prodBlen = 4;
+	params.prodBlen = 4;
 
 	// number of "time slice wraps" before recomputing the Green's function
-	const int nwraps = 8;
+	params.nwraps = 8;
 
 	// Hubbard-Stratonovich parameters
 	stratonovich_params_t stratonovich_params;
-	FillStratonovichParameters(U, dt, &stratonovich_params);
-	
+	FillStratonovichParameters(params.Norb, params.U, params.dt, &stratonovich_params);
+
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
+	RectangularKineticExponential(&params, &kinetic);
 
 	// initial Hubbard-Stratonovich field
-	spin_field_t s[L*N] = {
+	// TODO: replace with malloc and load this from a file
+	spin_field_t s[16 * 4 * 6] = {
 		1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
 		0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0,
 		0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1,
@@ -66,8 +76,8 @@ int MonteCarloIterTest()
 	// time step matrices
 	time_step_matrices_t tsm_u;
 	time_step_matrices_t tsm_d;
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_u);
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_d);
+	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm_u);
+	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm_d);
 	InitTimeStepMatrices(&kinetic, stratonovich_params.expVu, s, &tsm_u);
 	InitTimeStepMatrices(&kinetic, stratonovich_params.expVd, s, &tsm_d);
 
@@ -79,18 +89,18 @@ int MonteCarloIterTest()
 	GreenConstruct(&tsm_d, 0, &Gd);
 
 	// artificial UNIX time
-	time_t itime = 1420000241;
+	params.itime = 1420000241;
 
 	// random generator seed; multiplicative constant from Pierre L'Ecuyer's paper
 	randseed_t seed;
-	Random_SeedInit(1865811235122147685LL * (uint64_t)itime, &seed);
+	Random_SeedInit(1865811235122147685LL * params.itime, &seed);
 
 	// perform a Determinant Quantum Monte Carlo (DQMC) iteration
-	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice at beta = %g...\n", Nx, Ny, L*dt);
-	DQMCIteration(&kinetic, &stratonovich_params, nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice at beta = %g...\n", params.Nx, params.Ny, params.L*params.dt);
+	DQMCIteration(&kinetic, &stratonovich_params, params.nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
-	spin_field_t s_ref[L*N] = {
+	spin_field_t s_ref[16 * 4 * 6] = {
 		0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0,
 		1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1,
 		1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
@@ -112,7 +122,7 @@ int MonteCarloIterTest()
 	// number of deviating Hubbard-Stratonovich field entries
 	int err_field = 0;
 	int i;
-	for (i = 0; i < L*N; i++)
+	for (i = 0; i < params.L*N; i++)
 	{
 		err_field += abs(s[i] - s_ref[i]);
 	}
@@ -157,6 +167,7 @@ int MonteCarloIterTest()
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
 	DeleteKineticExponential(&kinetic);
+	DeleteSimulationParameters(&params);
 
 	return (err_field == 0 && err_rel < 2e-8 && err_abs < 4e-11 && err_det < 1e-11 ? 0 : 1);
 }

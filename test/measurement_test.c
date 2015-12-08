@@ -1,64 +1,72 @@
 #include "measurement.h"
 #include "random.h"
 #include "util.h"
+#include <mkl.h>
 #include <math.h>
-#include <time.h>
 #include <stdio.h>
 
 
 int MeasurementTest()
 {
 	int i, n;
+	sim_params_t params = { 0 };
+	AllocateSimulationParameters(1, &params);
 
 	// lattice field dimensions
-	#define Nx 4
-	#define Ny 6
+	params.Nx = 4;
+	params.Ny = 6;
+
 	// total number of lattice sites
-	#define N  (Nx * Ny)
+	const int N = params.Norb * params.Nx*params.Ny;
 
 	// coupling constant in the Hubbard hamiltonian
-	const double U = 6;
+	params.U[0] = 6.0;
 
 	// imaginary-time step size
-	const double dt = 1.0/8;
+	params.dt = 1.0/8;
 
-	// t' (next-nearest neighbor) hopping parameter
-	const double tp = -0.2;
+	// hopping parameters
+	params.t.aa[0] = 0.0;
+	params.t.ab[0] = 1.0;
+	params.t.ac[0] = 1.0;
+	params.t.ad[0] = -0.2;
+	params.t.bc[0] = -0.2;
 
 	// chemical potential
-	const double mu = -1.7;
+	params.mu = -1.7;
+	params.eps[0] = 0;
 
 	// number of time steps
-	#define L 16
+	params.L = 16;
 
 	// largest number of B_l matrices multiplied together before performing a QR decomposition
-	const int prodBlen = 4;
+	params.prodBlen = 4;
 
 	// number of measurement iterations
-	const int nsampl = 12;
+	params.nsampl = 12;
 
-	printf("Comparing equal time measurements to unequal time measurements at time difference zero on a %i x %i lattice and beta = %g...\n", Nx, Ny, L*dt);
+	printf("Comparing equal time measurements to unequal time measurements at time difference zero on a %i x %i lattice and beta = %g...\n", params.Nx, params.Ny, params.L*params.dt);
 
 	// Hubbard-Stratonovich parameters
 	stratonovich_params_t stratonovich_params;
-	FillStratonovichParameters(U, dt, &stratonovich_params);
-	
+	FillStratonovichParameters(params.Norb, params.U, params.dt, &stratonovich_params);
+
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
+	RectangularKineticExponential(&params, &kinetic);
 
 	// artificial UNIX time
-	time_t itime = 1420000241;
+	params.itime = 1420000241;
 
 	// random generator seed; multiplicative constant from Pierre L'Ecuyer's paper
 	randseed_t seed;
-	Random_SeedInit(1865811235122147685LL * (uint64_t)itime, &seed);
+	Random_SeedInit(1865811235122147685LL * params.itime, &seed);
 
 	// time step matrices
 	time_step_matrices_t tsm_u;
 	time_step_matrices_t tsm_d;
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_u);
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm_d);
+	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm_u);
+	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm_d);
 
 	// allocate spin-up and spin-down Green's functions
 	greens_func_t Gu, Gd;
@@ -67,19 +75,19 @@ int MeasurementTest()
 
 	// allocate equal time measurement data structure
 	measurement_data_t meas_data;
-	AllocateMeasurementData(Nx, Ny, &meas_data);
+	AllocateMeasurementData(params.Norb, params.Nx, params.Ny, &meas_data);
 
 	// allocate unequal time measurement data structure
 	measurement_data_unequal_time_t meas_data_uneqlt;
-	int status = AllocateUnequalTimeMeasurementData(Nx, Ny, L, &meas_data_uneqlt);
+	int status = AllocateUnequalTimeMeasurementData(params.Norb, params.Nx, params.Ny, params.L, &meas_data_uneqlt);
 	if (status != 0) { return status; }
 
 	// accumulate measurements of pseudo-random data
-	for (n = 0; n < nsampl; n++)
+	spin_field_t *s = (spin_field_t *)MKL_malloc(params.L * N * sizeof(spin_field_t), MEM_DATA_ALIGN);
+	for (n = 0; n < params.nsampl; n++)
 	{
 		// random Hubbard-Stratonovich field
-		spin_field_t s[L*N];
-		for (i = 0; i < L*N; i++)
+		for (i = 0; i < params.L*N; i++)
 		{
 			s[i] = 	Random_GetUint(&seed) & 1;
 		}
@@ -110,12 +118,13 @@ int MeasurementTest()
 	err = fmax(err, UniformDistance(N, meas_data_uneqlt.zz_corr, meas_data.zz_corr));
 	err = fmax(err, UniformDistance(N, meas_data_uneqlt.xx_corr, meas_data.xx_corr));
 	err = fmax(err, fabs(meas_data_uneqlt.sign - meas_data.sign));
-	err = fmax(err, fabs(meas_data.density_u - meas_data.uu_corr[0]));
-	err = fmax(err, fabs(meas_data.density_d - meas_data.dd_corr[0]));
-	err = fmax(err, fabs(meas_data.doubleocc - 0.5 * meas_data.ud_corr[0]));
+	err = fmax(err, fabs(meas_data.density_u[0] - meas_data.uu_corr[0]));
+	err = fmax(err, fabs(meas_data.density_d[0] - meas_data.dd_corr[0]));
+	err = fmax(err, fabs(meas_data.doubleocc[0] - 0.5 * meas_data.ud_corr[0]));
 	printf("Largest entrywise absolute error: %g\n", err);
 
 	// clean up
+	MKL_free(s);
 	DeleteUnequalTimeMeasurementData(&meas_data_uneqlt);
 	DeleteMeasurementData(&meas_data);
 	DeleteGreensFunction(&Gd);
@@ -123,6 +132,8 @@ int MeasurementTest()
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
 	DeleteKineticExponential(&kinetic);
+	DeleteStratonovichParameters(&stratonovich_params);
+	DeleteSimulationParameters(&params);
 
 	return (err < 5e-15 ? 0 : 1);
 }

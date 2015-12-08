@@ -11,40 +11,48 @@
 int GreensFuncInitTest1()
 {
 	int i;
+	sim_params_t params = { 0 };
+	AllocateSimulationParameters(1, &params);
 
 	// lattice field dimensions
-	#define Nx 4
-	#define Ny 6
+	params.Nx = 4;
+	params.Ny = 6;
+
 	// total number of lattice sites
-	#define N  (Nx * Ny)
+	const int N = params.Norb * params.Nx*params.Ny;
 
 	// imaginary-time step size
-	const double dt = 1.0/8;
+	params.dt = 1.0/8.0;
 
-	// t' (next-nearest neighbor) hopping parameter
-	const double tp = -2.0/11;
+	// hopping parameters
+	params.t.aa[0] = 0.0;
+	params.t.ab[0] = 1.0;
+	params.t.ac[0] = 1.0;
+	params.t.ad[0] = -2.0/11.0;
+	params.t.bc[0] = -2.0/11.0;
 
 	// chemical potential
-	const double mu = 2.0/9;
+	params.mu = 2.0/9.0;
+	params.eps[0] = 0;
 
 	// number of time steps
-	#define L 16
+	params.L = 16;
 
 	// largest number of B_l matrices multiplied together before performing a QR decomposition; must divide L
-	const int prodBlen = 4;
+	params.prodBlen = 4;
 
 	const double lambda = 0.75;
-	const double expV[2] = {
-		exp(-lambda),
-		exp( lambda)
-	};
+	const double expV0 = exp(-lambda);
+	const double expV1 = exp( lambda);
+	const double *expV[2] = {&expV0, &expV1};
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
-	SquareLatticeKineticExponential(Nx, Ny, tp, mu, dt, &kinetic);
+	RectangularKineticExponential(&params, &kinetic);
 
 	// Hubbard-Stratonovich field
-	const spin_field_t s[L*N] = {
+	// TODO: replace with malloc and load this from a file
+	const spin_field_t s[16 * 4 * 6] = {
 		1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
 		0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0,
 		0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1,
@@ -65,11 +73,11 @@ int GreensFuncInitTest1()
 
 	// allocate and initialize time step matrices
 	time_step_matrices_t tsm;
-	AllocateTimeStepMatrices(N, L, prodBlen, &tsm);
+	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm);
 	InitTimeStepMatrices(&kinetic, expV, s, &tsm);
 
 	// construct the Green's function matrix
-	printf("Constructing Green's function for a %i x %i lattice at beta = %g...\n", Nx, Ny, L*dt);
+	printf("Constructing Green's function for a %i x %i lattice at beta = %g...\n", params.Nx, params.Ny, params.L*params.dt);
 	greens_func_t G;
 	AllocateGreensFunction(N, &G);
 	GreenConstruct(&tsm, 0, &G);
@@ -101,6 +109,7 @@ int GreensFuncInitTest1()
 	DeleteGreensFunction(&G);
 	DeleteTimeStepMatrices(&tsm);
 	DeleteKineticExponential(&kinetic);
+	DeleteSimulationParameters(&params);
 
 	return (err_rel < 2e-11 && err_abs < 2e-14 && err_det < 2e-13 ? 0 : 1);
 }
