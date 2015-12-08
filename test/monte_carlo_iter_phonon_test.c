@@ -59,7 +59,6 @@ int MonteCarloIterPhononTest()
 	RectangularKineticExponential(&params, &kinetic);
 
 	// initial Hubbard-Stratonovich field
-	// TODO: replace with malloc and load this from a file
 	spin_field_t s[16 * 4 * 6] = {
 		1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
 		0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0,
@@ -145,7 +144,7 @@ int MonteCarloIterPhononTest()
 	printf("Number of deviating Hubbard-Stratonovich field entries: %i\n", err_field);
 
 	// load reference phonon field from disk
-	double X_ref[params.L*N];
+	double *X_ref = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
 	status = ReadData("../test/monte_carlo_iter_phonon_test_X1.dat", X_ref, sizeof(double), params.L*N); if (status != 0) { return status; }
 
 	// entrywise absolute error of the phonon field
@@ -157,8 +156,8 @@ int MonteCarloIterPhononTest()
 	printf("Largest entrywise absolute error of the phonon field: %g\n", errX);
 
 	// load reference Green's functions from disk
-	double Gu_mat_ref[N*N];
-	double Gd_mat_ref[N*N];
+	double *Gu_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gd_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	double detGu_ref, detGd_ref;
 	status = ReadData("../test/monte_carlo_iter_phonon_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
 	status = ReadData("../test/monte_carlo_iter_phonon_test_Gd1.dat",    Gd_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
@@ -189,6 +188,9 @@ int MonteCarloIterPhononTest()
 	printf("Relative determinant error: %g\n", err_detG);
 
 	// clean up
+	MKL_free(Gd_mat_ref);
+	MKL_free(Gu_mat_ref);
+	MKL_free(X_ref);
 	DeleteGreensFunction(&Gd);
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);

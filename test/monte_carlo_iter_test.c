@@ -129,8 +129,8 @@ int MonteCarloIterTest()
 	printf("Number of deviating Hubbard-Stratonovich field entries: %i\n", err_field);
 
 	// load reference data from disk
-	double Gu_mat_ref[N*N];
-	double Gd_mat_ref[N*N];
+	double *Gu_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gd_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	double detGu_ref, detGd_ref;
 	int status;
 	status = ReadData("../test/monte_carlo_iter_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
@@ -162,6 +162,8 @@ int MonteCarloIterTest()
 	printf("Relative determinant error: %g\n", err_det);
 
 	// clean up
+	MKL_free(Gd_mat_ref);
+	MKL_free(Gu_mat_ref);
 	DeleteGreensFunction(&Gd);
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);

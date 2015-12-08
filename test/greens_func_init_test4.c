@@ -42,9 +42,12 @@ int GreensFuncInitTest4()
 	params.prodBlen = 4;
 
 	const double lambda = 0.75;
-	const double expV0 = exp(-lambda);
-	const double expV1 = exp( lambda);
-	const double *expV[2] = {&expV0, &expV1};
+	double *expV[2] = {
+		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN),
+		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN)
+	};
+	expV[0][0] = exp(-lambda);
+	expV[1][0] = exp( lambda);
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
@@ -131,6 +134,8 @@ int GreensFuncInitTest4()
 	DeleteGreensFunction(&G);
 	DeleteTimeStepMatrices(&tsm);
 	DeleteKineticExponential(&kinetic);
+	MKL_free(expV[1]);
+	MKL_free(expV[0]);
 	DeleteSimulationParameters(&params);
 
 	return (err_rel < 1e-11 && err_abs < 2e-14 ? 0 : 1);

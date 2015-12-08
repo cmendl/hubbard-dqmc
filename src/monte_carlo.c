@@ -529,7 +529,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 /// \param params               simulation parameters
 /// \param meas_data            measurement data structure for accumulating measurements
 /// \param meas_data_uneqlt     unequal time measurement data structure
-/// \param iteration            pointer to iteration number (i.e. number of iterations completed from previous runs)
+/// \param iteration            pointer to iteration counter (i.e. number of iterations completed from previous runs)
 /// \param seed                 random number generator seed
 /// \param s                    Hubbard-Stratonovich field
 ///
@@ -538,8 +538,9 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	int *restrict iteration, randseed_t *restrict seed, spin_field_t *restrict s)
 {
 	int i;
-	const int Norb = params->Norb;
-	const int N = Norb * params->Nx * params->Ny;
+	const int Norb  = params->Norb;
+	const int Ncell = params->Nx * params->Ny;
+	const int N     = Norb * Ncell;
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
@@ -550,20 +551,21 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	FillStratonovichParameters(Norb, params->U, params->dt, &stratonovich_params);
 
 	// random initial phonon field
-	double *X, *expX;
-	if (params->use_phonons) {
+	double *X = NULL, *expX = NULL;
+	if (params->use_phonons)
+	{
 		const int L = params->L;
-		X = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
+		X    = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
 		expX = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
 		int l;
 		for (l = 0; l < L; l++)
 		{
 			for (i = 0; i < N; i++)
 			{
-				const int o = i / (params->Nx * params->Ny); // orbital number;
-				if (params->phonon_params.g[o] == 0.0) // set X to 0 if no coupling
+				const int o = i / Ncell;	// orbital number
+				if (params->phonon_params.g[o] == 0)	// set X to 0 if coupling is zero
 				{
-					X[i + l*N] = 0.0;
+					X[i + l*N] = 0;
 				}
 				else
 				{

@@ -26,9 +26,8 @@ int MeasurementTest()
 	params.dt = 1.0/8;
 
 	// hopping parameters
-	params.t.aa[0] = 0.0;
-	params.t.ab[0] = 1.0;
-	params.t.ac[0] = 1.0;
+	params.t.ab[0] = 1;
+	params.t.ac[0] = 1;
 	params.t.ad[0] = -0.2;
 	params.t.bc[0] = -0.2;
 
@@ -83,7 +82,7 @@ int MeasurementTest()
 	if (status != 0) { return status; }
 
 	// accumulate measurements of pseudo-random data
-	spin_field_t *s = (spin_field_t *)MKL_malloc(params.L * N * sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s = (spin_field_t *)MKL_malloc(params.L*N * sizeof(spin_field_t), MEM_DATA_ALIGN);
 	for (n = 0; n < params.nsampl; n++)
 	{
 		// random Hubbard-Stratonovich field
@@ -106,7 +105,7 @@ int MeasurementTest()
 	NormalizeUnequalTimeMeasurementData(&meas_data_uneqlt);
 
 	// total density correlations (equal time)
-	double nn_corr[N];
+	double *nn_corr = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
 	for (i = 0; i < N; i++)
 	{
 		nn_corr[i] = meas_data.uu_corr[i] + meas_data.dd_corr[i] + meas_data.ud_corr[i];
@@ -124,6 +123,7 @@ int MeasurementTest()
 	printf("Largest entrywise absolute error: %g\n", err);
 
 	// clean up
+	MKL_free(nn_corr);
 	MKL_free(s);
 	DeleteUnequalTimeMeasurementData(&meas_data_uneqlt);
 	DeleteMeasurementData(&meas_data);

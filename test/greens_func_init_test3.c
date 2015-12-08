@@ -25,14 +25,13 @@ int GreensFuncInitTest3()
 	params.dt = 1.0/8;
 
 	// hopping parameters
-	params.t.aa[0] = 0.0;
-	params.t.ab[0] = 1.0;
-	params.t.ac[0] = 1.0;
-	params.t.ad[0] = -1.0/7.0;
-	params.t.bc[0] = -1.0/7.0;
+	params.t.ab[0] = 1;
+	params.t.ac[0] = 1;
+	params.t.ad[0] = -1.0/7;
+	params.t.bc[0] = -1.0/7;
 
 	// chemical potential
-	params.mu = -2.0/13.0;
+	params.mu = -2.0/13;
 	params.eps[0] = 0;
 
 	// electron-phonon interaction strength
@@ -45,9 +44,12 @@ int GreensFuncInitTest3()
 	params.prodBlen = 4;
 
 	const double lambda = 0.75;
-	const double expV0 = exp(-lambda);
-	const double expV1 = exp( lambda);
-	const double *expV[2] = {&expV0, &expV1};
+	double *expV[2] = {
+		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN),
+		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN)
+	};
+	expV[0][0] = exp(-lambda);
+	expV[1][0] = exp( lambda);
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
@@ -95,7 +97,7 @@ int GreensFuncInitTest3()
 	GreenConstruct(&tsm, 0, &G);
 
 	// load reference data from disk
-	double Gmat_ref[N*N];
+	double *Gmat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	double detG_ref;
 	ReadData("../test/greens_func_init_test3_G.dat", Gmat_ref, sizeof(double), N*N);
 	ReadData("../test/greens_func_init_test3_detG.dat", &detG_ref, sizeof(double), 1);
@@ -118,11 +120,14 @@ int GreensFuncInitTest3()
 	printf("Relative determinant error: %g\n", err_det);
 
 	// clean up
+	MKL_free(Gmat_ref);
 	DeleteGreensFunction(&G);
 	DeleteTimeStepMatrices(&tsm);
 	MKL_free(expX);
 	MKL_free(X);
 	DeleteKineticExponential(&kinetic);
+	MKL_free(expV[1]);
+	MKL_free(expV[0]);
 	DeleteSimulationParameters(&params);
 
 	return (err_rel < 1e-11 && err_abs < 2e-14 && err_det < 1e-13 ? 0 : 1);

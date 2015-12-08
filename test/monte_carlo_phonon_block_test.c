@@ -25,14 +25,11 @@ int MonteCarloPhononBlockTest()
 	params.dt = 1.0/8;
 
 	// hopping parameters
-	params.t.aa[0] = 0.0;
-	params.t.ab[0] = 1.0;
-	params.t.ac[0] = 1.0;
-	params.t.ad[0] = 0.0;
-	params.t.bc[0] = 0.0;
+	params.t.ab[0] = 1;
+	params.t.ac[0] = 1;
 
 	// chemical potential
-	params.mu = 0.0;
+	params.mu = 0;
 	params.eps[0] = 0;
 
 	// number of time steps
@@ -97,8 +94,8 @@ int MonteCarloPhononBlockTest()
 	PhononBlockUpdates(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 
 	// load reference phonon field from disk
-	double    X_ref[params.L*N];
-	double expX_ref[params.L*N];
+	double *X_ref    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *expX_ref = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
 	status = ReadData("../test/monte_carlo_phonon_block_test_X1.dat",       X_ref, sizeof(double), params.L*N); if (status != 0) { return status; }
 	status = ReadData("../test/monte_carlo_phonon_block_test_expX1.dat", expX_ref, sizeof(double), params.L*N); if (status != 0) { return status; }
 
@@ -109,8 +106,8 @@ int MonteCarloPhononBlockTest()
 	printf("Largest entrywise absolute error of the phonon field: %g\n", errX);
 
 	// load reference Green's function matrices from disk
-	double Gu_mat_ref[N*N];
-	double Gd_mat_ref[N*N];
+	double *Gu_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gd_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	double detGu_ref, detGd_ref;
 	status = ReadData("../test/monte_carlo_phonon_block_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
 	status = ReadData("../test/monte_carlo_phonon_block_test_Gd1.dat",    Gd_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
@@ -141,6 +138,10 @@ int MonteCarloPhononBlockTest()
 	printf("Relative determinant error: %g\n", err_detG);
 
 	// clean up
+	MKL_free(Gd_mat_ref);
+	MKL_free(Gu_mat_ref);
+	MKL_free(expX_ref);
+	MKL_free(X_ref);
 	DeleteGreensFunction(&Gd);
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);

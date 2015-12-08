@@ -6,9 +6,9 @@
 #include <stdio.h>
 
 
-extern void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict B);
+void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict B);
 
-extern void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict invB);
+void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict invB);
 
 
 int GreensFuncWrapTest()
@@ -27,11 +27,8 @@ int GreensFuncWrapTest()
 	params.dt = 1.0/8;
 
 	// hopping parameters
-	params.t.aa[0] = 0.0;
-	params.t.ab[0] = 1.0;
-	params.t.ac[0] = 1.0;
-	params.t.ad[0] = 0.0;
-	params.t.bc[0] = 0.0;
+	params.t.ab[0] = 1;
+	params.t.ac[0] = 1;
 
 	// chemical potential
 	params.mu = -1.0/5.0;
@@ -39,16 +36,18 @@ int GreensFuncWrapTest()
 
 	// lambda parameter (depends on U in Hamiltonian)
 	const double lambda = 0.75;
-	const double expV0 = exp(-lambda);
-	const double expV1 = exp( lambda);
-	const double *expV[2] = {&expV0, &expV1};
+	double *expV[2] = {
+		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN),
+		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN)
+	};
+	expV[0][0] = exp(-lambda);
+	expV[1][0] = exp( lambda);
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
 	RectangularKineticExponential(&params, &kinetic);
 
 	// Hubbard-Stratonovich field
-	// TODO: replace with malloc and load this from a file
 	const spin_field_t s[4 * 6] = { 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1 };
 
 	// calculate B and B^{-1}
@@ -66,7 +65,7 @@ int GreensFuncWrapTest()
 	GreenTimeSliceWrap(N, B, invB, G);
 
 	// load reference data from disk
-	double G_ref[N*N];
+	double *G_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	ReadData("../test/greens_func_wrap_test_G1.dat", G_ref, sizeof(double), N*N);
 
 	// entrywise relative error
@@ -83,10 +82,13 @@ int GreensFuncWrapTest()
 	printf("Largest entrywise absolute error: %g\n", err_abs);
 
 	// clean up
+	MKL_free(G_ref);
 	MKL_free(G);
 	MKL_free(invB);
 	MKL_free(B);
 	DeleteKineticExponential(&kinetic);
+	MKL_free(expV[1]);
+	MKL_free(expV[0]);
 	DeleteSimulationParameters(&params);
 
 	return (err_rel < 4e-12 && err_abs < 2e-14 ? 0 : 1);
