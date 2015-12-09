@@ -10,9 +10,9 @@
 
 int GreensFuncInitTest1()
 {
-	int i;
+	// three-orbital simulation parameters
 	sim_params_t params = { 0 };
-	AllocateSimulationParameters(1, &params);
+	AllocateSimulationParameters(3, &params);
 
 	// lattice field dimensions
 	params.Nx = 4;
@@ -24,15 +24,22 @@ int GreensFuncInitTest1()
 	// imaginary-time step size
 	params.dt = 1.0/8.0;
 
-	// hopping parameters
-	params.t.ab[0] = 1;
-	params.t.ac[0] = 1;
-	params.t.ad[0] = -2.0/11;
-	params.t.bc[0] = -2.0/11;
+	int status;
+
+	// read hopping parameters from disk
+	status = ReadData("../test/greens_func_init_test1_taa.dat", params.t.aa, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
+	status = ReadData("../test/greens_func_init_test1_tab.dat", params.t.ab, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
+	status = ReadData("../test/greens_func_init_test1_tac.dat", params.t.ac, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
+	status = ReadData("../test/greens_func_init_test1_tad.dat", params.t.ad, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
+	status = ReadData("../test/greens_func_init_test1_tbc.dat", params.t.bc, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
 
 	// chemical potential
-	params.mu = 2.0/9.0;
-	params.eps[0] = 0;
+	params.mu = 5.0/6;
+
+	// site energies
+	params.eps[0] = -1.0/13;
+	params.eps[1] =  5.0/17;
+	params.eps[2] =  4.0/11;
 
 	// number of time steps
 	params.L = 16;
@@ -40,37 +47,26 @@ int GreensFuncInitTest1()
 	// largest number of B_l matrices multiplied together before performing a QR decomposition; must divide L
 	params.prodBlen = 4;
 
-	const double lambda = 0.75;
-	double *expV[2] = {
-		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN),
-		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN)
-	};
-	expV[0][0] = exp(-lambda);
-	expV[1][0] = exp( lambda);
+	// lambda parameter (depends on U in Hamiltonian)
+	const double lambda[] = { 0.5, 2.0/9, 0.2 };
 
-	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
+	// calculate matrix exponential of the kinetic hopping matrix
 	kinetic_t kinetic;
 	RectangularKineticExponential(&params, &kinetic);
 
-	// Hubbard-Stratonovich field
-	const spin_field_t s[16 * 4 * 6] = {
-		1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
-		0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0,
-		0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1,
-		1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1,
-		0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0,
-		0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0,
-		1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1,
-		0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0,
-		1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1,
-		1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0,
-		1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0,
-		1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0,
-		0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
-		1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1,
-		1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0,
-		1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1
-	};
+	// load Hubbard-Stratonovich field from disk
+	spin_field_t *s = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	status = ReadData("../test/greens_func_init_test1_HS.dat", s, sizeof(spin_field_t), N*params.L); if (status != 0) { return status; }
+
+	double *expV[2];
+	expV[0] = (double *)MKL_malloc(params.Norb * sizeof(double), MEM_DATA_ALIGN);
+	expV[1] = (double *)MKL_malloc(params.Norb * sizeof(double), MEM_DATA_ALIGN);
+	int i;
+	for (i = 0; i < params.Norb; i++)
+	{
+		expV[0][i] = exp(-lambda[i]);
+		expV[1][i] = exp( lambda[i]);
+	}
 
 	// allocate and initialize time step matrices
 	time_step_matrices_t tsm;
@@ -78,7 +74,7 @@ int GreensFuncInitTest1()
 	InitTimeStepMatrices(&kinetic, expV, s, &tsm);
 
 	// construct the Green's function matrix
-	printf("Constructing Green's function for a %i x %i lattice at beta = %g...\n", params.Nx, params.Ny, params.L*params.dt);
+	printf("Constructing Green's function for a %i x %i lattice with %i orbitals per unit cell at beta = %g...\n", params.Nx, params.Ny, params.Norb, params.L*params.dt);
 	greens_func_t G;
 	AllocateGreensFunction(N, &G);
 	GreenConstruct(&tsm, 0, &G);
@@ -113,7 +109,8 @@ int GreensFuncInitTest1()
 	DeleteKineticExponential(&kinetic);
 	MKL_free(expV[1]);
 	MKL_free(expV[0]);
+	MKL_free(s);
 	DeleteSimulationParameters(&params);
 
-	return (err_rel < 2e-11 && err_abs < 2e-14 && err_det < 2e-13 ? 0 : 1);
+	return (err_rel < 2e-10 && err_abs < 1e-14 && err_det < 2e-14 ? 0 : 1);
 }
