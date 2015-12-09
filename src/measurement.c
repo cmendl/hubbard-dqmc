@@ -185,7 +185,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 					meas_data->uu_corr[k + offset] += signfac*((k == 0 && o == p) ? (1 - Gu_ii) : (1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
 					meas_data->dd_corr[k + offset] += signfac*((k == 0 && o == p) ? (1 - Gd_ii) : (1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
 					meas_data->ud_corr[k + offset] += signfac*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
-					const int delta = (k == 0 && o == p);
+					const int delta = (k == 0 && o == p) ? 1 : 0;
 					meas_data->ff_corr[k + offset] += signfac*((delta - Gu_ji) * Gu_ij + (delta - Gd_ji) * Gd_ij);
 
 					meas_data->zz_corr[k + offset] += signfac*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));

@@ -22,7 +22,7 @@ int TimeFlowTest3()
 	// imaginary-time step size
 	params.dt = 1.0/8;
 
-	// t (nearest neighbor) hopping parameter
+	// hopping parameters
 	params.t.aa[1] = -2.0/3;
 	// a -> b
 	params.t.ab[0] =  4.0/9;

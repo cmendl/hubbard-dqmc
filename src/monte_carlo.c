@@ -52,9 +52,9 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	__assume_aligned(Gd_old.mat, MEM_DATA_ALIGN);
 	#endif
 
-	// random shuffle of lattice sites
-	int *site_order = MKL_malloc(N * sizeof(int), MEM_DATA_ALIGN);
-	__assume_aligned(site_order, MEM_DATA_ALIGN);
+	// random shuffle of lattice cells and orbitals
+	int *orb_cell_order = MKL_malloc(N * sizeof(int), MEM_DATA_ALIGN);
+	__assume_aligned(orb_cell_order, MEM_DATA_ALIGN);
 
 	// iterate over time slices
 	int l;
@@ -72,12 +72,12 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 
 		// iterate over lattice sites in random order, updating the Hubbard-Stratonovich field
 		Profile_Begin("DQMCIter_SiteUpdate");
-		Random_Shuffle(seed, N, site_order);
+		Random_Shuffle(seed, N, orb_cell_order);
 		int j;
 		for (j = 0; j < N; j++)
 		{
-			const int i = site_order[j];
-			const int o = i / Ncell; // orbital number
+			const int i = orb_cell_order[j];
+			const int o = i / Ncell;	// orbital index
 			assert(0 <= i && i < N);
 			// Eq. (13)
 			// suggest flipping s_{i,l}
@@ -157,7 +157,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	}
 
 	// clean up
-	MKL_free(site_order);
+	MKL_free(orb_cell_order);
 	#if defined(DEBUG) | defined(_DEBUG)
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);
@@ -362,13 +362,12 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	__assume_aligned(Gd_old.mat, MEM_DATA_ALIGN);
 	#endif
 
-	// pre-compute some constants
-	//const double omega_ph_sqhalf = 0.5*square(phonon_params->omega);
+	// pre-compute a constant
 	const double inv_dt_sq = 1.0 / square(dt);
 
-	// random shuffle of lattice sites
-	int *site_order = MKL_malloc(N * sizeof(int), MEM_DATA_ALIGN);
-	 __assume_aligned(site_order, MEM_DATA_ALIGN);
+	// random shuffle of lattice cells and orbitals
+	int *orb_cell_order = MKL_malloc(N * sizeof(int), MEM_DATA_ALIGN);
+	 __assume_aligned(orb_cell_order, MEM_DATA_ALIGN);
 
 	// iterate over time slices
 	int l;
@@ -383,11 +382,11 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		}
 
 		// iterate over lattice sites randomly, updating the Hubbard-Stratonovich field
-		Random_Shuffle(seed, N, site_order);
+		Random_Shuffle(seed, N, orb_cell_order);
 		int j;
 		for (j = 0; j < N; j++)
 		{
-			const int i = site_order[j];
+			const int i = orb_cell_order[j];
 			const int o = i / Ncell;
 			assert(0 <= i && i < N);
 			// Eq. (13)
@@ -420,10 +419,10 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		const int l_prev = (l + L - 1) % L;
 
 		// iterate over lattice sites, updating the phonon field
-		Random_Shuffle(seed, N, site_order);
+		Random_Shuffle(seed, N, orb_cell_order);
 		for (j = 0; j < N; j++)
 		{
-			const int i = site_order[j];
+			const int i = orb_cell_order[j];
 			assert(0 <= i && i < N);
 			const int o = i / Ncell;
 			// don't do anything for orbitals that have no phonon coupling
@@ -514,7 +513,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	PhononBlockUpdates(dt, kinetic, stratonovich_params, phonon_params, seed, s, X, expX, tsm_u, tsm_d, Gu, Gd);
 
 	// clean up
-	MKL_free(site_order);
+	MKL_free(orb_cell_order);
 	#if defined(DEBUG) | defined(_DEBUG)
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);

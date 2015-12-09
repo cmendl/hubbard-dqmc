@@ -8,32 +8,39 @@
 
 int MonteCarloIterTest()
 {
+	// two-orbital simulation parameters
 	sim_params_t params = { 0 };
-	AllocateSimulationParameters(1, &params);
+	AllocateSimulationParameters(2, &params);
 
 	// lattice field dimensions
 	params.Nx = 4;
-	params.Ny = 6;
+	params.Ny = 5;
 
 	// total number of lattice sites
 	const int N = params.Norb * params.Nx*params.Ny;
 
-	// coupling constant in the Hubbard hamiltonian
+	// coupling constants in the Hubbard hamiltonian
 	params.U[0] = 4.5;
+	params.U[1] = 11.0/3;
 
 	// imaginary-time step size
 	params.dt = 1.0/8;
 
-	// hopping parameters
-	params.t.aa[0] = 0.0;
-	params.t.ab[0] = 1.0;
-	params.t.ac[0] = 1.0;
-	params.t.ad[0] = 0.0;
-	params.t.bc[0] = 0.0;
+	int status;
+
+	// read hopping parameters from disk
+	status = ReadData("../test/monte_carlo_iter_test_taa.dat", params.t.aa, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_test_tab.dat", params.t.ab, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_test_tac.dat", params.t.ac, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_test_tad.dat", params.t.ad, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_test_tbc.dat", params.t.bc, sizeof(double), params.Norb*params.Norb);	if (status < 0) { return status; }
 
 	// chemical potential
-	params.mu = 0.0;
-	params.eps[0] = 0;
+	params.mu = 5.0/7;
+
+	// site energies
+	params.eps[0] = -1.0/5;
+	params.eps[1] =  2.0/11;
 
 	// number of time steps
 	params.L = 16;
@@ -52,26 +59,10 @@ int MonteCarloIterTest()
 	kinetic_t kinetic;
 	RectangularKineticExponential(&params, &kinetic);
 
-	// initial Hubbard-Stratonovich field
-	// TODO: replace with malloc and load this from a file
-	spin_field_t s[16 * 4 * 6] = {
-		1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
-		0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0,
-		0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1,
-		1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1,
-		0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0,
-		0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0,
-		1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1,
-		0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0,
-		1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1,
-		1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0,
-		1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0,
-		1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0,
-		0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
-		1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1,
-		1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0,
-		1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1
-	};
+	// load initial Hubbard-Stratonovich field from disk
+	spin_field_t *s = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	status = ReadData("../test/monte_carlo_iter_test_HS0.dat", s, sizeof(spin_field_t), N*params.L);
+	if (status != 0) { return status; }
 
 	// time step matrices
 	time_step_matrices_t tsm_u;
@@ -96,28 +87,13 @@ int MonteCarloIterTest()
 	Random_SeedInit(1865811235122147685LL * params.itime, &seed);
 
 	// perform a Determinant Quantum Monte Carlo (DQMC) iteration
-	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice at beta = %g...\n", params.Nx, params.Ny, params.L*params.dt);
+	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice with %i orbitals per unit cell at beta = %g...\n", params.Nx, params.Ny, params.Norb, params.L*params.dt);
 	DQMCIteration(&kinetic, &stratonovich_params, params.nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
-	spin_field_t s_ref[16 * 4 * 6] = {
-		0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0,
-		1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 1, 1, 0, 0, 1,
-		1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0,
-		0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0,
-		1, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0,
-		1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1,
-		0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0,
-		1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1,
-		1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 0, 0, 0,
-		0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0,
-		0, 0, 1, 1, 1, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0,
-		0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1,
-		1, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0,
-		0, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1, 0, 0,
-		0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0,
-		0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 0, 1, 0
-	};
+	spin_field_t *s_ref = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	status = ReadData("../test/monte_carlo_iter_test_HS1.dat", s_ref, sizeof(spin_field_t), N*params.L);
+	if (status != 0) { return status; }
 
 	// number of deviating Hubbard-Stratonovich field entries
 	int err_field = 0;
@@ -132,7 +108,6 @@ int MonteCarloIterTest()
 	double *Gu_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *Gd_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	double detGu_ref, detGd_ref;
-	int status;
 	status = ReadData("../test/monte_carlo_iter_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
 	status = ReadData("../test/monte_carlo_iter_test_Gd1.dat",    Gd_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
 	status = ReadData("../test/monte_carlo_iter_test_detGu1.dat", &detGu_ref, sizeof(double), 1);   if (status != 0) { return status; }
@@ -164,12 +139,14 @@ int MonteCarloIterTest()
 	// clean up
 	MKL_free(Gd_mat_ref);
 	MKL_free(Gu_mat_ref);
+	MKL_free(s_ref);
 	DeleteGreensFunction(&Gd);
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
+	MKL_free(s);
 	DeleteKineticExponential(&kinetic);
 	DeleteSimulationParameters(&params);
 
-	return (err_field == 0 && err_rel < 2e-8 && err_abs < 4e-11 && err_det < 1e-11 ? 0 : 1);
+	return (err_field == 0 && err_rel < 1e-10 && err_abs < 4e-14 && err_det < 2e-13 ? 0 : 1);
 }
