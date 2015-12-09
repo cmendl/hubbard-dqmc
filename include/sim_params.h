@@ -1,5 +1,5 @@
-#ifndef PARAM_PARSER_H
-#define PARAM_PARSER_H
+#ifndef SIM_PARAMS_H
+#define SIM_PARAMS_H
 
 #include <stdint.h>
 #include <stdbool.h>

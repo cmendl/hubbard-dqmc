@@ -1,4 +1,4 @@
-#include "param_parser.h"
+#include "sim_params.h"
 #include "dupio.h"
 #include "hash_table.h"
 #include <mkl.h>

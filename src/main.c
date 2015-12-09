@@ -1,6 +1,6 @@
 #include "monte_carlo.h"
 #include "kinetic.h"
-#include "param_parser.h"
+#include "sim_params.h"
 #include "random.h"
 #include "stratonovich.h"
 #include "profiler.h"
