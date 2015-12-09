@@ -53,12 +53,10 @@ static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, int *re
 ///
 void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measurement_data_t *restrict meas_data)
 {
-	// lattice dimensions
-	meas_data->Norb = Norb;
 	const int Ncell = Nx * Ny;
+
+	meas_data->Norb  = Norb;
 	meas_data->Ncell = Ncell;
-	const int N = Norb * Ncell;
-	meas_data->N = N;
 
 	// no samples collected so far
 	meas_data->nsampl = 0;
@@ -74,7 +72,7 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measure
 	meas_data->doubleocc = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
 
 	// density correlation data
-	// first index for spatial offset, second and third indices for orbital numbers. hence Ncell*Norb*Norb.
+	// first index for spatial offset, second and third indices for orbital index
 	meas_data->uu_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->dd_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->ud_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
@@ -111,24 +109,20 @@ void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 ///
 void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, measurement_data_t *restrict meas_data)
 {
-	int i, k; // spatial indices
-	int o, p; // orbital indices
+	int i, k;	// spatial indices
+	int o, p;	// orbital indices
 
 	// lattice dimensions
-	const int Norb = meas_data->Norb;
+	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N = meas_data->N;
-	const double nfac = 1.0 / Ncell;
-
-	// increment sample counter
-	meas_data->nsampl++;
+	const int N = Norb * Ncell;
 
 	// product of the determinant signs of the Green's function matrices
 	const double sign = (double)(Gu->sgndet * Gd->sgndet);
 	assert(sign != 0);
 
-	// add current sign
-	meas_data->sign += sign;
+	// normalization factor
+	const double nfac = 1.0 / Ncell;
 
 	for (o = 0; o < Norb; o++)
 	{
@@ -146,11 +140,12 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 		nu *= nfac;
 		nd *= nfac;
 		oc *= nfac;
-		// mean value of density and double occupancy
+		// mean value of density and double occupancy for current orbital
 		meas_data->density_u[o] += sign*nu;
 		meas_data->density_d[o] += sign*nd;
 		meas_data->doubleocc[o] += sign*oc;
 	}
+
 	// density and spin correlations
 
 	// sign and normalization factor
@@ -199,6 +194,12 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 			}
 		}
 	}
+
+	// add current sign
+	meas_data->sign += sign;
+
+	// increment sample counter
+	meas_data->nsampl++;
 }
 
 
@@ -242,7 +243,7 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 ///
 /// \brief Print a summary of basic measurements
 ///
-void SummarizeMeasurementData(measurement_data_t *meas_data)
+void PrintMeasurementDataSummary(const measurement_data_t *meas_data)
 {
 	duprintf("_______________________________________________________________________________\n");
 	duprintf("Summary of simulation results\n\n");
@@ -270,13 +271,14 @@ void SummarizeMeasurementData(measurement_data_t *meas_data)
 ///
 /// \brief Load equal time measurement data structure
 ///
-void LoadMeasurementData(const char *fnbase, const measurement_data_t *meas_data)
+void LoadMeasurementData(const char *fnbase, measurement_data_t *meas_data)
 {
-	const int Norb = meas_data->Norb;
+	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
+
 	char path[1024];
-	sprintf(path, "%s_sign.dat",      fnbase); ReadData(path, (void *)&meas_data->sign, sizeof(double), 1);
-	sprintf(path, "%s_nsampl.dat",    fnbase); ReadData(path, (void *)&meas_data->nsampl, sizeof(int), 1);
+	sprintf(path, "%s_sign.dat",      fnbase); ReadData(path, (void *)&meas_data->sign,   sizeof(double), 1);
+	sprintf(path, "%s_nsampl.dat",    fnbase); ReadData(path, (void *)&meas_data->nsampl, sizeof(int),    1);
 	sprintf(path, "%s_density_u.dat", fnbase); ReadData(path, meas_data->density_u, sizeof(double), Norb);
 	sprintf(path, "%s_density_d.dat", fnbase); ReadData(path, meas_data->density_d, sizeof(double), Norb);
 	sprintf(path, "%s_doubleocc.dat", fnbase); ReadData(path, meas_data->doubleocc, sizeof(double), Norb);
@@ -295,8 +297,9 @@ void LoadMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 ///
 void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data)
 {
-	const int Norb = meas_data->Norb;
+	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
+
 	char path[1024];
 	sprintf(path, "%s_sign.dat",      fnbase); WriteData(path, &meas_data->sign,     sizeof(double), 1, false);
 	sprintf(path, "%s_nsampl.dat",    fnbase); WriteData(path, &meas_data->nsampl,   sizeof(int),    1, false);
@@ -319,11 +322,11 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data)
 {
 	// lattice dimensions
-	meas_data->Norb = Norb;
 	const int Ncell = Nx * Ny;
+	const int N     = Norb * Ncell;
+
+	meas_data->Norb  = Norb;
 	meas_data->Ncell = Ncell;
-	const int N = Norb * Ncell;
-	meas_data->N = N;
 
 	// total number of time steps
 	meas_data->L = L;
@@ -392,16 +395,10 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 	int i, k;
 	int o, p;
 
-	const int Norb = meas_data->Norb;
+	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N = meas_data->N;
+	const int N = Norb * Ncell;
 	const int L = meas_data->L;
-
-	// increment sample counter
-	meas_data->nsampl++;
-
-	// add current sign
-	meas_data->sign += sign;
 
 	// current spin-up unequal time Green's functions
 	double *curGtau0_u = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
@@ -486,6 +483,12 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 	MKL_free(curGeqlt_u);
 	MKL_free(curG0tau_u);
 	MKL_free(curGtau0_u);
+
+	// add current sign
+	meas_data->sign += sign;
+
+	// increment sample counter
+	meas_data->nsampl++;
 }
 
 
@@ -496,11 +499,10 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_data)
 {
 	// total number of orbitals and cells
-	const int Norb = meas_data->Norb;
+	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
 
-	// total number of lattice sites
-	const int N = meas_data->N;
+	const int N = Norb * Ncell;
 
 	// total number of time steps
 	const int L = meas_data->L;
@@ -532,10 +534,11 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 ///
 void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data)
 {
-	const int Norb = meas_data->Norb;
+	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N = meas_data->N;
+	const int N = Norb * Ncell;
 	const int L = meas_data->L;
+
 	char path[1024];
 	sprintf(path, "%s_uneqlt_sign.dat",    fnbase); ReadData(path, (void *)&meas_data->sign,   sizeof(double), 1);
 	sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase); ReadData(path, (void *)&meas_data->nsampl, sizeof(int), 1);
@@ -559,13 +562,14 @@ void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 ///
 void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data)
 {
-	const int Norb = meas_data->Norb;
+	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N = meas_data->N;
+	const int N = Norb * Ncell;
 	const int L = meas_data->L;
+
 	char path[1024];
 	sprintf(path, "%s_uneqlt_sign.dat",    fnbase); WriteData(path, &meas_data->sign,   sizeof(double), 1, false);
-	sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase); WriteData(path, &meas_data->nsampl, sizeof(int), 1, false);
+	sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase); WriteData(path, &meas_data->nsampl, sizeof(int),    1, false);
 
 	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); WriteData(path, meas_data->Gtau0_u, sizeof(double), L*N*N, false);
 	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); WriteData(path, meas_data->G0tau_u, sizeof(double), L*N*N, false);

@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
 			NormalizeUnequalTimeMeasurementData(&meas_data_uneqlt);
 		}
 		// show some simulation results
-		SummarizeMeasurementData(&meas_data);
+		PrintMeasurementDataSummary(&meas_data);
 	}
 
 	// save checkpoint for next run. even if simulation is finished, saving the HS field
