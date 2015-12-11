@@ -283,7 +283,9 @@ int BlockCyclicInverseRotation(const int n, const int p, double *restrict A, con
 	tau += (p - 2)*n;
 
 	// temporary storage for orthogonal Householder reflection data
-	double *Q = (double *)MKL_malloc(4*n*n * sizeof(double), MEM_DATA_ALIGN);
+	// use calloc instead of malloc here because any NaN's on and above the diagonals will be passed
+	// into dormqr, and lapack's NaN checking will cause dormqr to immediately return.
+	double *Q = (double *)MKL_calloc(4*n*n, sizeof(double), MEM_DATA_ALIGN);
 
 	// copy lower triangular part to 'Q' (orthogonal Householder reflection data) and set entries in 'A' to zero
 	MoveStrictlyLowerTriangularMatrix(2*n, 2*n, &A[(1 + N)*(p - 2)*n], N, Q, 2*n);
