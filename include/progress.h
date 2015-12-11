@@ -4,8 +4,7 @@
 
 int InitProgressTracking(int *iteration, const int nequil, const int nsampl);
 
-
-void UpdateProgress(void);
+void UpdateProgress();
 
 
 
