@@ -8,32 +8,39 @@
 
 int MonteCarloIterPhononTest()
 {
+	// two-orbital simulation parameters
 	sim_params_t params = { 0 };
-	AllocateSimulationParameters(1, &params);
+	AllocateSimulationParameters(2, &params);
 
 	// lattice field dimensions
 	params.Nx = 4;
-	params.Ny = 6;
+	params.Ny = 5;
 
 	// total number of lattice sites
 	const int N = params.Norb * params.Nx*params.Ny;
 
-	// coupling constant in the Hubbard hamiltonian
-	params.U[0] = 4.5;
+	// coupling constants in the Hubbard hamiltonian
+	params.U[0] = 10.0/3;
+	params.U[1] = 11.0/5;
 
 	// imaginary-time step size
 	params.dt = 1.0/8;
 
-	// hopping parameters
-	params.t.aa[0] = 0.0;
-	params.t.ab[0] = 1.0;
-	params.t.ac[0] = 1.0;
-	params.t.ad[0] = -1.0/12.0;
-	params.t.bc[0] = -1.0/12.0;
+	int status;
+
+	// read hopping parameters from disk
+	status = ReadData("../test/monte_carlo_iter_phonon_test_taa.dat", params.t.aa, sizeof(double), params.Norb*params.Norb);  if (status < 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_tab.dat", params.t.ab, sizeof(double), params.Norb*params.Norb);  if (status < 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_tac.dat", params.t.ac, sizeof(double), params.Norb*params.Norb);  if (status < 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_tad.dat", params.t.ad, sizeof(double), params.Norb*params.Norb);  if (status < 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_tbc.dat", params.t.bc, sizeof(double), params.Norb*params.Norb);  if (status < 0) { return status; }
 
 	// chemical potential
-	params.mu = -2.0/17.0;
-	params.eps[0] = 0;
+	params.mu = 6.0/7;
+
+	// site energies
+	params.eps[0] = -1.0/5;
+	params.eps[1] =  3.0/11;
 
 	// number of time steps
 	params.L = 16;
@@ -50,7 +57,9 @@ int MonteCarloIterPhononTest()
 
 	// phonon parameters
 	params.phonon_params.omega[0] = 1.3;
-	params.phonon_params.g[0] = 0.7;
+	params.phonon_params.omega[1] = 7.0/8;
+	params.phonon_params.g[0] = 5.0/11;
+	params.phonon_params.g[1] = 7.0/10;
 	params.phonon_params.box_width = 12;
 	params.phonon_params.nblock_updates = 0;	// disable block updates
 
@@ -58,35 +67,22 @@ int MonteCarloIterPhononTest()
 	kinetic_t kinetic;
 	RectangularKineticExponential(&params, &kinetic);
 
-	// initial Hubbard-Stratonovich field
-	spin_field_t s[16 * 4 * 6] = {
-		1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1, 1,
-		0, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0,
-		0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1,
-		1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 1, 1,
-		0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 0,
-		0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0,
-		1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 1,
-		0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0,
-		1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1,
-		1, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0,
-		1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1, 0,
-		1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0,
-		0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1,
-		1, 1, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1,
-		1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0,
-		1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 0, 1
-	};
+	// load initial Hubbard-Stratonovich field from disk
+	spin_field_t *s = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	status = ReadData("../test/monte_carlo_iter_phonon_test_HS0.dat", s, sizeof(spin_field_t), N*params.L);  if (status != 0) { return status; }
 
 	// initial phonon field
 	double *X    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
 	double *expX = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
-	int status;
-	status = ReadData("../test/monte_carlo_iter_phonon_test_X0.dat", X, sizeof(double), params.L*N); if (status != 0) { return status; }
-	int i;
-	for (i = 0; i < params.L*N; i++)
+	status = ReadData("../test/monte_carlo_iter_phonon_test_X0.dat", X, sizeof(double), params.L*N);  if (status != 0) { return status; }
+	int i, l;
+	for (l = 0; l < params.L; l++)
 	{
-		expX[i] = exp(-params.dt*params.phonon_params.g[0] * X[i]);
+		for (i = 0; i < N; i++)
+		{
+			const int o = i / kinetic.Ncell;	// orbital index
+			expX[i + l*N] = exp(-params.dt*params.phonon_params.g[o] * X[i + l*N]);
+		}
 	}
 
 	// time step matrices
@@ -112,28 +108,12 @@ int MonteCarloIterPhononTest()
 	Random_SeedInit(1865811235122147685LL * params.itime, &seed);
 
 	// perform a Determinant Quantum Monte Carlo (DQMC) iteration
-	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice at beta = %g, taking phonons into account...\n", params.Nx, params.Ny, params.L*params.dt);
+	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice with %i orbitals per unit cell, taking phonons into account...\n", params.Nx, params.Ny, params.Norb);
 	DQMCPhononIteration(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, params.nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
-	spin_field_t s_ref[16 * 4 * 6] = {
-		0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0,
-		1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1,
-		1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0,
-		0, 1, 0, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 1, 0,
-		1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0,
-		1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0,
-		1, 0, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 1, 1, 0, 0, 0,
-		1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 0,
-		0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0,
-		1, 1, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 1,
-		0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1,
-		1, 1, 0, 1, 0, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 1,
-		1, 1, 0, 1, 1, 0, 1, 1, 1, 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1,
-		0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1,
-		0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 0, 1, 1,
-		0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1, 0
-	};
+	spin_field_t *s_ref = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	status = ReadData("../test/monte_carlo_iter_phonon_test_HS1.dat", s_ref, sizeof(spin_field_t), N*params.L);  if (status != 0) { return status; }
 
 	// number of deviating Hubbard-Stratonovich field entries
 	int err_field = 0;
@@ -145,7 +125,7 @@ int MonteCarloIterPhononTest()
 
 	// load reference phonon field from disk
 	double *X_ref = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
-	status = ReadData("../test/monte_carlo_iter_phonon_test_X1.dat", X_ref, sizeof(double), params.L*N); if (status != 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_X1.dat", X_ref, sizeof(double), params.L*N);  if (status != 0) { return status; }
 
 	// entrywise absolute error of the phonon field
 	double errX = 0;
@@ -159,10 +139,10 @@ int MonteCarloIterPhononTest()
 	double *Gu_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *Gd_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	double detGu_ref, detGd_ref;
-	status = ReadData("../test/monte_carlo_iter_phonon_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
-	status = ReadData("../test/monte_carlo_iter_phonon_test_Gd1.dat",    Gd_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
-	status = ReadData("../test/monte_carlo_iter_phonon_test_detGu1.dat", &detGu_ref, sizeof(double), 1);   if (status != 0) { return status; }
-	status = ReadData("../test/monte_carlo_iter_phonon_test_detGd1.dat", &detGd_ref, sizeof(double), 1);   if (status != 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N);  if (status != 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_Gd1.dat",    Gd_mat_ref, sizeof(double), N*N);  if (status != 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_detGu1.dat", &detGu_ref, sizeof(double), 1);    if (status != 0) { return status; }
+	status = ReadData("../test/monte_carlo_iter_phonon_test_detGd1.dat", &detGd_ref, sizeof(double), 1);    if (status != 0) { return status; }
 
 	// entrywise relative error of the Green's function matrices
 	double errG_rel = 0;
@@ -197,8 +177,9 @@ int MonteCarloIterPhononTest()
 	DeleteTimeStepMatrices(&tsm_u);
 	MKL_free(expX);
 	MKL_free(X);
+	MKL_free(s);
 	DeleteKineticExponential(&kinetic);
 	DeleteSimulationParameters(&params);
 
-	return (err_field == 0 && errX < 1e-15 && errG_rel < 8e-8 && errG_abs < 1e-10 && err_detG < 1e-11 ? 0 : 1);
+	return (err_field == 0 && errX < 1e-15 && errG_rel < 5e-11 && errG_abs < 1e-14 && err_detG < 4e-14 ? 0 : 1);
 }

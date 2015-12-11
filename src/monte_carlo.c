@@ -79,6 +79,8 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 			const int i = orb_cell_order[j];
 			const int o = i / Ncell;	// orbital index
 			assert(0 <= i && i < N);
+			assert(0 <= o && o < kinetic->Norb);
+
 			// Eq. (13)
 			// suggest flipping s_{i,l}
 			const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]][o];
@@ -362,7 +364,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	__assume_aligned(Gd_old.mat, MEM_DATA_ALIGN);
 	#endif
 
-	// pre-compute a constant
+	// pre-compute 1/dt^2
 	const double inv_dt_sq = 1.0 / square(dt);
 
 	// random shuffle of lattice cells and orbitals
@@ -387,8 +389,10 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		for (j = 0; j < N; j++)
 		{
 			const int i = orb_cell_order[j];
-			const int o = i / Ncell;
+			const int o = i / Ncell;	// orbital index
 			assert(0 <= i && i < N);
+			assert(0 <= o && o < kinetic->Norb);
+
 			// Eq. (13)
 			// suggest flipping s_{i,l}
 			const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]][o];
@@ -423,13 +427,16 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		for (j = 0; j < N; j++)
 		{
 			const int i = orb_cell_order[j];
+			const int o = i / Ncell;	// orbital index
 			assert(0 <= i && i < N);
-			const int o = i / Ncell;
-			// don't do anything for orbitals that have no phonon coupling
-			if (phonon_params->g[o] == 0.0)
+			assert(0 <= o && o < kinetic->Norb);
+
+			// skip orbitals without phonon coupling
+			if (phonon_params->g[o] == 0)
 			{
 				continue;
 			}
+
 			// suggest a shift of X_{i,l}
 			const double dx = (Random_GetUniform(seed) - 0.5) * phonon_params->box_width;
 
@@ -561,7 +568,7 @@ void DQMCSimulation(const sim_params_t *restrict params,
 		{
 			for (i = 0; i < N; i++)
 			{
-				const int o = i / Ncell;	// orbital number
+				const int o = i / Ncell;	// orbital index
 				if (params->phonon_params.g[o] == 0)	// set X to 0 if coupling is zero
 				{
 					X[i + l*N] = 0;
