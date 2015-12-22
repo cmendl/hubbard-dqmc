@@ -229,9 +229,10 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	int n;
 	for (n = 0; n < phonon_params->nblock_updates; n++)
 	{
-		// randomly select a lattice site. ignore sites without phonon coupling
+		// randomly select a lattice site
 		int i = (int)(Random_GetBoundedUint(seed, N));
 		int o = i / Ncell;
+		// ignore sites without phonon coupling
 		if (phonon_params->g[o] == 0)
 		{
 			continue;

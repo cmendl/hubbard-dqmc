@@ -9,7 +9,7 @@
 int MonteCarloPhononBlockTest()
 {
 	sim_params_t params = { 0 };
-	AllocateSimulationParameters(1, &params);
+	AllocateSimulationParameters(2, &params);
 
 	// lattice field dimensions
 	params.Nx = 4;
@@ -18,22 +18,45 @@ int MonteCarloPhononBlockTest()
 	// total number of lattice sites
 	const int N = params.Norb * params.Nx*params.Ny;
 
-	// coupling constant in the Hubbard hamiltonian
-	params.U[0] = 4.0;
-
 	// imaginary-time step size
 	params.dt = 1.0/8;
 
-	// hopping parameters
-	params.t.ab[0] = 1;
-	params.t.ac[0] = 1;
-
-	// chemical potential
-	params.mu = 0;
-	params.eps[0] = 0;
-
 	// number of time steps
 	params.L = 16;
+
+	// hopping parameters
+	params.t.aa[1] =  2.0/9;
+	// a -> b
+	params.t.ab[0] =  4.0/3;
+	params.t.ab[1] =  2.0/9;
+	params.t.ab[2] = -3.0/7;
+	params.t.ab[3] = 15.0/16;
+	// a -> c
+	params.t.ac[0] = -1.0/10;
+	params.t.ac[1] =  1.0/7;
+	params.t.ac[2] =  2.0/17;
+	params.t.ac[3] = -3.0/11;
+	// a -> d
+	params.t.ad[0] = -1.0/9;
+	params.t.ad[1] =  3.0/7;
+	params.t.ad[2] =  4.0/5;
+	params.t.ad[3] = -2.0/19;
+	// b -> c
+	params.t.bc[0] =  3.0/19;
+	params.t.bc[1] =  1.0/6;
+	params.t.bc[2] =  1.0/5;
+	params.t.bc[3] =  1.0/13;
+
+	// coupling constants in the Hubbard hamiltonian
+	params.U[0] = 33.0/8;
+	params.U[1] = 17.0/5;
+
+	// chemical potential
+	params.mu = 2.0/7;
+
+	// site energies
+	params.eps[0] =  1.0/5;
+	params.eps[1] = -3.0/11;
 
 	// largest number of B_l matrices multiplied together before performing a QR decomposition
 	params.prodBlen = 4;
@@ -43,8 +66,10 @@ int MonteCarloPhononBlockTest()
 	FillStratonovichParameters(params.Norb, params.U, params.dt, &stratonovich_params);
 
 	// phonon parameters
-	params.phonon_params.omega[0] = 1.2;
-	params.phonon_params.g[0] = 0.65;
+	params.phonon_params.omega[0] = 6.0/5;
+	params.phonon_params.omega[1] = 5.0/6;
+	params.phonon_params.g[0] = 13.0/20;
+	params.phonon_params.g[1] = 19.0/17;
 	params.phonon_params.box_width = 2;
 	params.phonon_params.nblock_updates = 2;
 
@@ -61,10 +86,14 @@ int MonteCarloPhononBlockTest()
 	double *X    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
 	double *expX = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
 	status = ReadData("../test/monte_carlo_phonon_block_test_X0.dat", X, sizeof(double), params.L*N); if (status != 0) { return status; }
-	int i;
-	for (i = 0; i < params.L*N; i++)
+	int i, l;
+	for (l = 0; l < params.L; l++)
 	{
-		expX[i] = exp(-params.dt*params.phonon_params.g[0] * X[i]);
+		for (i = 0; i < N; i++)
+		{
+			const int o = i / kinetic.Ncell;	// orbital index
+			expX[i + l*N] = exp(-params.dt*params.phonon_params.g[o] * X[i + l*N]);
+		}
 	}
 
 	// time step matrices
@@ -90,7 +119,7 @@ int MonteCarloPhononBlockTest()
 	Random_SeedInit(1865811235122147685LL * params.itime, &seed);
 
 	// perform phonon block updates (first update will be accepted and second rejected)
-	printf("Performing phonon block updates on a %i x %i lattice at beta = %g...\n", params.Nx, params.Ny, params.L*params.dt);
+	printf("Performing phonon block updates on a %i x %i lattice with %i orbitals per unit cell at beta = %g...\n", params.Nx, params.Ny, params.Norb, params.L*params.dt);
 	PhononBlockUpdates(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
 
 	// load reference phonon field from disk
@@ -151,5 +180,5 @@ int MonteCarloPhononBlockTest()
 	MKL_free(s);
 	DeleteKineticExponential(&kinetic);
 
-	return (errX < 5e-16 && errG_rel < 5e-11 && errG_abs < 2e-14 && err_detG < 8e-14 ? 0 : 1);
+	return (errX < 5e-16 && errG_rel < 5e-10 && errG_abs < 5e-14 && err_detG < 4e-13 ? 0 : 1);
 }
