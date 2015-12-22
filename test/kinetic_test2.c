@@ -39,6 +39,7 @@ int KineticTest2()
 	params.L        = 1;
 	params.prodBlen = 1;
 	params.nwraps   = 1;
+	params.itime    = 1;
 
 	status = ValidateSimulationParameters(&params);
 	if (status < 0) { return status; }

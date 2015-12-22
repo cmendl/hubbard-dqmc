@@ -64,13 +64,13 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	// zero simulation parameters and set initial time for random seed.
+	// zero simulation parameters and use initial time as random seed (will be overwritten if explicitly specified in parameter file)
 	sim_params_t params = { 0 };
 	params.itime = GetTicks();
 
-	// read parameters from input file.
+	// read parameters from input file
 	duprintf("Reading simulation parameters from file '%s'...\n", argv[1]);
-	status = ParseParameterFile(argv[1], &params); // this also allocates memory for the arrays in params
+	status = ParseParameterFile(argv[1], &params);	// this also allocates memory for the arrays in params
 	if (status < 0)
 	{
 		duprintf("Error parsing parameter file, exiting...\n");
@@ -128,7 +128,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	// state variables for DQMC simulation. these are also the variables stored in a checkpoint.
+	// state variables for DQMC simulation; these are also the variables stored in a checkpoint
+	// TODO: include phonons
 	int iteration = 0;
 	randseed_t seed;
 	const int LxN = params.L * params.Norb * params.Nx * params.Ny;
@@ -142,7 +143,7 @@ int main(int argc, char *argv[])
 
 		// random initial Hubbard-Stratonovich field
 		int i;
-		for (i = 0; i < params.L * params.Norb * params.Nx * params.Ny; i++)
+		for (i = 0; i < LxN; i++)
 		{
 			s[i] = (Random_GetUniform(&seed) < 0.5 ? 0 : 1);
 		}

@@ -329,7 +329,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 	if ((value = HashTableGet(&hashtable, "nequil"))   != NULL) { params->nequil  = atoi(value->str[0]); }
 	if ((value = HashTableGet(&hashtable, "nsampl"))   != NULL) { params->nsampl  = atoi(value->str[0]); }
 	if ((value = HashTableGet(&hashtable, "nuneqlt"))  != NULL) { params->nuneqlt = atoi(value->str[0]); }
-	if ((value = HashTableGet(&hashtable, "itime"))    != NULL) { params->itime   = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "itime"))    != NULL) { params->itime  = atoll(value->str[0]); }
 
 	// deallocate everything in the hash table
 	DeleteHashTable(&hashtable, DeleteValueList);
@@ -432,6 +432,12 @@ int ValidateSimulationParameters(const sim_params_t *params)
 	if (params->nwraps % params->prodBlen != 0 || params->nwraps/params->prodBlen <= 0)
 	{
 		duprintf("Invalid parameters nwraps = %i, prodBlen = %i: 'nwraps' must be divisible by 'prodBlen' and 'nwraps/prodBlen' must be positive.\n", params->nwraps, params->prodBlen);
+		return -1;
+	}
+
+	if (params->itime == 0)
+	{
+		duprintf("Invalid parameter itime = 0; must be positive to be used as random seed.\n");
 		return -1;
 	}
 

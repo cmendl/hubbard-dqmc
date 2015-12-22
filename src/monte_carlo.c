@@ -678,4 +678,5 @@ void DQMCSimulation(const sim_params_t *restrict params,
 		MKL_free(X);
 	}
 	DeleteStratonovichParameters(&stratonovich_params);
+	DeleteKineticExponential(&kinetic);
 }

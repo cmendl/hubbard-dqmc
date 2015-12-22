@@ -121,8 +121,8 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 	const double sign = (double)(Gu->sgndet * Gd->sgndet);
 	assert(sign != 0);
 
-	// normalization factor
-	const double nfac = 1.0 / Ncell;
+	// sign and normalization factor
+	const double signfac = sign / Ncell;
 
 	for (o = 0; o < Norb; o++)
 	{
@@ -136,20 +136,13 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 			nd += (1 - Gd->mat[io + io*N]);
 			oc += (1 - Gu->mat[io + io*N])*(1 - Gd->mat[io + io*N]);
 		}
-		// normalization
-		nu *= nfac;
-		nd *= nfac;
-		oc *= nfac;
 		// mean value of density and double occupancy for current orbital
-		meas_data->density_u[o] += sign*nu;
-		meas_data->density_d[o] += sign*nd;
-		meas_data->doubleocc[o] += sign*oc;
+		meas_data->density_u[o] += signfac*nu;
+		meas_data->density_d[o] += signfac*nd;
+		meas_data->doubleocc[o] += signfac*oc;
 	}
 
 	// density and spin correlations
-
-	// sign and normalization factor
-	const double signfac = sign / Ncell;
 
 	for (o = 0; o < Norb; o++)
 	{
