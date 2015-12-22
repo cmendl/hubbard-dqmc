@@ -128,11 +128,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	// dimensions
+	const int Ncell = params.Nx * params.Ny;
+	const int N     = params.Norb * Ncell;
+	const int LxN   = params.L * N;
+
 	// state variables for DQMC simulation; these are also the variables stored in a checkpoint
-	// TODO: include phonons
+	// TODO: include phonons in checkpoint
 	int iteration = 0;
 	randseed_t seed;
-	const int LxN = params.L * params.Norb * params.Nx * params.Ny;
 	spin_field_t *s = (spin_field_t *)MKL_malloc(LxN * sizeof(spin_field_t), MEM_DATA_ALIGN);
 
 	// check for previous data in output directory
@@ -181,6 +185,32 @@ int main(int argc, char *argv[])
 		duprintf("Resuming DQMC simulation at iteration %d.\n", iteration);
 	}
 
+	// random initial phonon field
+	double *X = NULL, *expX = NULL;
+	if (params.use_phonons)
+	{
+		X    = (double *)MKL_malloc(LxN * sizeof(double), MEM_DATA_ALIGN);
+		expX = (double *)MKL_malloc(LxN * sizeof(double), MEM_DATA_ALIGN);
+		int l;
+		for (l = 0; l < params.L; l++)
+		{
+			int i;
+			for (i = 0; i < N; i++)
+			{
+				const int o = i / Ncell;	// orbital index
+				if (params.phonon_params.g[o] == 0)	// set X to 0 if coupling is zero
+				{
+					X[i + l*N] = 0;
+				}
+				else
+				{
+					X[i + l*N] = (Random_GetUniform(&seed) - 0.5) * params.phonon_params.box_width;
+				}
+				expX[i + l*N] = exp(-params.dt*params.phonon_params.g[o] * X[i + l*N]);
+			}
+		}
+	}
+
 	// enable progress tracking (progress of simulation is shown whenever a SIGUSR1 signal is received)
 	InitProgressTracking(&iteration, params.nequil, params.nsampl);
 
@@ -188,7 +218,7 @@ int main(int argc, char *argv[])
 	const clock_t t_start = clock();
 
 	// perform simulation
-	DQMCSimulation(&params, &meas_data, &meas_data_uneqlt, &iteration, &seed, s);
+	DQMCSimulation(&params, &meas_data, &meas_data_uneqlt, &iteration, &seed, s, X, expX);
 
 	// stop timer
 	const clock_t t_end = clock();
@@ -231,6 +261,11 @@ int main(int argc, char *argv[])
 	// clean up
 	Profile_Stop();
 	fclose(fd_log);
+	if (params.use_phonons)
+	{
+		MKL_free(expX);
+		MKL_free(X);
+	}
 	MKL_free(s);
 	if (params.nuneqlt > 0)
 	{

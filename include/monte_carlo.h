@@ -8,13 +8,9 @@
 #include "measurement.h"
 
 
-void DQMCIteration(	const kinetic_t *restrict kinetic,
-					const stratonovich_params_t *restrict stratonovich_params,
-					const int nwraps,
-					randseed_t *restrict seed,
-					spin_field_t *restrict s,
-					time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d,
-					greens_func_t *restrict Gu, greens_func_t *restrict Gd);
+void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
+	const int nwraps,randseed_t *restrict seed, spin_field_t *restrict s,
+	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd);
 
 void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params, const phonon_params_t *restrict phonon_params,
 	const int nwraps, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX,
@@ -28,7 +24,7 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 
 void DQMCSimulation(const sim_params_t *restrict params,
 	measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt,
-	int *restrict i_start, randseed_t *restrict seed, spin_field_t *restrict s);
+	int *restrict i_start, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX);
 
 
 

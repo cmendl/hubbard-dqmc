@@ -241,21 +241,21 @@ void PrintMeasurementDataSummary(const measurement_data_t *meas_data)
 	duprintf("_______________________________________________________________________________\n");
 	duprintf("Summary of simulation results\n\n");
 	duprintf("                    average sign: %g\n", meas_data->sign);
-	double total_density = 0.0;
-	int i;
-	for (i = 0; i < meas_data->Norb; i++)
+	double total_density = 0;
+	int o;
+	for (o = 0; o < meas_data->Norb; o++)
 	{
-		total_density += meas_data->density_u[i] + meas_data->density_d[i];
+		total_density += meas_data->density_u[o] + meas_data->density_d[o];
 	}
 	duprintf("           average total density: %g\n", total_density);
-	for (i = 0; i < meas_data->Norb; i++)
+	for (o = 0; o < meas_data->Norb; o++)
 	{
-		duprintf("\nResults for orbital %d\n", i);
-		duprintf("           average total density: %g\n", meas_data->density_u[i] + meas_data->density_d[i]);
-		duprintf("         average spin-up density: %g\n", meas_data->density_u[i]);
-		duprintf("       average spin-down density: %g\n", meas_data->density_d[i]);
-		duprintf("        average double occupancy: %g\n", meas_data->doubleocc[i]);
-		duprintf("            average local moment: %g\n", meas_data->density_u[i] + meas_data->density_d[i] - 2.0*meas_data->doubleocc[i]);
+		duprintf("\nResults for orbital %d\n", o);
+		duprintf("           average total density: %g\n", meas_data->density_u[o] + meas_data->density_d[o]);
+		duprintf("         average spin-up density: %g\n", meas_data->density_u[o]);
+		duprintf("       average spin-down density: %g\n", meas_data->density_d[o]);
+		duprintf("        average double occupancy: %g\n", meas_data->doubleocc[o]);
+		duprintf("            average local moment: %g\n", meas_data->density_u[o] + meas_data->density_d[o] - 2.0*meas_data->doubleocc[o]);
 	}
 }
 

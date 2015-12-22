@@ -538,13 +538,14 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 /// \param meas_data_uneqlt     unequal time measurement data structure
 /// \param iteration            pointer to iteration counter (i.e. number of iterations completed from previous runs)
 /// \param seed                 random number generator seed
-/// \param s                    Hubbard-Stratonovich field
+/// \param s                    Hubbard-Stratonovich field; will be updated
+/// \param X                    phonon field; only accessed if params->use_phonons is true
+/// \param expX                 entrywise exponential of the phonon field: exp(-dt g X)
 ///
 void DQMCSimulation(const sim_params_t *restrict params,
 	measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt,
-	int *restrict iteration, randseed_t *restrict seed, spin_field_t *restrict s)
+	int *restrict iteration, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX)
 {
-	int i;
 	const int Norb  = params->Norb;
 	const int Ncell = params->Nx * params->Ny;
 	const int N     = Norb * Ncell;
@@ -556,32 +557,6 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	// pre-calculate some stuff related to the Hubbard-Stratonovich field, for every orbital
 	stratonovich_params_t stratonovich_params;
 	FillStratonovichParameters(Norb, params->U, params->dt, &stratonovich_params);
-
-	// random initial phonon field
-	double *X = NULL, *expX = NULL;
-	if (params->use_phonons)
-	{
-		const int L = params->L;
-		X    = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
-		expX = (double *)MKL_malloc(L*N * sizeof(double), MEM_DATA_ALIGN);
-		int l;
-		for (l = 0; l < L; l++)
-		{
-			for (i = 0; i < N; i++)
-			{
-				const int o = i / Ncell;	// orbital index
-				if (params->phonon_params.g[o] == 0)	// set X to 0 if coupling is zero
-				{
-					X[i + l*N] = 0;
-				}
-				else
-				{
-					X[i + l*N] = (Random_GetUniform(seed) - 0.5) * params->phonon_params.box_width;
-				}
-				expX[i + l*N] = exp(-params->dt*params->phonon_params.g[o] * X[i + l*N]);
-			}
-		}
-	}
 
 	// time step matrices
 	time_step_matrices_t tsm_u;
@@ -672,11 +647,6 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
-	if (params->use_phonons)
-	{
-		MKL_free(expX);
-		MKL_free(X);
-	}
 	DeleteStratonovichParameters(&stratonovich_params);
 	DeleteKineticExponential(&kinetic);
 }
