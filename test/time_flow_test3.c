@@ -152,7 +152,9 @@ int TimeFlowTest3()
 	MKL_free(expV[0]);
 	MKL_free(expX);
 	MKL_free(X);
+	MKL_free(s);
 	DeleteKineticExponential(&kinetic);
+	DeleteSimulationParameters(&params);
 
 	return (err_rel < 1e-10 && err_abs < 4e-10 ? 0 : 1);
 }

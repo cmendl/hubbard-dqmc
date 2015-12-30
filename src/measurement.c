@@ -149,19 +149,13 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 		for (p = 0; p < Norb; p++)
 		{
 			// starting index for correlation accumulators
-			const int offset = o*Ncell + p*Ncell*Norb;
+			const int offset = (o + p*Norb) * Ncell;
 
 			for (i = 0; i < Ncell; i++)
 			{
 				const int io = i + o * Ncell;
 				const double Gu_ii = Gu->mat[io + N*io];
 				const double Gd_ii = Gd->mat[io + N*io];
-
-				if (o == p)
-				{
-					meas_data->zz_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
-					meas_data->xx_corr[0 + offset] += signfac*(Gu_ii + Gd_ii);
-				}
 
 				for (k = 0; k < Ncell; k++)
 				{
@@ -174,15 +168,25 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 					const double Gu_ji = Gu->mat[jp + N*io];
 					const double Gd_ji = Gd->mat[jp + N*io];
 
-					// k = 0 is special
-					meas_data->uu_corr[k + offset] += signfac*((k == 0 && o == p) ? (1 - Gu_ii) : (1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
-					meas_data->dd_corr[k + offset] += signfac*((k == 0 && o == p) ? (1 - Gd_ii) : (1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
-					meas_data->ud_corr[k + offset] += signfac*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
-					const int delta = (k == 0 && o == p) ? 1 : 0;
-					meas_data->ff_corr[k + offset] += signfac*((delta - Gu_ji) * Gu_ij + (delta - Gd_ji) * Gd_ij);
+					if (k == 0 && o == p)	// special case: same lattice site and orbital
+					{
+						meas_data->uu_corr[k + offset] += signfac*(1 - Gu_ii);
+						meas_data->dd_corr[k + offset] += signfac*(1 - Gd_ii);
+						meas_data->ff_corr[k + offset] += signfac*(Gu_ij*(1 - Gu_ji) + Gd_ij*(1 - Gd_ji));
+						meas_data->zz_corr[k + offset] += signfac*(Gu_ii - 2*Gu_ii*Gd_ii + Gd_ii);
+						meas_data->xx_corr[k + offset] += signfac*(Gu_ii - 2*Gu_ii*Gd_ii + Gd_ii);
+					}
+					else
+					{
+						meas_data->uu_corr[k + offset] += signfac*((1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
+						meas_data->dd_corr[k + offset] += signfac*((1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
+						meas_data->ff_corr[k + offset] += signfac*(                                - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
+						meas_data->zz_corr[k + offset] += signfac*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
+						meas_data->xx_corr[k + offset] += signfac*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
+					}
 
-					meas_data->zz_corr[k + offset] += signfac*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
-					meas_data->xx_corr[k + offset] += signfac*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
+					// independent of special case
+					meas_data->ud_corr[k + offset] += signfac*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
 				}
 			}
 		}
@@ -262,7 +266,7 @@ void PrintMeasurementDataSummary(const measurement_data_t *meas_data)
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Load equal time measurement data structure
+/// \brief Load equal time measurement data structure from disk
 ///
 void LoadMeasurementData(const char *fnbase, measurement_data_t *meas_data)
 {
@@ -286,7 +290,7 @@ void LoadMeasurementData(const char *fnbase, measurement_data_t *meas_data)
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Save equal time measurement data structure
+/// \brief Save equal time measurement data structure to disk
 ///
 void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data)
 {
@@ -523,7 +527,7 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Load unequal time measurement data structure
+/// \brief Load unequal time measurement data structure from disk
 ///
 void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data)
 {
@@ -551,7 +555,7 @@ void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Save unequal time measurement data structure
+/// \brief Save unequal time measurement data structure to disk
 ///
 void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data)
 {

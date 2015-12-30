@@ -1,11 +1,10 @@
+#include <mkl.h>
 #include <stdbool.h>
 #include <stdio.h>
 
 #if defined(_WIN32) & (defined(DEBUG) | defined(_DEBUG))
 #include <crtdbg.h>
 #endif
-
-void mkl_free_buffers(void);
 
 
 typedef int (*test_function_t)();
@@ -42,13 +41,12 @@ int main()
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	#endif
 
-	#define NUM_TESTS 22
-	test_function_t tests[NUM_TESTS] = { MatrixExpTest, BlockCyclicQRTest, BlockCyclicTriTest, BlockCyclicInvTest, KineticTest, KineticTest2, LatticeFourierTest, TimeFlowTest1, TimeFlowTest2, TimeFlowTest3, StratonovichTest, GreensFuncFlipTest, GreensFuncWrapTest, GreensFuncInitTest1, GreensFuncInitTest2, GreensFuncInitTest3, GreensFuncInitTest4, MonteCarloIterTest, MonteCarloPhononBlockTest, MonteCarloIterPhononTest, GreenUnequalTimeTest, MeasurementTest };
+	test_function_t tests[] = { MatrixExpTest, BlockCyclicQRTest, BlockCyclicTriTest, BlockCyclicInvTest, KineticTest, KineticTest2, LatticeFourierTest, TimeFlowTest1, TimeFlowTest2, TimeFlowTest3, StratonovichTest, GreensFuncFlipTest, GreensFuncWrapTest, GreensFuncInitTest1, GreensFuncInitTest2, GreensFuncInitTest3, GreensFuncInitTest4, MonteCarloIterTest, MonteCarloPhononBlockTest, MonteCarloIterPhononTest, GreenUnequalTimeTest, MeasurementTest };
 
 	bool pass = true;
 
 	int i;
-	for (i = 0; i < NUM_TESTS; i++)
+	for (i = 0; i < (int)(sizeof(tests)/sizeof(tests[0])); i++)
 	{
 		int status = tests[i]();
 
@@ -83,7 +81,20 @@ int main()
 	}
 
 	// clean up MKL library
-	mkl_free_buffers();
+	MKL_Free_Buffers();
+
+	// check for MKL memory leaks
+	int nbuffers;
+	MKL_INT64 nbytes_alloc;
+	nbytes_alloc = MKL_Mem_Stat(&nbuffers);
+	if (nbytes_alloc > 0)
+	{
+		printf("\nMKL memory leak detected! MKL still uses %lld bytes in %d buffer(s).\n", nbytes_alloc, nbuffers);
+	}
+	else
+	{
+		printf("\nMKL memory leak check appears to be fine.\n");
+	}
 
 	return 0;
 }

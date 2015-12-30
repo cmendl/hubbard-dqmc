@@ -171,6 +171,7 @@ int MonteCarloIterPhononTest()
 	MKL_free(Gd_mat_ref);
 	MKL_free(Gu_mat_ref);
 	MKL_free(X_ref);
+	MKL_free(s_ref);
 	DeleteGreensFunction(&Gd);
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);
@@ -179,6 +180,7 @@ int MonteCarloIterPhononTest()
 	MKL_free(X);
 	MKL_free(s);
 	DeleteKineticExponential(&kinetic);
+	DeleteStratonovichParameters(&stratonovich_params);
 	DeleteSimulationParameters(&params);
 
 	return (err_field == 0 && errX < 1e-15 && errG_rel < 5e-11 && errG_abs < 1e-14 && err_detG < 4e-14 ? 0 : 1);

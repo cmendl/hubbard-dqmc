@@ -179,6 +179,8 @@ int MonteCarloPhononBlockTest()
 	MKL_free(X);
 	MKL_free(s);
 	DeleteKineticExponential(&kinetic);
+	DeleteStratonovichParameters(&stratonovich_params);
+	DeleteSimulationParameters(&params);
 
 	return (errX < 5e-16 && errG_rel < 5e-10 && errG_abs < 5e-14 && err_detG < 4e-13 ? 0 : 1);
 }

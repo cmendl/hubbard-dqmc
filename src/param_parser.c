@@ -68,10 +68,8 @@ static void AppendValues(value_list_t *list, const value_list_t *ap)
 ///
 /// \brief Delete parameter value list
 ///
-static void DeleteValueList(void *ptr)
+static void DeleteValueList(value_list_t *list)
 {
-	value_list_t *list = (value_list_t *)ptr;
-
 	int i;
 	for (i = 0; i < list->num; i++)
 	{
@@ -79,6 +77,18 @@ static void DeleteValueList(void *ptr)
 	}
 
 	list->num = 0;
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Delete parameter value list contents and free structure memory
+///
+static void FreeValueListMemory(void *ptr)
+{
+	value_list_t *list = (value_list_t *)ptr;
+	DeleteValueList(list);
+	MKL_free(list);
 }
 
 
@@ -332,7 +342,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 	if ((value = HashTableGet(&hashtable, "itime"))    != NULL) { params->itime  = atoll(value->str[0]); }
 
 	// deallocate everything in the hash table
-	DeleteHashTable(&hashtable, DeleteValueList);
+	DeleteHashTable(&hashtable, FreeValueListMemory);
 
 	return 0;
 }

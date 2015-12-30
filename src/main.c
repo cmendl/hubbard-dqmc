@@ -273,6 +273,22 @@ int main(int argc, char *argv[])
 	}
 	DeleteMeasurementData(&meas_data);
 	DeleteSimulationParameters(&params);
+	MKL_Free_Buffers();
+
+	// check for MKL memory leaks
+	#ifdef _DEBUG
+	int nbuffers;
+	MKL_INT64 nbytes_alloc;
+	nbytes_alloc = MKL_Mem_Stat(&nbuffers);
+	if (nbytes_alloc > 0)
+	{
+		printf("\nMKL memory leak detected! MKL still uses %lld bytes in %d buffer(s).\n", nbytes_alloc, nbuffers);
+	}
+	else
+	{
+		printf("\nMKL memory leak check appears to be fine.\n");
+	}
+	#endif
 
 	return stopped; // 0 if simulation ran to completion, 1 if stopped by SIGINT
 }
