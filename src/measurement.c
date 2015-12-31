@@ -8,7 +8,6 @@
 #include <assert.h>
 
 
-
 //________________________________________________________________________________________________________________________
 ///
 /// \brief Construct the lattice coordinate sum map
@@ -42,6 +41,36 @@ static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, int *re
 					latt_sum_map[ij + Ncell*kl] = u + Nx*v;
 				}
 			}
+		}
+	}
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Construct lattice nearest neighbor maps
+///
+static void ConstructLatticeNearestNeighborMap(const int Nx, const int Ny, int *restrict latt_xp1_map, int *restrict latt_xm1_map, int *restrict latt_yp1_map, int *restrict latt_ym1_map)
+{
+	int j;
+	for (j = 0; j < Ny; j++)
+	{
+		const int j_next = (j < Ny-1 ? j + 1 : 0   );
+		const int j_prev = (j > 0    ? j - 1 : Ny-1);
+
+		int i;
+		for (i = 0; i < Nx; i++)
+		{
+			const int i_next = (i < Nx-1 ? i + 1 : 0   );
+			const int i_prev = (i > 0    ? i - 1 : Nx-1);
+
+			// index of (i,j) lattice site
+			const int ij = i + Nx*j;
+
+			latt_xp1_map[ij] = i_next + Nx*j;			// index of (i+1,j) lattice site
+			latt_xm1_map[ij] = i_prev + Nx*j;			// index of (i-1,j) lattice site
+			latt_yp1_map[ij] = i      + Nx*j_next;		// index of (i,j+1) lattice site
+			latt_ym1_map[ij] = i      + Nx*j_prev;		// index of (i,j-1) lattice site
 		}
 	}
 }
@@ -172,7 +201,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 					{
 						meas_data->uu_corr[k + offset] += signfac*(1 - Gu_ii);
 						meas_data->dd_corr[k + offset] += signfac*(1 - Gd_ii);
-						meas_data->ff_corr[k + offset] += signfac*(Gu_ij*(1 - Gu_ji) + Gd_ij*(1 - Gd_ji));
+						meas_data->ff_corr[k + offset] += signfac*(Gu_ii*(1 - Gu_ii) + Gd_ii*(1 - Gd_ii));
 						meas_data->zz_corr[k + offset] += signfac*(Gu_ii - 2*Gu_ii*Gd_ii + Gd_ii);
 						meas_data->xx_corr[k + offset] += signfac*(Gu_ii - 2*Gu_ii*Gd_ii + Gd_ii);
 					}
@@ -340,14 +369,26 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 	meas_data->G0tau_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->G0tau_d == NULL) { return -1; }
 	meas_data->Geqlt_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_d == NULL) { return -1; }
 
-	// construct lattice coordinate sum map
-	meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
-	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
-
 	// density and spin correlation data for all time differences
 	meas_data->nn_corr = (double *)MKL_calloc(L*Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->zz_corr = (double *)MKL_calloc(L*Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->xx_corr = (double *)MKL_calloc(L*Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
+
+	// superconducting susceptibilities
+	meas_data->sc_c_sw = (double *)MKL_calloc(L*N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_dw = (double *)MKL_calloc(L*N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_sx = (double *)MKL_calloc(L*N, sizeof(double), MEM_DATA_ALIGN);
+
+	// construct lattice coordinate sum map
+	meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
+	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
+
+	// construct lattice nearest neighbor map
+	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	meas_data->latt_xm1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	meas_data->latt_yp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	meas_data->latt_ym1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	ConstructLatticeNearestNeighborMap(Nx, Ny, meas_data->latt_xp1_map, meas_data->latt_xm1_map, meas_data->latt_yp1_map, meas_data->latt_ym1_map);
 
 	meas_data->sign = 0;
 
@@ -364,8 +405,19 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 ///
 void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict meas_data)
 {
+	MKL_free(meas_data->latt_ym1_map);
+	MKL_free(meas_data->latt_yp1_map);
+	MKL_free(meas_data->latt_xm1_map);
+	MKL_free(meas_data->latt_xp1_map);
+
+	MKL_free(meas_data->latt_sum_map);
+
 	MKL_free(meas_data->Hd);
 	MKL_free(meas_data->Hu);
+
+	MKL_free(meas_data->sc_c_sw);
+	MKL_free(meas_data->sc_c_dw);
+	MKL_free(meas_data->sc_c_sx);
 
 	MKL_free(meas_data->xx_corr);
 	MKL_free(meas_data->zz_corr);
@@ -377,8 +429,6 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 	MKL_free(meas_data->Geqlt_u);
 	MKL_free(meas_data->G0tau_u);
 	MKL_free(meas_data->Gtau0_u);
-
-	MKL_free(meas_data->latt_sum_map);
 }
 
 
@@ -437,37 +487,89 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 		{
 			for (p = 0; p < Norb; p++)
 			{
-				const int offset = o*Ncell + p*Ncell*Norb + Ncell*Norb*Norb*l;
+				const int offset = (o + p*Norb + Norb*Norb*l) * Ncell;
+
 				for (i = 0; i < Ncell; i++)
 				{
 					const int io = i + o * Ncell;
 					const double Gtt_u_ii = curGeqlt_u[io + N*(io + N*l)];
 					const double Gtt_d_ii = curGeqlt_d[io + N*(io + N*l)];
 
-					// special case l == 0 and k == 0 and o == p
-					if (l == 0 && o == p)
-					{
-						meas_data->nn_corr[0 + offset] += signfac*(Gtt_u_ii + Gtt_d_ii);
-						meas_data->zz_corr[0 + offset] += signfac*(Gtt_u_ii + Gtt_d_ii);
-						meas_data->xx_corr[0 + offset] += signfac*(Gtt_u_ii + Gtt_d_ii);
-					}
-
 					for (k = 0; k < Ncell; k++)
 					{
-						const int jp = meas_data->latt_sum_map[k + Ncell*i] + p * Ncell;
+						// special case: same lattice site, orbital and time slice
+						if (k == 0 && o == p && l == 0)
+						{
+							meas_data->nn_corr[0 + offset] += signfac*(4 - 3*(Gtt_u_ii + Gtt_d_ii) + 2*Gtt_u_ii*Gtt_d_ii);
+							meas_data->zz_corr[0 + offset] += signfac*(Gtt_u_ii - 2*Gtt_u_ii*Gtt_d_ii + Gtt_d_ii);
+							meas_data->xx_corr[0 + offset] += signfac*(Gtt_u_ii - 2*Gtt_u_ii*Gtt_d_ii + Gtt_d_ii);
+						}
+						else
+						{
+							const int jp = meas_data->latt_sum_map[k + Ncell*i] + p*Ncell;
 
-						const double G00_u_jj = curGeqlt_u[jp + N*jp];
-						const double G00_d_jj = curGeqlt_d[jp + N*jp];
+							const double G00_u_jj = curGeqlt_u[jp + N*jp];
+							const double G00_d_jj = curGeqlt_d[jp + N*jp];
 
-						const double Gt0_u_ij = curGtau0_u[io + N*(L*jp + l)];
-						const double Gt0_d_ij = curGtau0_d[io + N*(L*jp + l)];
-						const double G0t_u_ji = curG0tau_u[jp + N*(io + N*l)];
-						const double G0t_d_ji = curG0tau_d[jp + N*(io + N*l)];
+							const double Gt0_u_ij = curGtau0_u[io + N*(L*jp + l)];
+							const double Gt0_d_ij = curGtau0_d[io + N*(L*jp + l)];
+							const double G0t_u_ji = curG0tau_u[jp + N*(io + N*l)];
+							const double G0t_d_ji = curG0tau_d[jp + N*(io + N*l)];
 
-						meas_data->nn_corr[k + offset] += signfac*((2 - Gtt_u_ii - Gtt_d_ii)*(2 - G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
-						meas_data->zz_corr[k + offset] += signfac*((    Gtt_u_ii - Gtt_d_ii)*(    G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
-						meas_data->xx_corr[k + offset] += signfac*(                                                    - (Gt0_u_ij*G0t_d_ji + Gt0_d_ij*G0t_u_ji));
+							meas_data->nn_corr[k + offset] += signfac*((2 - Gtt_u_ii - Gtt_d_ii)*(2 - G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
+							meas_data->zz_corr[k + offset] += signfac*((    Gtt_u_ii - Gtt_d_ii)*(    G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
+							meas_data->xx_corr[k + offset] += signfac*(                                                    - (Gt0_u_ij*G0t_d_ji + Gt0_d_ij*G0t_u_ji));
+						}
 					}
+				}
+			}
+
+
+			// superconducting susceptibilities (separately for each orbital type)
+
+			// base pointer of unequal time Green's functions G(tau, 0) for current time difference tau = l and orbital o
+			const double *Gt0_u_base = &curGtau0_u[(o*Ncell) + N*(L*(o*Ncell) + l)];
+			const double *Gt0_d_base = &curGtau0_d[(o*Ncell) + N*(L*(o*Ncell) + l)];
+
+			const int offset = o*Ncell + l*N;
+
+			for (i = 0; i < Ncell; i++)
+			{
+				// nearest neighbors of lattice site i
+				const int ipx = meas_data->latt_xp1_map[i];
+				const int imx = meas_data->latt_xm1_map[i];
+				const int ipy = meas_data->latt_yp1_map[i];
+				const int imy = meas_data->latt_ym1_map[i];
+
+				for (k = 0; k < Ncell; k++)
+				{
+					const int j = meas_data->latt_sum_map[k + Ncell*i];
+
+					// nearest neighbors of lattice site j
+					const int jpx = meas_data->latt_xp1_map[j];
+					const int jmx = meas_data->latt_xm1_map[j];
+					const int jpy = meas_data->latt_yp1_map[j];
+					const int jmy = meas_data->latt_ym1_map[j];
+
+					const double Gt0_u_ij = Gt0_u_base[i + N*L*j];
+					const double Gt0_d_ij = Gt0_d_base[i + N*L*j];
+
+					// s-wave
+					meas_data->sc_c_sw[k + offset] += signfac*(Gt0_u_ij * Gt0_d_ij);
+
+					// d-wave: all 16 combinations of nearest neighbors of i and j
+					meas_data->sc_c_dw[k + offset] += signfac * 0.25 * Gt0_u_ij*(
+						+ Gt0_d_base[ipx + N*L*jpx] + Gt0_d_base[ipx + N*L*jmx] - Gt0_d_base[ipx + N*L*jpy] - Gt0_d_base[ipx + N*L*jmy]
+						+ Gt0_d_base[imx + N*L*jpx] + Gt0_d_base[imx + N*L*jmx] - Gt0_d_base[imx + N*L*jpy] - Gt0_d_base[imx + N*L*jmy]
+						- Gt0_d_base[ipy + N*L*jpx] - Gt0_d_base[ipy + N*L*jmx] + Gt0_d_base[ipy + N*L*jpy] + Gt0_d_base[ipy + N*L*jmy]
+						- Gt0_d_base[imy + N*L*jpx] - Gt0_d_base[imy + N*L*jmx] + Gt0_d_base[imy + N*L*jpy] + Gt0_d_base[imy + N*L*jmy]);
+
+					// extended s-wave: similar to d-wave, but without sign flip
+					meas_data->sc_c_dw[k + offset] += signfac * 0.25 * Gt0_u_ij*(
+						+ Gt0_d_base[ipx + N*L*jpx] + Gt0_d_base[ipx + N*L*jmx] + Gt0_d_base[ipx + N*L*jpy] + Gt0_d_base[ipx + N*L*jmy]
+						+ Gt0_d_base[imx + N*L*jpx] + Gt0_d_base[imx + N*L*jmx] + Gt0_d_base[imx + N*L*jpy] + Gt0_d_base[imx + N*L*jmy]
+						+ Gt0_d_base[ipy + N*L*jpx] + Gt0_d_base[ipy + N*L*jmx] + Gt0_d_base[ipy + N*L*jpy] + Gt0_d_base[ipy + N*L*jmy]
+						+ Gt0_d_base[imy + N*L*jpx] + Gt0_d_base[imy + N*L*jmx] + Gt0_d_base[imy + N*L*jpy] + Gt0_d_base[imy + N*L*jmy]);
 				}
 			}
 		}
@@ -520,6 +622,11 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 	cblas_dscal(L*Ncell*Norb*Norb, nfac, meas_data->zz_corr, 1);
 	cblas_dscal(L*Ncell*Norb*Norb, nfac, meas_data->xx_corr, 1);
 
+	// divide superconducting susceptibilities by sign
+	cblas_dscal(L*N, nfac, meas_data->sc_c_sw, 1);
+	cblas_dscal(L*N, nfac, meas_data->sc_c_dw, 1);
+	cblas_dscal(L*N, nfac, meas_data->sc_c_sx, 1);
+
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
 }
@@ -550,6 +657,10 @@ void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); ReadData(path, meas_data->nn_corr, sizeof(double), L*Ncell*Norb*Norb);
 	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); ReadData(path, meas_data->zz_corr, sizeof(double), L*Ncell*Norb*Norb);
 	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); ReadData(path, meas_data->xx_corr, sizeof(double), L*Ncell*Norb*Norb);
+
+	sprintf(path, "%s_uneqlt_sc_c_sw.dat", fnbase); ReadData(path, meas_data->sc_c_sw, sizeof(double), L*N);
+	sprintf(path, "%s_uneqlt_sc_c_dw.dat", fnbase); ReadData(path, meas_data->sc_c_dw, sizeof(double), L*N);
+	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); ReadData(path, meas_data->sc_c_sx, sizeof(double), L*N);
 }
 
 
@@ -578,4 +689,8 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); WriteData(path, meas_data->nn_corr, sizeof(double), L*Ncell*Norb*Norb, false);
 	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); WriteData(path, meas_data->zz_corr, sizeof(double), L*Ncell*Norb*Norb, false);
 	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); WriteData(path, meas_data->xx_corr, sizeof(double), L*Ncell*Norb*Norb, false);
+
+	sprintf(path, "%s_uneqlt_sc_c_sw.dat", fnbase); WriteData(path, meas_data->sc_c_sw, sizeof(double), L*N, false);
+	sprintf(path, "%s_uneqlt_sc_c_dw.dat", fnbase); WriteData(path, meas_data->sc_c_dw, sizeof(double), L*N, false);
+	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); WriteData(path, meas_data->sc_c_sx, sizeof(double), L*N, false);
 }

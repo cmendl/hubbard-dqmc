@@ -41,7 +41,6 @@ void DeleteMeasurementData(measurement_data_t *restrict meas_data);
 
 void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, measurement_data_t *restrict meas_data);
 
-
 void NormalizeMeasurementData(measurement_data_t *meas_data);
 
 
@@ -49,7 +48,6 @@ void PrintMeasurementDataSummary(const measurement_data_t *meas_data);
 
 
 void LoadMeasurementData(const char *fnbase, measurement_data_t *meas_data);
-
 
 void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data);
 
@@ -67,14 +65,23 @@ typedef struct
 	double *G0tau_d;			//!< concatenated unequal time spin-down Green's functions G_d(0,   tau) with tau = 0, 1, ..., L-1; array of size N x L*N
 	double *Geqlt_d;			//!< concatenated   equal time spin-down Green's functions G_d(tau, tau) with tau = 0, 1, ..., L-1; array of size N x L*N
 
-	double *nn_corr;			//!< density correlations;  matrix of size N x L
-	double *zz_corr;			//!< z-z spin correlations; matrix of size N x L
-	double *xx_corr;			//!< x-x spin correlations; matrix of size N x L
+	double *nn_corr;			//!< density correlations;  matrix of size Ncell x Norb x Norb x L
+	double *zz_corr;			//!< z-z spin correlations; matrix of size Ncell x Norb x Norb x L
+	double *xx_corr;			//!< x-x spin correlations; matrix of size Ncell x Norb x Norb x L
+
+	double *sc_c_sw;			//!< superconducting susceptibility for s-wave pairing
+	double *sc_c_dw;			//!< superconducting susceptibility for d-wave pairing
+	double *sc_c_sx;			//!< superconducting susceptibility for extended s-wave pairing
 
 	double *Hu;					//!< temporary matrix of size L*N x L*N for spin-up
 	double *Hd;					//!< temporary matrix of size L*N x L*N for spin-down
 
 	int *latt_sum_map;			//!< lattice site index of coordinate sum of two lattice sites; matrix of size Ncell x Ncell
+
+	int *latt_xp1_map;			//!< index of right  neighbor lattice site (x+1,y); array of length Ncell
+	int *latt_xm1_map;			//!< index of left   neighbor lattice site (x-1,y); array of length Ncell
+	int *latt_yp1_map;			//!< index of top    neighbor lattice site (x,y+1); array of length Ncell
+	int *latt_ym1_map;			//!< index of bottom neighbor lattice site (x,y-1); array of length Ncell
 
 	int Norb;					//!< number of orbitals per unit cell
 	int Ncell;					//!< total number of unit cells
@@ -94,12 +101,10 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 
 void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu, const double *const *Bd, measurement_data_unequal_time_t *restrict meas_data);
 
-
 void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_data);
 
 
 void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data);
-
 
 void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data);
 
