@@ -565,7 +565,7 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 						- Gt0_d_base[imy + N*L*jpx] - Gt0_d_base[imy + N*L*jmx] + Gt0_d_base[imy + N*L*jpy] + Gt0_d_base[imy + N*L*jmy]);
 
 					// extended s-wave: similar to d-wave, but without sign flip
-					meas_data->sc_c_dw[k + offset] += signfac * 0.25 * Gt0_u_ij*(
+					meas_data->sc_c_sx[k + offset] += signfac * 0.25 * Gt0_u_ij*(
 						+ Gt0_d_base[ipx + N*L*jpx] + Gt0_d_base[ipx + N*L*jmx] + Gt0_d_base[ipx + N*L*jpy] + Gt0_d_base[ipx + N*L*jmy]
 						+ Gt0_d_base[imx + N*L*jpx] + Gt0_d_base[imx + N*L*jmx] + Gt0_d_base[imx + N*L*jpy] + Gt0_d_base[imx + N*L*jmy]
 						+ Gt0_d_base[ipy + N*L*jpx] + Gt0_d_base[ipy + N*L*jmx] + Gt0_d_base[ipy + N*L*jpy] + Gt0_d_base[ipy + N*L*jmy]
