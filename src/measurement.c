@@ -83,16 +83,13 @@ static void ConstructLatticeNearestNeighborMap(const int Nx, const int Ny, int *
 void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measurement_data_t *restrict meas_data)
 {
 	const int Ncell = Nx * Ny;
+	const int N     = Norb * Ncell;
 
 	meas_data->Norb  = Norb;
 	meas_data->Ncell = Ncell;
 
 	// no samples collected so far
 	meas_data->nsampl = 0;
-
-	// construct lattice coordinate sum map
-	meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
-	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
 
 	meas_data->sign = 0;
 
@@ -110,6 +107,22 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measure
 	// spin correlation data
 	meas_data->zz_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->xx_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
+
+	// superconducting susceptibilities
+	meas_data->sc_c_sw = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_dw = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_sx = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
+
+	// construct lattice coordinate sum map
+	meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
+	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
+
+	// construct lattice nearest neighbor map
+	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	meas_data->latt_xm1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	meas_data->latt_yp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	meas_data->latt_ym1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	ConstructLatticeNearestNeighborMap(Nx, Ny, meas_data->latt_xp1_map, meas_data->latt_xm1_map, meas_data->latt_yp1_map, meas_data->latt_ym1_map);
 }
 
 
@@ -119,16 +132,27 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measure
 ///
 void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 {
+	MKL_free(meas_data->latt_ym1_map);
+	MKL_free(meas_data->latt_yp1_map);
+	MKL_free(meas_data->latt_xm1_map);
+	MKL_free(meas_data->latt_xp1_map);
+
+	MKL_free(meas_data->latt_sum_map);
+
+	MKL_free(meas_data->sc_c_sw);
+	MKL_free(meas_data->sc_c_dw);
+	MKL_free(meas_data->sc_c_sx);
+
 	MKL_free(meas_data->xx_corr);
 	MKL_free(meas_data->zz_corr);
 	MKL_free(meas_data->ff_corr);
 	MKL_free(meas_data->ud_corr);
 	MKL_free(meas_data->dd_corr);
 	MKL_free(meas_data->uu_corr);
+
 	MKL_free(meas_data->doubleocc);
 	MKL_free(meas_data->density_d);
 	MKL_free(meas_data->density_u);
-	MKL_free(meas_data->latt_sum_map);
 }
 
 
@@ -221,6 +245,55 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 		}
 	}
 
+	// superconducting susceptibilities (separately for each orbital type)
+
+	for (o = 0; o < Norb; o++)
+	{
+		// base pointer of Green's functions for current orbital type
+		const double *Gu_orb = &Gu->mat[(o*Ncell) + N*(o*Ncell)];
+		const double *Gd_orb = &Gd->mat[(o*Ncell) + N*(o*Ncell)];
+
+		for (i = 0; i < Ncell; i++)
+		{
+			// nearest neighbors of lattice site i
+			const int ipx = meas_data->latt_xp1_map[i];
+			const int imx = meas_data->latt_xm1_map[i];
+			const int ipy = meas_data->latt_yp1_map[i];
+			const int imy = meas_data->latt_ym1_map[i];
+
+			for (k = 0; k < Ncell; k++)
+			{
+				const int j = meas_data->latt_sum_map[k + Ncell*i];
+
+				// nearest neighbors of lattice site j
+				const int jpx = meas_data->latt_xp1_map[j];
+				const int jmx = meas_data->latt_xm1_map[j];
+				const int jpy = meas_data->latt_yp1_map[j];
+				const int jmy = meas_data->latt_ym1_map[j];
+
+				const double Gu_ij = Gu_orb[i + N*j];
+				const double Gd_ij = Gd_orb[i + N*j];
+
+				// s-wave
+				meas_data->sc_c_sw[k + o*Ncell] += signfac*(Gu_ij * Gd_ij);
+
+				// d-wave: all 16 combinations of nearest neighbors of i and j
+				meas_data->sc_c_dw[k + o*Ncell] += signfac * 0.25 * Gu_ij*(
+					+ Gd_orb[ipx + N*jpx] + Gd_orb[ipx + N*jmx] - Gd_orb[ipx + N*jpy] - Gd_orb[ipx + N*jmy]
+					+ Gd_orb[imx + N*jpx] + Gd_orb[imx + N*jmx] - Gd_orb[imx + N*jpy] - Gd_orb[imx + N*jmy]
+					- Gd_orb[ipy + N*jpx] - Gd_orb[ipy + N*jmx] + Gd_orb[ipy + N*jpy] + Gd_orb[ipy + N*jmy]
+					- Gd_orb[imy + N*jpx] - Gd_orb[imy + N*jmx] + Gd_orb[imy + N*jpy] + Gd_orb[imy + N*jmy]);
+
+				// extended s-wave: similar to d-wave, but without sign flip
+				meas_data->sc_c_sx[k + o*Ncell] += signfac * 0.25 * Gu_ij*(
+					+ Gd_orb[ipx + N*jpx] + Gd_orb[ipx + N*jmx] + Gd_orb[ipx + N*jpy] + Gd_orb[ipx + N*jmy]
+					+ Gd_orb[imx + N*jpx] + Gd_orb[imx + N*jmx] + Gd_orb[imx + N*jpy] + Gd_orb[imx + N*jmy]
+					+ Gd_orb[ipy + N*jpx] + Gd_orb[ipy + N*jmx] + Gd_orb[ipy + N*jpy] + Gd_orb[ipy + N*jmy]
+					+ Gd_orb[imy + N*jpx] + Gd_orb[imy + N*jmx] + Gd_orb[imy + N*jpy] + Gd_orb[imy + N*jmy]);
+			}
+		}
+	}
+
 	// add current sign
 	meas_data->sign += sign;
 
@@ -236,29 +309,31 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 void NormalizeMeasurementData(measurement_data_t *meas_data)
 {
 	// total number of orbitals and cells
-	const int Norb = meas_data->Norb;
+	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
+	const int N     = Norb * Ncell;
 
 	// normalization factor; sign must be non-zero
 	const double nfac = 1.0 / meas_data->sign;
 
-	int i;
-	for (i = 0; i < Norb; i++)
-	{
-		meas_data->density_u[i] *= nfac;
-		meas_data->density_d[i] *= nfac;
-		meas_data->doubleocc[i] *= nfac;
-	}
+	// divide densities by sign
+	cblas_dscal(Norb, nfac, meas_data->density_u, 1);
+	cblas_dscal(Norb, nfac, meas_data->density_d, 1);
+	cblas_dscal(Norb, nfac, meas_data->doubleocc, 1);
 
-	for (i = 0; i < Ncell*Norb*Norb; i++)
-	{
-		meas_data->uu_corr[i] *= nfac;
-		meas_data->dd_corr[i] *= nfac;
-		meas_data->ud_corr[i] *= nfac;
-		meas_data->ff_corr[i] *= nfac;
-		meas_data->zz_corr[i] *= nfac;
-		meas_data->xx_corr[i] *= nfac;
-	}
+	// divide density and spin correlations by sign
+	const int m = Ncell*Norb*Norb;
+	cblas_dscal(m, nfac, meas_data->uu_corr, 1);
+	cblas_dscal(m, nfac, meas_data->dd_corr, 1);
+	cblas_dscal(m, nfac, meas_data->ud_corr, 1);
+	cblas_dscal(m, nfac, meas_data->ff_corr, 1);
+	cblas_dscal(m, nfac, meas_data->zz_corr, 1);
+	cblas_dscal(m, nfac, meas_data->xx_corr, 1);
+
+	// divide superconducting susceptibilities by sign
+	cblas_dscal(N, nfac, meas_data->sc_c_sw, 1);
+	cblas_dscal(N, nfac, meas_data->sc_c_dw, 1);
+	cblas_dscal(N, nfac, meas_data->sc_c_sx, 1);
 
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
@@ -301,6 +376,7 @@ void LoadMeasurementData(const char *fnbase, measurement_data_t *meas_data)
 {
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
+	const int N     = Norb * Ncell;
 
 	char path[1024];
 	sprintf(path, "%s_sign.dat",      fnbase); ReadData(path, (void *)&meas_data->sign,   sizeof(double), 1);
@@ -314,6 +390,9 @@ void LoadMeasurementData(const char *fnbase, measurement_data_t *meas_data)
 	sprintf(path, "%s_ff_corr.dat",   fnbase); ReadData(path, meas_data->ff_corr,   sizeof(double), Ncell*Norb*Norb);
 	sprintf(path, "%s_zz_corr.dat",   fnbase); ReadData(path, meas_data->zz_corr,   sizeof(double), Ncell*Norb*Norb);
 	sprintf(path, "%s_xx_corr.dat",   fnbase); ReadData(path, meas_data->xx_corr,   sizeof(double), Ncell*Norb*Norb);
+	sprintf(path, "%s_sc_c_sw.dat",   fnbase); ReadData(path, meas_data->sc_c_sw,   sizeof(double), N);
+	sprintf(path, "%s_sc_c_dw.dat",   fnbase); ReadData(path, meas_data->sc_c_dw,   sizeof(double), N);
+	sprintf(path, "%s_sc_c_sx.dat",   fnbase); ReadData(path, meas_data->sc_c_sx,   sizeof(double), N);
 }
 
 
@@ -325,6 +404,7 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 {
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
+	const int N     = Norb * Ncell;
 
 	char path[1024];
 	sprintf(path, "%s_sign.dat",      fnbase); WriteData(path, &meas_data->sign,     sizeof(double), 1, false);
@@ -338,6 +418,9 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 	sprintf(path, "%s_ff_corr.dat",   fnbase); WriteData(path, meas_data->ff_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_zz_corr.dat",   fnbase); WriteData(path, meas_data->zz_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_xx_corr.dat",   fnbase); WriteData(path, meas_data->xx_corr,   sizeof(double), Ncell*Norb*Norb, false);
+	sprintf(path, "%s_sc_c_sw.dat",   fnbase); WriteData(path, meas_data->sc_c_sw,   sizeof(double), N, false);
+	sprintf(path, "%s_sc_c_dw.dat",   fnbase); WriteData(path, meas_data->sc_c_dw,   sizeof(double), N, false);
+	sprintf(path, "%s_sc_c_sx.dat",   fnbase); WriteData(path, meas_data->sc_c_sx,   sizeof(double), N, false);
 }
 
 
