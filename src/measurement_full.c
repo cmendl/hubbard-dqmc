@@ -1,3 +1,11 @@
+// measurement.c assumes translational symmetry, which is appropriate when the
+// lattice has periodic boundary conditions. If you're using open or
+// cylindrical boundary conditions or doing something else that breaks
+// translational symmetry, replace measurement.c with this file in order to
+// record measurement data for every site.
+//
+// The d-wave superconducting susceptibility still relies on a rectangular lattice geometry.
+
 #include "measurement.h"
 #include "util.h"
 #include "dupio.h"
@@ -8,54 +16,9 @@
 #include <assert.h>
 
 
-// measurement.c assumes translational symmetry, which is appropriate when the
-// lattice has periodic boundary conditions. If you're using open or
-// cylindrical boundary conditions or doing something else that breaks
-// translational symmetry, replace measurement.c with this file in order to
-// have measurement data for every site.
-
-
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Construct the lattice coordinate sum map
-///
-static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, int *restrict latt_sum_map)
-{
-	// total number of lattice sites
-	const int Ncell = Nx * Ny;
-
-	int j;
-	for (j = 0; j < Ny; j++)
-	{
-		int i;
-		for (i = 0; i < Nx; i++)
-		{
-			// index of (i,j) lattice site
-			const int ij = i + Nx*j;
-
-			int k, l;
-			for (l = 0; l < Ny; l++)
-			{
-				for (k = 0; k < Nx; k++)
-				{
-					// index of (k,l) lattice site
-					const int kl = k + Nx*l;
-
-					// coordinate sum
-					const int u = (i + k) % Nx;
-					const int v = (j + l) % Ny;
-
-					latt_sum_map[ij + Ncell*kl] = u + Nx*v;
-				}
-			}
-		}
-	}
-}
-
-
-//________________________________________________________________________________________________________________________
-///
-/// \brief Construct lattice nearest neighbor maps
+/// \brief Construct nearest neighbor maps for a rectangular lattice 
 ///
 static void ConstructLatticeNearestNeighborMap(const int Nx, const int Ny, int *restrict latt_xp1_map, int *restrict latt_xm1_map, int *restrict latt_yp1_map, int *restrict latt_ym1_map)
 {
@@ -119,10 +82,6 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measure
 	meas_data->sc_c_dw = (double *)MKL_calloc(Norb*Ncell*Ncell, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->sc_c_sx = (double *)MKL_calloc(Norb*Ncell*Ncell, sizeof(double), MEM_DATA_ALIGN);
 
-	// construct lattice coordinate sum map
-	//meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
-	//ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
-
 	// construct lattice nearest neighbor map
 	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
 	meas_data->latt_xm1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
@@ -142,8 +101,6 @@ void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 	MKL_free(meas_data->latt_yp1_map);
 	MKL_free(meas_data->latt_xm1_map);
 	MKL_free(meas_data->latt_xp1_map);
-
-	//MKL_free(meas_data->latt_sum_map);
 
 	MKL_free(meas_data->sc_c_sw);
 	MKL_free(meas_data->sc_c_dw);
@@ -168,81 +125,65 @@ void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 ///
 void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, measurement_data_t *restrict meas_data)
 {
-	int i, j;	// spatial indices
-	int o, p;	// orbital indices
+	int i, j;
 
 	// lattice dimensions
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N = Norb * Ncell;
+	const int N     = Norb * Ncell;
 
 	// product of the determinant signs of the Green's function matrices
 	const double sign = (double)(Gu->sgndet * Gd->sgndet);
 	assert(sign != 0);
 
-	// sign and normalization factor
-	//const double signfac = sign / Ncell;
-
-	for (o = 0; o < Norb; o++)
+	for (i = 0; i < N; i++)
 	{
-		for (i = 0; i < Ncell; i++)
-		{
-			const int io = i + o * Ncell;
-			meas_data->density_u[io] += sign*(1 - Gu->mat[io + io*N]);
-			meas_data->density_d[io] += sign*(1 - Gd->mat[io + io*N]);
-			meas_data->doubleocc[io] += sign*(1 - Gu->mat[io + io*N])*(1 - Gd->mat[io + io*N]);
-		}
+		meas_data->density_u[i] += sign*(1 - Gu->mat[i + i*N]);
+		meas_data->density_d[i] += sign*(1 - Gd->mat[i + i*N]);
+		meas_data->doubleocc[i] += sign*(1 - Gu->mat[i + i*N])*(1 - Gd->mat[i + i*N]);
 	}
 
 	// density and spin correlations
 
-	for (o = 0; o < Norb; o++)
+	for (i = 0; i < N; i++)
 	{
-		for (p = 0; p < Norb; p++)
+		const double Gu_ii = Gu->mat[i + N*i];
+		const double Gd_ii = Gd->mat[i + N*i];
+
+		for (j = 0; j < N; j++)
 		{
-			for (i = 0; i < Ncell; i++)
+			const double Gu_jj = Gu->mat[j + N*j];
+			const double Gd_jj = Gd->mat[j + N*j];
+			const double Gu_ij = Gu->mat[i + N*j];
+			const double Gd_ij = Gd->mat[i + N*j];
+			const double Gu_ji = Gu->mat[j + N*i];
+			const double Gd_ji = Gd->mat[j + N*i];
+
+			if (i == j)		// special case: same lattice site and orbital
 			{
-				const int io = i + o * Ncell;
-				const double Gu_ii = Gu->mat[io + N*io];
-				const double Gd_ii = Gd->mat[io + N*io];
-
-				for (j = 0; j < Ncell; j++)
-				{
-					const int jp = j + p * Ncell;
-
-					const double Gu_jj = Gu->mat[jp + N*jp];
-					const double Gd_jj = Gd->mat[jp + N*jp];
-					const double Gu_ij = Gu->mat[io + N*jp];
-					const double Gd_ij = Gd->mat[io + N*jp];
-					const double Gu_ji = Gu->mat[jp + N*io];
-					const double Gd_ji = Gd->mat[jp + N*io];
-
-					if (i == j && o == p)	// special case: same lattice site and orbital
-					{
-						meas_data->uu_corr[io + N*jp] += sign*(1 - Gu_ii);
-						meas_data->dd_corr[io + N*jp] += sign*(1 - Gd_ii);
-						meas_data->ff_corr[io + N*jp] += sign*(Gu_ii*(1 - Gu_ii) + Gd_ii*(1 - Gd_ii));
-						meas_data->zz_corr[io + N*jp] += sign*(Gu_ii - 2*Gu_ii*Gd_ii + Gd_ii);
-						meas_data->xx_corr[io + N*jp] += sign*(Gu_ii - 2*Gu_ii*Gd_ii + Gd_ii);
-					}
-					else
-					{
-						meas_data->uu_corr[io + N*jp] += sign*((1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
-						meas_data->dd_corr[io + N*jp] += sign*((1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
-						meas_data->ff_corr[io + N*jp] += sign*(                                - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
-						meas_data->zz_corr[io + N*jp] += sign*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
-						meas_data->xx_corr[io + N*jp] += sign*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
-					}
-
-					// independent of special case
-					meas_data->ud_corr[io + N*jp] += sign*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
-				}
+				meas_data->uu_corr[i + N*j] += sign*(1 - Gu_ii);
+				meas_data->dd_corr[i + N*j] += sign*(1 - Gd_ii);
+				meas_data->ff_corr[i + N*j] += sign*(Gu_ii*(1 - Gu_ii) + Gd_ii*(1 - Gd_ii));
+				meas_data->zz_corr[i + N*j] += sign*(Gu_ii - 2*Gu_ii*Gd_ii + Gd_ii);
+				meas_data->xx_corr[i + N*j] += sign*(Gu_ii - 2*Gu_ii*Gd_ii + Gd_ii);
 			}
+			else
+			{
+				meas_data->uu_corr[i + N*j] += sign*((1 - Gu_ii)*(1 - Gu_jj) - Gu_ij*Gu_ji);
+				meas_data->dd_corr[i + N*j] += sign*((1 - Gd_ii)*(1 - Gd_jj) - Gd_ij*Gd_ji);
+				meas_data->ff_corr[i + N*j] += sign*(                                - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
+				meas_data->zz_corr[i + N*j] += sign*((Gu_ii - Gd_ii)*(Gu_jj - Gd_jj) - (Gu_ij*Gu_ji + Gd_ij*Gd_ji));
+				meas_data->xx_corr[i + N*j] += sign*(                                - (Gu_ij*Gd_ji + Gd_ij*Gu_ji));
+			}
+
+			// independent of special case
+			meas_data->ud_corr[i + N*j] += sign*((1 - Gu_ii)*(1 - Gd_jj) + (1 - Gd_ii)*(1 - Gu_jj));
 		}
 	}
 
 	// superconducting susceptibilities (separately for each orbital type)
 
+	int o;
 	for (o = 0; o < Norb; o++)
 	{
 		// base pointer of Green's functions for current orbital type
@@ -448,10 +389,6 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 	meas_data->sc_c_dw = (double *)MKL_calloc(L*Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->sc_c_sx = (double *)MKL_calloc(L*Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
 
-	// construct lattice coordinate sum map
-	//meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
-	//ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
-
 	// construct lattice nearest neighbor map
 	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
 	meas_data->latt_xm1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
@@ -478,8 +415,6 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 	MKL_free(meas_data->latt_yp1_map);
 	MKL_free(meas_data->latt_xm1_map);
 	MKL_free(meas_data->latt_xp1_map);
-
-	//MKL_free(meas_data->latt_sum_map);
 
 	MKL_free(meas_data->Hd);
 	MKL_free(meas_data->Hu);
@@ -509,7 +444,6 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 {
 	int l;
 	int i, j;
-	int o, p;
 
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
@@ -545,59 +479,51 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 		}
 	}
 
-	// accumulate density and spin correlation data
-
-	// sign and normalization factor
-	//const double signfac = sign / Ncell;
-
 	for (l = 0; l < L; l++)		// for all discrete time differences...
 	{
-		for (o = 0; o < Norb; o++)
+		// accumulate density and spin correlation data
+
+		for (i = 0; i < N; i++)
 		{
-			for (p = 0; p < Norb; p++)
+			const double Gtt_u_ii = curGeqlt_u[i + N*(i + N*l)];
+			const double Gtt_d_ii = curGeqlt_d[i + N*(i + N*l)];
+
+			for (j = 0; j < N; j++)
 			{
-				for (i = 0; i < Ncell; i++)
+				// special case: same lattice site, orbital and time slice
+				if (i == j && l == 0)
 				{
-					const int io = i + o * Ncell;
-					const double Gtt_u_ii = curGeqlt_u[io + N*(io + N*l)];
-					const double Gtt_d_ii = curGeqlt_d[io + N*(io + N*l)];
+					meas_data->nn_corr[i + N*j] += sign*(4 - 3*(Gtt_u_ii + Gtt_d_ii) + 2*Gtt_u_ii*Gtt_d_ii);
+					meas_data->zz_corr[i + N*j] += sign*(Gtt_u_ii - 2*Gtt_u_ii*Gtt_d_ii + Gtt_d_ii);
+					meas_data->xx_corr[i + N*j] += sign*(Gtt_u_ii - 2*Gtt_u_ii*Gtt_d_ii + Gtt_d_ii);
+				}
+				else
+				{
+					const double G00_u_jj = curGeqlt_u[j + N*j];
+					const double G00_d_jj = curGeqlt_d[j + N*j];
 
-					for (j = 0; j < Ncell; j++)
-					{
-						const int jp = j + p*Ncell;
-						// special case: same lattice site, orbital and time slice
-						if (i == j && o == p && l == 0)
-						{
-							meas_data->nn_corr[io + N*jp] += sign*(4 - 3*(Gtt_u_ii + Gtt_d_ii) + 2*Gtt_u_ii*Gtt_d_ii);
-							meas_data->zz_corr[io + N*jp] += sign*(Gtt_u_ii - 2*Gtt_u_ii*Gtt_d_ii + Gtt_d_ii);
-							meas_data->xx_corr[io + N*jp] += sign*(Gtt_u_ii - 2*Gtt_u_ii*Gtt_d_ii + Gtt_d_ii);
-						}
-						else
-						{
-							const double G00_u_jj = curGeqlt_u[jp + N*jp];
-							const double G00_d_jj = curGeqlt_d[jp + N*jp];
+					const double Gt0_u_ij = curGtau0_u[i + N*(L*j + l)];
+					const double Gt0_d_ij = curGtau0_d[i + N*(L*j + l)];
+					const double G0t_u_ji = curG0tau_u[j + N*(i + N*l)];
+					const double G0t_d_ji = curG0tau_d[j + N*(i + N*l)];
 
-							const double Gt0_u_ij = curGtau0_u[io + N*(L*jp + l)];
-							const double Gt0_d_ij = curGtau0_d[io + N*(L*jp + l)];
-							const double G0t_u_ji = curG0tau_u[jp + N*(io + N*l)];
-							const double G0t_d_ji = curG0tau_d[jp + N*(io + N*l)];
-
-							meas_data->nn_corr[io + N*jp + N*N*l] += sign*((2 - Gtt_u_ii - Gtt_d_ii)*(2 - G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
-							meas_data->zz_corr[io + N*jp + N*N*l] += sign*((    Gtt_u_ii - Gtt_d_ii)*(    G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
-							meas_data->xx_corr[io + N*jp + N*N*l] += sign*(                                                    - (Gt0_u_ij*G0t_d_ji + Gt0_d_ij*G0t_u_ji));
-						}
-					}
+					meas_data->nn_corr[i + N*j + N*N*l] += sign*((2 - Gtt_u_ii - Gtt_d_ii)*(2 - G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
+					meas_data->zz_corr[i + N*j + N*N*l] += sign*((    Gtt_u_ii - Gtt_d_ii)*(    G00_u_jj - G00_d_jj) - (Gt0_u_ij*G0t_u_ji + Gt0_d_ij*G0t_d_ji));
+					meas_data->xx_corr[i + N*j + N*N*l] += sign*(                                                    - (Gt0_u_ij*G0t_d_ji + Gt0_d_ij*G0t_u_ji));
 				}
 			}
+		}
 
+		// superconducting susceptibilities (separately for each orbital type)
 
-			// superconducting susceptibilities (separately for each orbital type)
-
+		int o;
+		for (o = 0; o < Norb; o++)
+		{
 			// base pointer of unequal time Green's functions G(tau, 0) for current time difference tau = l and orbital o
 			const double *Gt0_u_base = &curGtau0_u[(o*Ncell) + N*(L*(o*Ncell) + l)];
 			const double *Gt0_d_base = &curGtau0_d[(o*Ncell) + N*(L*(o*Ncell) + l)];
 
-			const int offset = o*Ncell*Ncell + l*Ncell*Ncell*Norb;
+			const int offset = (o + l*Norb) * Ncell*Ncell;
 
 			for (i = 0; i < Ncell; i++)
 			{
