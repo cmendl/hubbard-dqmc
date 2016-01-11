@@ -291,7 +291,8 @@ void PrintMeasurementDataSummary(const measurement_data_t *meas_data)
 	{
 		total_density += meas_data->density_u[i] + meas_data->density_d[i];
 	}
-	duprintf("    average total density (sum over all sites): %g\n", total_density);
+	total_density /= meas_data->Ncell;
+	duprintf("         average total density (per unit cell): %g\n", total_density);
 }
 
 

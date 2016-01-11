@@ -5,9 +5,9 @@ TSTFILES = matrix_exp_test.o blockcyclic_qr_test.o blockcyclic_tri_test.o blockc
 CC = icc
 
 # compiler options
-CCOPTS = -Wall -O2 -xHost -DNDEBUG -restrict -DMEM_DATA_ALIGN=64
+CCOPTS = -Wall -O2 -xHost -restrict -DNDEBUG -DMEM_DATA_ALIGN=64 -DVERSION=\"$(shell git describe --always)\"
 # uncomment to enable profiling; make sure to run 'make clean' before recompiling
-# CCOPTS += -DPROFILE_ENABLE
+#CCOPTS += -DPROFILE_ENABLE
 # replace by -qopenmp to enable OpenMP shared-memory parallelization
 CCOPTS += -qopenmp-stubs
 

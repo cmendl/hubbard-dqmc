@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 		}
 
 		// print a header and the parameters
-		duprintf("Hubbard model DQMC\n------------------\n");
+		duprintf("Hubbard model DQMC\n  git commit id %s\n  compiled on %s\n", VERSION, __DATE__);
 		duprintf("_______________________________________________________________________________\n");
 		PrintSimulationParameters(&params);
 

@@ -17,6 +17,7 @@ void duprintf(char const *fmt, ...)
 	// standard printf()
 	va_start(ap, fmt);
 	vprintf(fmt, ap);
+	fflush(stdout);
 	va_end(ap);
 
 	// write same output to file specified by 'fd_log'
@@ -24,6 +25,7 @@ void duprintf(char const *fmt, ...)
 	{
 		va_start(ap, fmt);
 		vfprintf(fd_log, fmt, ap);
+		fflush(fd_log);
 		va_end(ap);
 	}
 }
