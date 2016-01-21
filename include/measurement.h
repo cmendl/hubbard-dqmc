@@ -14,6 +14,9 @@ typedef struct
 	double *density_d;			//!< spin-down density, per orbital
 	double *doubleocc;			//!< double occupancy, per orbital
 
+	double *grfun_u;			//!< green's function for up spins:      <c_{i,up} c^{dagger}_{j,up}>
+	double *grfun_d;			//!< green's function for down spins:    <c_{i,dn} c^{dagger}_{j,dn}>
+
 	double *uu_corr;			//!< up-up density correlations:         <n_{i,up} n_{j,up}>
 	double *dd_corr;			//!< down-down density correlations:     <n_{i,dn} n_{j,dn}>
 	double *ud_corr;			//!< up-down density cross correlations: <n_{i,up} n_{j,dn} + n_{i,dn} n_{j,up}>

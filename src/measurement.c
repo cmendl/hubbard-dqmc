@@ -97,6 +97,10 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measure
 	meas_data->density_d = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->doubleocc = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
 
+	// green's functions
+	meas_data->grfun_u = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->grfun_d = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
+
 	// density correlation data
 	// first index for spatial offset, second and third indices for orbital index
 	meas_data->uu_corr = (double *)MKL_calloc(Ncell*Norb*Norb, sizeof(double), MEM_DATA_ALIGN);
@@ -150,6 +154,9 @@ void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 	MKL_free(meas_data->dd_corr);
 	MKL_free(meas_data->uu_corr);
 
+	MKL_free(meas_data->grfun_d);
+	MKL_free(meas_data->grfun_u);
+
 	MKL_free(meas_data->doubleocc);
 	MKL_free(meas_data->density_d);
 	MKL_free(meas_data->density_u);
@@ -194,6 +201,10 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 		meas_data->density_d[o] += signfac*nd;
 		meas_data->doubleocc[o] += signfac*oc;
 	}
+
+	// green's functions
+	cblas_daxpy(N*N, sign, Gu->mat, 1, meas_data->grfun_u, 1);
+	cblas_daxpy(N*N, sign, Gd->mat, 1, meas_data->grfun_d, 1);
 
 	// density and spin correlations
 
@@ -321,6 +332,10 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 	cblas_dscal(Norb, nfac, meas_data->density_d, 1);
 	cblas_dscal(Norb, nfac, meas_data->doubleocc, 1);
 
+	// divide green's functions by sign
+	cblas_dscal(N*N, nfac, meas_data->grfun_u, 1);
+	cblas_dscal(N*N, nfac, meas_data->grfun_d, 1);
+
 	// divide density and spin correlations by sign
 	const int m = Ncell*Norb*Norb;
 	cblas_dscal(m, nfac, meas_data->uu_corr, 1);
@@ -384,6 +399,8 @@ void LoadMeasurementData(const char *fnbase, measurement_data_t *meas_data)
 	sprintf(path, "%s_density_u.dat", fnbase); ReadData(path, meas_data->density_u, sizeof(double), Norb);
 	sprintf(path, "%s_density_d.dat", fnbase); ReadData(path, meas_data->density_d, sizeof(double), Norb);
 	sprintf(path, "%s_doubleocc.dat", fnbase); ReadData(path, meas_data->doubleocc, sizeof(double), Norb);
+	sprintf(path, "%s_grfun_u.dat",   fnbase); ReadData(path, meas_data->grfun_u,   sizeof(double), N*N);
+	sprintf(path, "%s_grfun_d.dat",   fnbase); ReadData(path, meas_data->grfun_d,   sizeof(double), N*N);
 	sprintf(path, "%s_uu_corr.dat",   fnbase); ReadData(path, meas_data->uu_corr,   sizeof(double), Ncell*Norb*Norb);
 	sprintf(path, "%s_dd_corr.dat",   fnbase); ReadData(path, meas_data->dd_corr,   sizeof(double), Ncell*Norb*Norb);
 	sprintf(path, "%s_ud_corr.dat",   fnbase); ReadData(path, meas_data->ud_corr,   sizeof(double), Ncell*Norb*Norb);
@@ -412,6 +429,8 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 	sprintf(path, "%s_density_u.dat", fnbase); WriteData(path, meas_data->density_u, sizeof(double), Norb, false);
 	sprintf(path, "%s_density_d.dat", fnbase); WriteData(path, meas_data->density_d, sizeof(double), Norb, false);
 	sprintf(path, "%s_doubleocc.dat", fnbase); WriteData(path, meas_data->doubleocc, sizeof(double), Norb, false);
+	sprintf(path, "%s_grfun_u.dat",   fnbase); WriteData(path, meas_data->grfun_u,   sizeof(double), N*N, false);
+	sprintf(path, "%s_grfun_d.dat",   fnbase); WriteData(path, meas_data->grfun_d,   sizeof(double), N*N, false);
 	sprintf(path, "%s_uu_corr.dat",   fnbase); WriteData(path, meas_data->uu_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_dd_corr.dat",   fnbase); WriteData(path, meas_data->dd_corr,   sizeof(double), Ncell*Norb*Norb, false);
 	sprintf(path, "%s_ud_corr.dat",   fnbase); WriteData(path, meas_data->ud_corr,   sizeof(double), Ncell*Norb*Norb, false);
