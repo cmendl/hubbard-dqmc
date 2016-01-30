@@ -50,8 +50,11 @@ static void ConstructLatticeNearestNeighborMap(const int Nx, const int Ny, int *
 ///
 /// \brief Allocate and initialize measurement data structure
 ///
-void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measurement_data_t *restrict meas_data)
+void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, const int pbc_shift, measurement_data_t *restrict meas_data)
 {
+	// unused parameter
+	(void)pbc_shift;
+
 	const int Ncell = Nx * Ny;
 	const int N     = Norb * Ncell;
 
@@ -375,8 +378,11 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 ///
 /// \brief Allocate and initialize unequal time measurement data structure
 ///
-int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data)
+int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, measurement_data_unequal_time_t *restrict meas_data)
 {
+	// unused parameter
+	(void)pbc_shift;
+
 	// lattice dimensions
 	const int Ncell = Nx * Ny;
 	const int N     = Norb * Ncell;
