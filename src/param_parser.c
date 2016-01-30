@@ -236,6 +236,8 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 	if ((value = HashTableGet(&hashtable, "Nx")) != NULL) { params->Nx = atoi(value->str[0]); }
 	if ((value = HashTableGet(&hashtable, "Ny")) != NULL) { params->Ny = atoi(value->str[0]); }
 
+	if ((value = HashTableGet(&hashtable, "pbc_shift")) != NULL) { params->pbc_shift = atoi(value->str[0]); }
+
 	if ((value = HashTableGet(&hashtable, "t_aa")) != NULL)
 	{
 		if (ReadHoppings(Norb, value, params->t.aa) != 0)

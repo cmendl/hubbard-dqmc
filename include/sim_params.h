@@ -66,6 +66,7 @@ typedef struct
 	int Norb;						//!< number of orbitals per unit cell
 	int Nx;							//!< lattice field x dimension
 	int Ny;							//!< lattice field y dimension
+	int pbc_shift;					//!< shift of x-coordinate when wrapping around in y-direction
 
 	// Hamiltonian parameters
 	bond_hoppings_t t;				//!< hopping parameters

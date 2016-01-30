@@ -115,13 +115,13 @@ int main(int argc, char *argv[])
 
 	// allocate and initialize equal time measurement data structure
 	measurement_data_t meas_data;
-	AllocateMeasurementData(params.Norb, params.Nx, params.Ny, &meas_data);
+	AllocateMeasurementData(params.Norb, params.Nx, params.Ny, params.pbc_shift, &meas_data);
 
 	// allocate and initialize unequal time measurement data structure
 	measurement_data_unequal_time_t meas_data_uneqlt;
 	if (params.nuneqlt > 0)
 	{
-		status = AllocateUnequalTimeMeasurementData(params.Norb, params.Nx, params.Ny, params.L, &meas_data_uneqlt);
+		status = AllocateUnequalTimeMeasurementData(params.Norb, params.Nx, params.Ny, params.pbc_shift, params.L, &meas_data_uneqlt);
 		if (status < 0) {
 			duprintf("Could not allocate unequal time measurement data structure (probably out of memory), exiting...\n");
 			return -4;

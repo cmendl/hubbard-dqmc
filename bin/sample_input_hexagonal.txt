@@ -1,0 +1,27 @@
+# number of orbitals per unit cell
+Norb        2
+
+# lattice dimension
+Nx          4
+Ny          4
+
+# shift of x-coordinate when wrapping around in y-direction
+pbc_shift   2
+
+t_aa        0,1, 1.0
+t_ac        1,0, 1.0
+t_bc        1,0, 1.0
+
+# Hubbard U parameter
+U           4.0, 4.0
+
+# chemical potential
+mu          0.0
+
+dt          0.1
+L           40
+prodBlen    5
+nwraps      10
+nequil      512
+nsampl      1024
+nuneqlt     0

@@ -38,6 +38,10 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 				{
 					const int i_next = (i < Nx-1 ? i + 1 : 0);
 
+					// shifted index in x-direction affects 'c' and 'd' cells only
+					const int is = (i + (j_next == 0 ? params->pbc_shift : 0)) % Nx;
+					const int is_next = (is < Nx-1 ? is + 1 : 0);
+
 					// cell indices
 					//  c    d
 					//  |\  /
@@ -45,10 +49,10 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 					//  | /\
 					//  |/  \
 					//  a----b
-					const int a = i      + j     *Nx;
-					const int b = i_next + j     *Nx;
-					const int c = i      + j_next*Nx;
-					const int d = i_next + j_next*Nx;
+					const int a = i       + j     *Nx;
+					const int b = i_next  + j     *Nx;
+					const int c = is      + j_next*Nx;
+					const int d = is_next + j_next*Nx;
 
 					// here, -= is used to avoid overwriting some bonds that are repeated due to
 					// periodic boundary conditions, when Nx and/or Ny == 2

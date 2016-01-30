@@ -12,7 +12,7 @@
 ///
 /// \brief Construct the lattice coordinate sum map
 ///
-static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, int *restrict latt_sum_map)
+static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, const int pbc_shift, int *restrict latt_sum_map)
 {
 	// total number of lattice sites
 	const int Ncell = Nx * Ny;
@@ -35,8 +35,8 @@ static void ConstructLatticeCoordinateSumMap(const int Nx, const int Ny, int *re
 					const int kl = k + Nx*l;
 
 					// coordinate sum
-					const int u = (i + k) % Nx;
-					const int v = (j + l) % Ny;
+					const int u = (i + k + (j + l < Ny ? 0 : pbc_shift)) % Nx;
+					const int v = (j + l)                                % Ny;
 
 					latt_sum_map[ij + Ncell*kl] = u + Nx*v;
 				}
@@ -80,7 +80,7 @@ static void ConstructLatticeNearestNeighborMap(const int Nx, const int Ny, int *
 ///
 /// \brief Allocate and initialize measurement data structure
 ///
-void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measurement_data_t *restrict meas_data)
+void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, const int pbc_shift, measurement_data_t *restrict meas_data)
 {
 	const int Ncell = Nx * Ny;
 	const int N     = Norb * Ncell;
@@ -119,7 +119,7 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, measure
 
 	// construct lattice coordinate sum map
 	meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
-	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
+	ConstructLatticeCoordinateSumMap(Nx, Ny, pbc_shift, meas_data->latt_sum_map);
 
 	// construct lattice nearest neighbor map
 	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
@@ -447,7 +447,7 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 ///
 /// \brief Allocate and initialize unequal time measurement data structure
 ///
-int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int L, measurement_data_unequal_time_t *restrict meas_data)
+int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, measurement_data_unequal_time_t *restrict meas_data)
 {
 	// lattice dimensions
 	const int Ncell = Nx * Ny;
@@ -483,7 +483,7 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 
 	// construct lattice coordinate sum map
 	meas_data->latt_sum_map = (int *)MKL_malloc(Ncell*Ncell * sizeof(int), MEM_DATA_ALIGN);
-	ConstructLatticeCoordinateSumMap(Nx, Ny, meas_data->latt_sum_map);
+	ConstructLatticeCoordinateSumMap(Nx, Ny, pbc_shift, meas_data->latt_sum_map);
 
 	// construct lattice nearest neighbor map
 	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
