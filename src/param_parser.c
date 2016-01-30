@@ -507,6 +507,7 @@ void PrintSimulationParameters(const sim_params_t *params)
 	duprintf("Simulation parameters\n\n");
 	duprintf("              number of orbitals: %i\n", Norb);
 	duprintf("               lattice dimension: %i x %i\n", params->Nx, params->Ny);
+	duprintf("                       PBC shift: %i\n", params->pbc_shift);
 	duprintf("                               U: ");   PrintList(Norb, params->U);       duprintf("\n");
 	duprintf("                             eps: ");   PrintList(Norb, params->eps);     duprintf("\n");
 	duprintf("                            t_aa: ");   PrintMatrix(Norb, params->t.aa);  duprintf("\n");
