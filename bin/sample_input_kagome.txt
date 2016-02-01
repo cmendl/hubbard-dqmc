@@ -1,0 +1,33 @@
+# number of orbitals per unit cell
+Norb        3
+
+# lattice dimension
+Nx          4
+Ny          4
+
+# shift of x-coordinate when wrapping around in y-direction, must be Ny/2 for triangular lattices
+pbc_shift   2
+
+# nearest neighbor hopping parameters for a Kagome lattice
+# pairwise hopping between orbitals within a unit cell
+t_aa        1,0, 1.0
+t_aa        2,0, 1.0
+t_aa        1,2, 1.0
+# hopping between unit cells
+t_ac        1,0, 1.0
+t_bc        2,0, 1.0
+t_ab        1,2, 1.0
+
+# Hubbard U parameter
+U           4.0, 4.0, 4.0
+
+# chemical potential
+mu          0.0
+
+dt          0.1
+L           40
+prodBlen    5
+nwraps      10
+nequil      512
+nsampl      1024
+nuneqlt     0
