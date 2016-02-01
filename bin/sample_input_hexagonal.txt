@@ -5,12 +5,13 @@ Norb        2
 Nx          4
 Ny          4
 
-# shift of x-coordinate when wrapping around in y-direction
+# shift of x-coordinate when wrapping around in y-direction, must be Ny/2 for triangular lattices
 pbc_shift   2
 
-t_aa        0,1, 1.0
+# nearest neighbor hopping parameters for a hexagonal lattice
+t_aa        1,0, 1.0
+t_ab        1,0, 1.0
 t_ac        1,0, 1.0
-t_bc        1,0, 1.0
 
 # Hubbard U parameter
 U           4.0, 4.0

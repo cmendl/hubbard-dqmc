@@ -1,5 +1,5 @@
 SRCFILES = checkpoint.o dupio.o greens_func.o hash_table.o kinetic.o lattice_fourier.o linalg.o measurement.o monte_carlo.o param_parser.o profiler.o progress.o random.o stratonovich.o time_flow.o util.o
-TSTFILES = matrix_exp_test.o blockcyclic_qr_test.o blockcyclic_tri_test.o blockcyclic_inv_test.o kinetic_test.o kinetic_test2.o lattice_fourier_test.o time_flow_test1.o time_flow_test2.o time_flow_test3.o stratonovich_test.o greens_func_flip_test.o greens_func_wrap_test.o greens_func_init_test1.o greens_func_init_test2.o greens_func_init_test3.o greens_func_init_test4.o monte_carlo_iter_test.o monte_carlo_phonon_block_test.o monte_carlo_iter_phonon_test.o green_unequal_time_test.o measurement_test.o
+TSTFILES = matrix_exp_test.o blockcyclic_qr_test.o blockcyclic_tri_test.o blockcyclic_inv_test.o kinetic_test.o kinetic_test2.o kinetic_test3.o lattice_fourier_test.o time_flow_test1.o time_flow_test2.o time_flow_test3.o stratonovich_test.o greens_func_flip_test.o greens_func_wrap_test.o greens_func_init_test1.o greens_func_init_test2.o greens_func_init_test3.o greens_func_init_test4.o monte_carlo_iter_test.o monte_carlo_phonon_block_test.o monte_carlo_iter_phonon_test.o green_unequal_time_test.o measurement_test.o
 
 # use Intel compiler
 CC = icc
@@ -55,6 +55,9 @@ kinetic_test.o: ../test/kinetic_test.c
 	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 kinetic_test2.o: ../test/kinetic_test2.c
+	${CC} -c -I../include ${CCOPTS} ${MKL} $<
+
+kinetic_test3.o: ../test/kinetic_test3.c
 	${CC} -c -I../include ${CCOPTS} ${MKL} $<
 
 lattice_fourier_test.o: ../test/lattice_fourier_test.c

@@ -16,6 +16,7 @@ int BlockCyclicTriTest();
 int BlockCyclicInvTest();
 int KineticTest();
 int KineticTest2();
+int KineticTest3();
 int LatticeFourierTest();
 int TimeFlowTest1();
 int TimeFlowTest2();
@@ -41,7 +42,7 @@ int main()
 	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 	#endif
 
-	test_function_t tests[] = { MatrixExpTest, BlockCyclicQRTest, BlockCyclicTriTest, BlockCyclicInvTest, KineticTest, KineticTest2, LatticeFourierTest, TimeFlowTest1, TimeFlowTest2, TimeFlowTest3, StratonovichTest, GreensFuncFlipTest, GreensFuncWrapTest, GreensFuncInitTest1, GreensFuncInitTest2, GreensFuncInitTest3, GreensFuncInitTest4, MonteCarloIterTest, MonteCarloPhononBlockTest, MonteCarloIterPhononTest, GreenUnequalTimeTest, MeasurementTest };
+	test_function_t tests[] = { MatrixExpTest, BlockCyclicQRTest, BlockCyclicTriTest, BlockCyclicInvTest, KineticTest, KineticTest2, KineticTest3, LatticeFourierTest, TimeFlowTest1, TimeFlowTest2, TimeFlowTest3, StratonovichTest, GreensFuncFlipTest, GreensFuncWrapTest, GreensFuncInitTest1, GreensFuncInitTest2, GreensFuncInitTest3, GreensFuncInitTest4, MonteCarloIterTest, MonteCarloPhononBlockTest, MonteCarloIterPhononTest, GreenUnequalTimeTest, MeasurementTest };
 
 	bool pass = true;
 
