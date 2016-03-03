@@ -691,26 +691,32 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 						+ Gt0_d_base[imy + N*L*jpx] + Gt0_d_base[imy + N*L*jmx] + Gt0_d_base[imy + N*L*jpy] + Gt0_d_base[imy + N*L*jmy]);
 
 					// Raman B1g
+
+					const double delta_tau_j_ipx = (l == 0 && j == ipx ? 1 : 0);
+					const double delta_tau_j_imx = (l == 0 && j == imx ? 1 : 0);
+					const double delta_tau_j_ipy = (l == 0 && j == ipy ? 1 : 0);
+					const double delta_tau_j_imy = (l == 0 && j == imy ? 1 : 0);
+
 					meas_data->ram_b1g[k + offset] += signfac * 0.0625 * (
-						+ ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jpx] + G00_d_base[j + N*jpx]) - Gt0_u_base[i + N*L*jpx]*G0t_u_base[j + N*ipx] - Gt0_d_base[i + N*L*jpx]*G0t_d_base[j + N*ipx])
-						+ ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*G0t_u_base[j + N*ipx] - Gt0_d_base[i + N*L*jmx]*G0t_d_base[j + N*ipx])
-						- ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*G0t_u_base[j + N*ipx] - Gt0_d_base[i + N*L*jpy]*G0t_d_base[j + N*ipx])
-						- ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jmy] + G00_d_base[j + N*jmy]) - Gt0_u_base[i + N*L*jmy]*G0t_u_base[j + N*ipx] - Gt0_d_base[i + N*L*jmy]*G0t_d_base[j + N*ipx])
+						+ ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jpx] + G00_d_base[j + N*jpx]) - Gt0_u_base[i + N*L*jpx]*(G0t_u_base[j + N*ipx] - delta_tau_j_ipx) - Gt0_d_base[i + N*L*jpx]*(G0t_d_base[j + N*ipx] - delta_tau_j_ipx))
+						+ ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*(G0t_u_base[j + N*ipx] - delta_tau_j_ipx) - Gt0_d_base[i + N*L*jmx]*(G0t_d_base[j + N*ipx] - delta_tau_j_ipx))
+						- ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*(G0t_u_base[j + N*ipx] - delta_tau_j_ipx) - Gt0_d_base[i + N*L*jpy]*(G0t_d_base[j + N*ipx] - delta_tau_j_ipx))
+						- ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jmy] + G00_d_base[j + N*jmy]) - Gt0_u_base[i + N*L*jmy]*(G0t_u_base[j + N*ipx] - delta_tau_j_ipx) - Gt0_d_base[i + N*L*jmy]*(G0t_d_base[j + N*ipx] - delta_tau_j_ipx))
 
-						+ ((Gtt_u_base[i + N*imx] + Gtt_d_base[i + N*imx])*(G00_u_base[j + N*jpx] + G00_d_base[j + N*jpx]) - Gt0_u_base[i + N*L*jpx]*G0t_u_base[j + N*imx] - Gt0_d_base[i + N*L*jpx]*G0t_d_base[j + N*imx])
-						+ ((Gtt_u_base[i + N*imx] + Gtt_d_base[i + N*imx])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*G0t_u_base[j + N*imx] - Gt0_d_base[i + N*L*jmx]*G0t_d_base[j + N*imx])
-						- ((Gtt_u_base[i + N*imx] + Gtt_d_base[i + N*imx])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*G0t_u_base[j + N*imx] - Gt0_d_base[i + N*L*jpy]*G0t_d_base[j + N*imx])
-						- ((Gtt_u_base[i + N*imx] + Gtt_d_base[i + N*imx])*(G00_u_base[j + N*jmy] + G00_d_base[j + N*jmy]) - Gt0_u_base[i + N*L*jmy]*G0t_u_base[j + N*imx] - Gt0_d_base[i + N*L*jmy]*G0t_d_base[j + N*imx])
+						+ ((Gtt_u_base[i + N*imx] + Gtt_d_base[i + N*imx])*(G00_u_base[j + N*jpx] + G00_d_base[j + N*jpx]) - Gt0_u_base[i + N*L*jpx]*(G0t_u_base[j + N*imx] - delta_tau_j_imx) - Gt0_d_base[i + N*L*jpx]*(G0t_d_base[j + N*imx] - delta_tau_j_imx))
+						+ ((Gtt_u_base[i + N*imx] + Gtt_d_base[i + N*imx])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*(G0t_u_base[j + N*imx] - delta_tau_j_imx) - Gt0_d_base[i + N*L*jmx]*(G0t_d_base[j + N*imx] - delta_tau_j_imx))
+						- ((Gtt_u_base[i + N*imx] + Gtt_d_base[i + N*imx])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*(G0t_u_base[j + N*imx] - delta_tau_j_imx) - Gt0_d_base[i + N*L*jpy]*(G0t_d_base[j + N*imx] - delta_tau_j_imx))
+						- ((Gtt_u_base[i + N*imx] + Gtt_d_base[i + N*imx])*(G00_u_base[j + N*jmy] + G00_d_base[j + N*jmy]) - Gt0_u_base[i + N*L*jmy]*(G0t_u_base[j + N*imx] - delta_tau_j_imx) - Gt0_d_base[i + N*L*jmy]*(G0t_d_base[j + N*imx] - delta_tau_j_imx))
 
-						- ((Gtt_u_base[i + N*ipy] + Gtt_d_base[i + N*ipy])*(G00_u_base[j + N*jpx] + G00_d_base[j + N*jpx]) - Gt0_u_base[i + N*L*jpx]*G0t_u_base[j + N*ipy] - Gt0_d_base[i + N*L*jpx]*G0t_d_base[j + N*ipy])
-						- ((Gtt_u_base[i + N*ipy] + Gtt_d_base[i + N*ipy])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*G0t_u_base[j + N*ipy] - Gt0_d_base[i + N*L*jmx]*G0t_d_base[j + N*ipy])
-						+ ((Gtt_u_base[i + N*ipy] + Gtt_d_base[i + N*ipy])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*G0t_u_base[j + N*ipy] - Gt0_d_base[i + N*L*jpy]*G0t_d_base[j + N*ipy])
-						+ ((Gtt_u_base[i + N*ipy] + Gtt_d_base[i + N*ipy])*(G00_u_base[j + N*jmy] + G00_d_base[j + N*jmy]) - Gt0_u_base[i + N*L*jmy]*G0t_u_base[j + N*ipy] - Gt0_d_base[i + N*L*jmy]*G0t_d_base[j + N*ipy])
+						- ((Gtt_u_base[i + N*ipy] + Gtt_d_base[i + N*ipy])*(G00_u_base[j + N*jpx] + G00_d_base[j + N*jpx]) - Gt0_u_base[i + N*L*jpx]*(G0t_u_base[j + N*ipy] - delta_tau_j_ipy) - Gt0_d_base[i + N*L*jpx]*(G0t_d_base[j + N*ipy] - delta_tau_j_ipy))
+						- ((Gtt_u_base[i + N*ipy] + Gtt_d_base[i + N*ipy])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*(G0t_u_base[j + N*ipy] - delta_tau_j_ipy) - Gt0_d_base[i + N*L*jmx]*(G0t_d_base[j + N*ipy] - delta_tau_j_ipy))
+						+ ((Gtt_u_base[i + N*ipy] + Gtt_d_base[i + N*ipy])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*(G0t_u_base[j + N*ipy] - delta_tau_j_ipy) - Gt0_d_base[i + N*L*jpy]*(G0t_d_base[j + N*ipy] - delta_tau_j_ipy))
+						+ ((Gtt_u_base[i + N*ipy] + Gtt_d_base[i + N*ipy])*(G00_u_base[j + N*jmy] + G00_d_base[j + N*jmy]) - Gt0_u_base[i + N*L*jmy]*(G0t_u_base[j + N*ipy] - delta_tau_j_ipy) - Gt0_d_base[i + N*L*jmy]*(G0t_d_base[j + N*ipy] - delta_tau_j_ipy))
 
-						- ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jpx] + G00_d_base[j + N*jpx]) - Gt0_u_base[i + N*L*jpx]*G0t_u_base[j + N*imy] - Gt0_d_base[i + N*L*jpx]*G0t_d_base[j + N*imy])
-						- ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*G0t_u_base[j + N*imy] - Gt0_d_base[i + N*L*jmx]*G0t_d_base[j + N*imy])
-						+ ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*G0t_u_base[j + N*imy] - Gt0_d_base[i + N*L*jpy]*G0t_d_base[j + N*imy])
-						+ ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jmy] + G00_d_base[j + N*jmy]) - Gt0_u_base[i + N*L*jmy]*G0t_u_base[j + N*imy] - Gt0_d_base[i + N*L*jmy]*G0t_d_base[j + N*imy])
+						- ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jpx] + G00_d_base[j + N*jpx]) - Gt0_u_base[i + N*L*jpx]*(G0t_u_base[j + N*imy] - delta_tau_j_imy) - Gt0_d_base[i + N*L*jpx]*(G0t_d_base[j + N*imy] - delta_tau_j_imy))
+						- ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*(G0t_u_base[j + N*imy] - delta_tau_j_imy) - Gt0_d_base[i + N*L*jmx]*(G0t_d_base[j + N*imy] - delta_tau_j_imy))
+						+ ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*(G0t_u_base[j + N*imy] - delta_tau_j_imy) - Gt0_d_base[i + N*L*jpy]*(G0t_d_base[j + N*imy] - delta_tau_j_imy))
+						+ ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jmy] + G00_d_base[j + N*jmy]) - Gt0_u_base[i + N*L*jmy]*(G0t_u_base[j + N*imy] - delta_tau_j_imy) - Gt0_d_base[i + N*L*jmy]*(G0t_d_base[j + N*imy] - delta_tau_j_imy))
 					);
 				}
 			}
