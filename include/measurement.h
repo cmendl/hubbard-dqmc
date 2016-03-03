@@ -85,6 +85,8 @@ typedef struct
 	double *sc_c_dw;			//!< superconducting susceptibility for d-wave pairing
 	double *sc_c_sx;			//!< superconducting susceptibility for extended s-wave pairing
 
+	double *ram_b1g;			//!< Raman B1g correlation function
+
 	double *Hu;					//!< temporary matrix of size L*N x L*N for spin-up
 	double *Hd;					//!< temporary matrix of size L*N x L*N for spin-down
 
