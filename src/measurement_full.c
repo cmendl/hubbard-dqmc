@@ -18,7 +18,7 @@
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Construct nearest neighbor maps for a rectangular lattice 
+/// \brief Construct nearest neighbor maps for a rectangular lattice
 ///
 static void ConstructLatticeNearestNeighborMap(const int Nx, const int Ny, int *restrict latt_xp1_map, int *restrict latt_xm1_map, int *restrict latt_yp1_map, int *restrict latt_ym1_map)
 {
@@ -56,7 +56,7 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, const i
 	(void)pbc_shift;
 
 	const int Ncell = Nx * Ny;
-	const int N     = Norb * Ncell;
+	const int N     = Ncell * Norb;
 
 	meas_data->Norb  = Norb;
 	meas_data->Ncell = Ncell;
@@ -85,9 +85,9 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, const i
 	meas_data->xx_corr = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
 
 	// superconducting susceptibilities
-	meas_data->sc_c_sw = (double *)MKL_calloc(Norb*Ncell*Ncell, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->sc_c_dw = (double *)MKL_calloc(Norb*Ncell*Ncell, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->sc_c_sx = (double *)MKL_calloc(Norb*Ncell*Ncell, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_sw = (double *)MKL_calloc(Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_dw = (double *)MKL_calloc(Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_sx = (double *)MKL_calloc(Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
 
 	// construct lattice nearest neighbor map
 	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
@@ -140,7 +140,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 	// lattice dimensions
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N     = Norb * Ncell;
+	const int N     = Ncell * Norb;
 
 	// product of the determinant signs of the Green's function matrices
 	const double sign = (double)(Gu->sgndet * Gd->sgndet);
@@ -148,9 +148,9 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 
 	for (i = 0; i < N; i++)
 	{
-		meas_data->density_u[i] += sign*(1 - Gu->mat[i + i*N]);
-		meas_data->density_d[i] += sign*(1 - Gd->mat[i + i*N]);
-		meas_data->doubleocc[i] += sign*(1 - Gu->mat[i + i*N])*(1 - Gd->mat[i + i*N]);
+		meas_data->density_u[i] += sign*(1 - Gu->mat[i + N*i]);
+		meas_data->density_d[i] += sign*(1 - Gd->mat[i + N*i]);
+		meas_data->doubleocc[i] += sign*(1 - Gu->mat[i + N*i])*(1 - Gd->mat[i + N*i]);
 	}
 
 	// green's functions
@@ -201,8 +201,8 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 	for (o = 0; o < Norb; o++)
 	{
 		// base pointer of Green's functions for current orbital type
-		const double *Gu_orb = &Gu->mat[(o*Ncell) + N*(o*Ncell)];
-		const double *Gd_orb = &Gd->mat[(o*Ncell) + N*(o*Ncell)];
+		const double *Gu_orb = &Gu->mat[(Ncell*o) + N*(Ncell*o)];
+		const double *Gd_orb = &Gd->mat[(Ncell*o) + N*(Ncell*o)];
 
 		for (i = 0; i < Ncell; i++)
 		{
@@ -224,17 +224,17 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 				const double Gd_ij = Gd_orb[i + N*j];
 
 				// s-wave
-				meas_data->sc_c_sw[i + j*Ncell + o*Ncell*Ncell] += sign*(Gu_ij * Gd_ij);
+				meas_data->sc_c_sw[i + Ncell*j + Ncell*Ncell*o] += sign*(Gu_ij * Gd_ij);
 
 				// d-wave: all 16 combinations of nearest neighbors of i and j
-				meas_data->sc_c_dw[i + j*Ncell + o*Ncell*Ncell] += sign * 0.25 * Gu_ij*(
+				meas_data->sc_c_dw[i + Ncell*j + Ncell*Ncell*o] += sign * 0.25 * Gu_ij*(
 					+ Gd_orb[ipx + N*jpx] + Gd_orb[ipx + N*jmx] - Gd_orb[ipx + N*jpy] - Gd_orb[ipx + N*jmy]
 					+ Gd_orb[imx + N*jpx] + Gd_orb[imx + N*jmx] - Gd_orb[imx + N*jpy] - Gd_orb[imx + N*jmy]
 					- Gd_orb[ipy + N*jpx] - Gd_orb[ipy + N*jmx] + Gd_orb[ipy + N*jpy] + Gd_orb[ipy + N*jmy]
 					- Gd_orb[imy + N*jpx] - Gd_orb[imy + N*jmx] + Gd_orb[imy + N*jpy] + Gd_orb[imy + N*jmy]);
 
 				// extended s-wave: similar to d-wave, but without sign flip
-				meas_data->sc_c_sx[i + j*Ncell + o*Ncell*Ncell] += sign * 0.25 * Gu_ij*(
+				meas_data->sc_c_sx[i + Ncell*j + Ncell*Ncell*o] += sign * 0.25 * Gu_ij*(
 					+ Gd_orb[ipx + N*jpx] + Gd_orb[ipx + N*jmx] + Gd_orb[ipx + N*jpy] + Gd_orb[ipx + N*jmy]
 					+ Gd_orb[imx + N*jpx] + Gd_orb[imx + N*jmx] + Gd_orb[imx + N*jpy] + Gd_orb[imx + N*jmy]
 					+ Gd_orb[ipy + N*jpx] + Gd_orb[ipy + N*jmx] + Gd_orb[ipy + N*jpy] + Gd_orb[ipy + N*jmy]
@@ -260,7 +260,7 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 	// total number of orbitals and cells
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N     = Norb * Ncell;
+	const int N     = Ncell * Norb;
 
 	// normalization factor; sign must be non-zero
 	const double nfac = 1.0 / meas_data->sign;
@@ -322,7 +322,7 @@ void LoadMeasurementData(const char *fnbase, measurement_data_t *meas_data)
 {
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N     = Norb * Ncell;
+	const int N     = Ncell * Norb;
 
 	char path[1024];
 	sprintf(path, "%s_sign.dat",      fnbase); ReadData(path, (void *)&meas_data->sign,   sizeof(double), 1);
@@ -352,7 +352,7 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 {
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N     = Norb * Ncell;
+	const int N     = Ncell * Norb;
 
 	char path[1024];
 	sprintf(path, "%s_sign.dat",      fnbase); WriteData(path, &meas_data->sign,     sizeof(double), 1, false);
@@ -385,7 +385,7 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 
 	// lattice dimensions
 	const int Ncell = Nx * Ny;
-	const int N     = Norb * Ncell;
+	const int N     = Ncell * Norb;
 
 	meas_data->Norb  = Norb;
 	meas_data->Ncell = Ncell;
@@ -398,25 +398,25 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 	meas_data->Hd = (double *)MKL_malloc(L*L*N*N * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hd == NULL) { return -1; }
 
 	// allocate and initialize Green's functions with zeros
-	meas_data->Gtau0_u = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Gtau0_u == NULL) { return -1; }
-	meas_data->G0tau_u = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->G0tau_u == NULL) { return -1; }
-	meas_data->Geqlt_u = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_u == NULL) { return -1; }
-	meas_data->Gtau0_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Gtau0_d == NULL) { return -1; }
-	meas_data->G0tau_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->G0tau_d == NULL) { return -1; }
-	meas_data->Geqlt_d = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_d == NULL) { return -1; }
+	meas_data->Gtau0_u = (double *)MKL_calloc(N*L*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Gtau0_u == NULL) { return -1; }
+	meas_data->G0tau_u = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN); if (meas_data->G0tau_u == NULL) { return -1; }
+	meas_data->Geqlt_u = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_u == NULL) { return -1; }
+	meas_data->Gtau0_d = (double *)MKL_calloc(N*L*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Gtau0_d == NULL) { return -1; }
+	meas_data->G0tau_d = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN); if (meas_data->G0tau_d == NULL) { return -1; }
+	meas_data->Geqlt_d = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_d == NULL) { return -1; }
 
 	// density and spin correlation data for all time differences
-	meas_data->nn_corr = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->zz_corr = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->xx_corr = (double *)MKL_calloc(L*N*N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->nn_corr = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->zz_corr = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->xx_corr = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
 
 	// superconducting susceptibilities
-	meas_data->sc_c_sw = (double *)MKL_calloc(L*Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->sc_c_dw = (double *)MKL_calloc(L*Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->sc_c_sx = (double *)MKL_calloc(L*Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_sw = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_dw = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_sx = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
 
 	// Raman
-	meas_data->ram_b1g = (double *)MKL_calloc(L*Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->ram_b1g = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
 
 	// construct lattice nearest neighbor map
 	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
@@ -478,18 +478,18 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N = Norb * Ncell;
+	const int N = Ncell * Norb;
 	const int L = meas_data->L;
 
 	// current spin-up unequal time Green's functions
-	double *curGtau0_u = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *curG0tau_u = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *curGeqlt_u = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *curGtau0_u = (double *)MKL_malloc(N*L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *curG0tau_u = (double *)MKL_malloc(N*N*L * sizeof(double), MEM_DATA_ALIGN);
+	double *curGeqlt_u = (double *)MKL_malloc(N*N*L * sizeof(double), MEM_DATA_ALIGN);
 
 	// current spin-down unequal time Green's functions
-	double *curGtau0_d = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *curG0tau_d = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *curGeqlt_d = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *curGtau0_d = (double *)MKL_malloc(N*L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *curG0tau_d = (double *)MKL_malloc(N*N*L * sizeof(double), MEM_DATA_ALIGN);
+	double *curGeqlt_d = (double *)MKL_malloc(N*N*L * sizeof(double), MEM_DATA_ALIGN);
 
 	// compute and accumulate unequal time spin-up and spin-down Green's functions
 	#pragma omp parallel sections
@@ -497,16 +497,16 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 		#pragma omp section
 		{
 			ComputeUnequalTimeGreensFunction(N, L, Bu, meas_data->Hu, curGtau0_u, curG0tau_u, curGeqlt_u, NULL, NULL, NULL);
-			cblas_daxpy(L*N*N, sign, curGtau0_u, 1, meas_data->Gtau0_u, 1);
-			cblas_daxpy(L*N*N, sign, curG0tau_u, 1, meas_data->G0tau_u, 1);
-			cblas_daxpy(L*N*N, sign, curGeqlt_u, 1, meas_data->Geqlt_u, 1);
+			cblas_daxpy(N*L*N, sign, curGtau0_u, 1, meas_data->Gtau0_u, 1);
+			cblas_daxpy(N*N*L, sign, curG0tau_u, 1, meas_data->G0tau_u, 1);
+			cblas_daxpy(N*N*L, sign, curGeqlt_u, 1, meas_data->Geqlt_u, 1);
 		}
 		#pragma omp section
 		{
 			ComputeUnequalTimeGreensFunction(N, L, Bd, meas_data->Hd, curGtau0_d, curG0tau_d, curGeqlt_d, NULL, NULL, NULL);
-			cblas_daxpy(L*N*N, sign, curGtau0_d, 1, meas_data->Gtau0_d, 1);
-			cblas_daxpy(L*N*N, sign, curG0tau_d, 1, meas_data->G0tau_d, 1);
-			cblas_daxpy(L*N*N, sign, curGeqlt_d, 1, meas_data->Geqlt_d, 1);
+			cblas_daxpy(N*L*N, sign, curGtau0_d, 1, meas_data->Gtau0_d, 1);
+			cblas_daxpy(N*N*L, sign, curG0tau_d, 1, meas_data->G0tau_d, 1);
+			cblas_daxpy(N*N*L, sign, curGeqlt_d, 1, meas_data->Geqlt_d, 1);
 		}
 	}
 
@@ -533,8 +533,8 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 					const double G00_u_jj = curGeqlt_u[j + N*j];
 					const double G00_d_jj = curGeqlt_d[j + N*j];
 
-					const double Gt0_u_ij = curGtau0_u[i + N*(L*j + l)];
-					const double Gt0_d_ij = curGtau0_d[i + N*(L*j + l)];
+					const double Gt0_u_ij = curGtau0_u[i + N*(l + L*j)];
+					const double Gt0_d_ij = curGtau0_d[i + N*(l + L*j)];
 					const double G0t_u_ji = curG0tau_u[j + N*(i + N*l)];
 					const double G0t_d_ji = curG0tau_d[j + N*(i + N*l)];
 
@@ -551,22 +551,22 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 		for (o = 0; o < Norb; o++)
 		{
 			// base pointer of unequal time Green's functions G(tau, 0) for current time difference tau = l and orbital o
-			const double *Gt0_u_base = &curGtau0_u[(o*Ncell) + N*(L*(o*Ncell) + l)];
-			const double *Gt0_d_base = &curGtau0_d[(o*Ncell) + N*(L*(o*Ncell) + l)];
+			const double *Gt0_u_base = &curGtau0_u[(Ncell*o) + N*(l + L*(Ncell*o))];
+			const double *Gt0_d_base = &curGtau0_d[(Ncell*o) + N*(l + L*(Ncell*o))];
 
 			// base pointer of unequal time Green's functions G(0, tau) for current time difference tau = l and orbital o
-			const double *G0t_u_base = &curG0tau_u[(o*Ncell) + N*((o*Ncell) + N*l)];
-			const double *G0t_d_base = &curG0tau_d[(o*Ncell) + N*((o*Ncell) + N*l)];
+			const double *G0t_u_base = &curG0tau_u[(Ncell*o) + N*((Ncell*o) + N*l)];
+			const double *G0t_d_base = &curG0tau_d[(Ncell*o) + N*((Ncell*o) + N*l)];
 
 			// base pointer of equal time Green's functions G(0, 0) for current orbital o
-			const double *G00_u_base = &curGeqlt_u[(o*Ncell) + N*(o*Ncell)];
-			const double *G00_d_base = &curGeqlt_d[(o*Ncell) + N*(o*Ncell)];
+			const double *G00_u_base = &curGeqlt_u[(Ncell*o) + N*(Ncell*o)];
+			const double *G00_d_base = &curGeqlt_d[(Ncell*o) + N*(Ncell*o)];
 
 			// base pointer of equal time Green's functions G(tau, tau) for current time tau = l and orbital o
-			const double *Gtt_u_base = &curGeqlt_u[(o*Ncell) + N*((o*Ncell) + N*l)];
-			const double *Gtt_d_base = &curGeqlt_d[(o*Ncell) + N*((o*Ncell) + N*l)];
+			const double *Gtt_u_base = &curGeqlt_u[(Ncell*o) + N*((Ncell*o) + N*l)];
+			const double *Gtt_d_base = &curGeqlt_d[(Ncell*o) + N*((Ncell*o) + N*l)];
 
-			const int offset = (o + l*Norb) * Ncell*Ncell;
+			const int offset = Ncell*Ncell * (o + Norb*l);
 
 			for (i = 0; i < Ncell; i++)
 			{
@@ -588,17 +588,17 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 					const double Gt0_d_ij = Gt0_d_base[i + N*L*j];
 
 					// s-wave
-					meas_data->sc_c_sw[i + j*Ncell + offset] += sign*(Gt0_u_ij * Gt0_d_ij);
+					meas_data->sc_c_sw[i + Ncell*j + offset] += sign*(Gt0_u_ij * Gt0_d_ij);
 
 					// d-wave: all 16 combinations of nearest neighbors of i and j
-					meas_data->sc_c_dw[i + j*Ncell + offset] += sign * 0.25 * Gt0_u_ij*(
+					meas_data->sc_c_dw[i + Ncell*j + offset] += sign * 0.25 * Gt0_u_ij*(
 						+ Gt0_d_base[ipx + N*L*jpx] + Gt0_d_base[ipx + N*L*jmx] - Gt0_d_base[ipx + N*L*jpy] - Gt0_d_base[ipx + N*L*jmy]
 						+ Gt0_d_base[imx + N*L*jpx] + Gt0_d_base[imx + N*L*jmx] - Gt0_d_base[imx + N*L*jpy] - Gt0_d_base[imx + N*L*jmy]
 						- Gt0_d_base[ipy + N*L*jpx] - Gt0_d_base[ipy + N*L*jmx] + Gt0_d_base[ipy + N*L*jpy] + Gt0_d_base[ipy + N*L*jmy]
 						- Gt0_d_base[imy + N*L*jpx] - Gt0_d_base[imy + N*L*jmx] + Gt0_d_base[imy + N*L*jpy] + Gt0_d_base[imy + N*L*jmy]);
 
 					// extended s-wave: similar to d-wave, but without sign flip
-					meas_data->sc_c_sx[i + j*Ncell + offset] += sign * 0.25 * Gt0_u_ij*(
+					meas_data->sc_c_sx[i + Ncell*j + offset] += sign * 0.25 * Gt0_u_ij*(
 						+ Gt0_d_base[ipx + N*L*jpx] + Gt0_d_base[ipx + N*L*jmx] + Gt0_d_base[ipx + N*L*jpy] + Gt0_d_base[ipx + N*L*jmy]
 						+ Gt0_d_base[imx + N*L*jpx] + Gt0_d_base[imx + N*L*jmx] + Gt0_d_base[imx + N*L*jpy] + Gt0_d_base[imx + N*L*jmy]
 						+ Gt0_d_base[ipy + N*L*jpx] + Gt0_d_base[ipy + N*L*jmx] + Gt0_d_base[ipy + N*L*jpy] + Gt0_d_base[ipy + N*L*jmy]
@@ -611,7 +611,7 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 					const double delta_tau_j_ipy = (l == 0 && j == ipy ? 1 : 0);
 					const double delta_tau_j_imy = (l == 0 && j == imy ? 1 : 0);
 
-					meas_data->ram_b1g[i + j*Ncell + offset] += sign * 0.0625 * (
+					meas_data->ram_b1g[i + Ncell*j + offset] += sign * 0.0625 * (
 						+ ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jpx] + G00_d_base[j + N*jpx]) - Gt0_u_base[i + N*L*jpx]*(G0t_u_base[j + N*ipx] - delta_tau_j_ipx) - Gt0_d_base[i + N*L*jpx]*(G0t_d_base[j + N*ipx] - delta_tau_j_ipx))
 						+ ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*(G0t_u_base[j + N*ipx] - delta_tau_j_ipx) - Gt0_d_base[i + N*L*jmx]*(G0t_d_base[j + N*ipx] - delta_tau_j_ipx))
 						- ((Gtt_u_base[i + N*ipx] + Gtt_d_base[i + N*ipx])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*(G0t_u_base[j + N*ipx] - delta_tau_j_ipx) - Gt0_d_base[i + N*L*jpy]*(G0t_d_base[j + N*ipx] - delta_tau_j_ipx))
@@ -663,7 +663,7 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
 
-	const int N = Norb * Ncell;
+	const int N = Ncell * Norb;
 
 	// total number of time steps
 	const int L = meas_data->L;
@@ -672,25 +672,25 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 	const double nfac = 1.0 / meas_data->sign;
 
 	// divide Green's functions by sign
-	cblas_dscal(L*N*N, nfac, meas_data->Gtau0_u, 1);
-	cblas_dscal(L*N*N, nfac, meas_data->G0tau_u, 1);
-	cblas_dscal(L*N*N, nfac, meas_data->Geqlt_u, 1);
-	cblas_dscal(L*N*N, nfac, meas_data->Gtau0_d, 1);
-	cblas_dscal(L*N*N, nfac, meas_data->G0tau_d, 1);
-	cblas_dscal(L*N*N, nfac, meas_data->Geqlt_d, 1);
+	cblas_dscal(N*L*N, nfac, meas_data->Gtau0_u, 1);
+	cblas_dscal(N*N*L, nfac, meas_data->G0tau_u, 1);
+	cblas_dscal(N*N*L, nfac, meas_data->Geqlt_u, 1);
+	cblas_dscal(N*L*N, nfac, meas_data->Gtau0_d, 1);
+	cblas_dscal(N*N*L, nfac, meas_data->G0tau_d, 1);
+	cblas_dscal(N*N*L, nfac, meas_data->Geqlt_d, 1);
 
 	// divide density and spin correlations by sign
-	cblas_dscal(L*N*N, nfac, meas_data->nn_corr, 1);
-	cblas_dscal(L*N*N, nfac, meas_data->zz_corr, 1);
-	cblas_dscal(L*N*N, nfac, meas_data->xx_corr, 1);
+	cblas_dscal(N*N*L, nfac, meas_data->nn_corr, 1);
+	cblas_dscal(N*N*L, nfac, meas_data->zz_corr, 1);
+	cblas_dscal(N*N*L, nfac, meas_data->xx_corr, 1);
 
 	// divide superconducting susceptibilities by sign
-	cblas_dscal(L*Ncell*Ncell*Norb, nfac, meas_data->sc_c_sw, 1);
-	cblas_dscal(L*Ncell*Ncell*Norb, nfac, meas_data->sc_c_dw, 1);
-	cblas_dscal(L*Ncell*Ncell*Norb, nfac, meas_data->sc_c_sx, 1);
+	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->sc_c_sw, 1);
+	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->sc_c_dw, 1);
+	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->sc_c_sx, 1);
 
 	// divide Raman correlation functions by sign
-	cblas_dscal(L*Ncell*Ncell*Norb, nfac, meas_data->ram_b1g, 1);
+	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->ram_b1g, 1);
 
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
@@ -705,29 +705,29 @@ void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 {
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N = Norb * Ncell;
+	const int N = Ncell * Norb;
 	const int L = meas_data->L;
 
 	char path[1024];
 	sprintf(path, "%s_uneqlt_sign.dat",    fnbase); ReadData(path, (void *)&meas_data->sign,   sizeof(double), 1);
 	sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase); ReadData(path, (void *)&meas_data->nsampl, sizeof(int), 1);
 
-	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); ReadData(path, meas_data->Gtau0_u, sizeof(double), L*N*N);
-	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); ReadData(path, meas_data->G0tau_u, sizeof(double), L*N*N);
-	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); ReadData(path, meas_data->Geqlt_u, sizeof(double), L*N*N);
-	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); ReadData(path, meas_data->Gtau0_d, sizeof(double), L*N*N);
-	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); ReadData(path, meas_data->G0tau_d, sizeof(double), L*N*N);
-	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); ReadData(path, meas_data->Geqlt_d, sizeof(double), L*N*N);
+	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); ReadData(path, meas_data->Gtau0_u, sizeof(double), N*L*N);
+	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); ReadData(path, meas_data->G0tau_u, sizeof(double), N*N*L);
+	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); ReadData(path, meas_data->Geqlt_u, sizeof(double), N*N*L);
+	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); ReadData(path, meas_data->Gtau0_d, sizeof(double), N*L*N);
+	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); ReadData(path, meas_data->G0tau_d, sizeof(double), N*N*L);
+	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); ReadData(path, meas_data->Geqlt_d, sizeof(double), N*N*L);
 
-	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); ReadData(path, meas_data->nn_corr, sizeof(double), L*N*N);
-	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); ReadData(path, meas_data->zz_corr, sizeof(double), L*N*N);
-	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); ReadData(path, meas_data->xx_corr, sizeof(double), L*N*N);
+	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); ReadData(path, meas_data->nn_corr, sizeof(double), N*N*L);
+	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); ReadData(path, meas_data->zz_corr, sizeof(double), N*N*L);
+	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); ReadData(path, meas_data->xx_corr, sizeof(double), N*N*L);
 
-	sprintf(path, "%s_uneqlt_sc_c_sw.dat", fnbase); ReadData(path, meas_data->sc_c_sw, sizeof(double), L*Ncell*Ncell*Norb);
-	sprintf(path, "%s_uneqlt_sc_c_dw.dat", fnbase); ReadData(path, meas_data->sc_c_dw, sizeof(double), L*Ncell*Ncell*Norb);
-	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); ReadData(path, meas_data->sc_c_sx, sizeof(double), L*Ncell*Ncell*Norb);
+	sprintf(path, "%s_uneqlt_sc_c_sw.dat", fnbase); ReadData(path, meas_data->sc_c_sw, sizeof(double), Ncell*Ncell*Norb*L);
+	sprintf(path, "%s_uneqlt_sc_c_dw.dat", fnbase); ReadData(path, meas_data->sc_c_dw, sizeof(double), Ncell*Ncell*Norb*L);
+	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); ReadData(path, meas_data->sc_c_sx, sizeof(double), Ncell*Ncell*Norb*L);
 
-	sprintf(path, "%s_uneqlt_ram_b1g.dat", fnbase); ReadData(path, meas_data->ram_b1g, sizeof(double), L*Ncell*Ncell*Norb);
+	sprintf(path, "%s_uneqlt_ram_b1g.dat", fnbase); ReadData(path, meas_data->ram_b1g, sizeof(double), Ncell*Ncell*Norb*L);
 }
 
 
@@ -739,27 +739,27 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 {
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
-	const int N = Norb * Ncell;
+	const int N = Ncell * Norb;
 	const int L = meas_data->L;
 
 	char path[1024];
 	sprintf(path, "%s_uneqlt_sign.dat",    fnbase); WriteData(path, &meas_data->sign,   sizeof(double), 1, false);
 	sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase); WriteData(path, &meas_data->nsampl, sizeof(int),    1, false);
 
-	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); WriteData(path, meas_data->Gtau0_u, sizeof(double), L*N*N, false);
-	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); WriteData(path, meas_data->G0tau_u, sizeof(double), L*N*N, false);
-	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); WriteData(path, meas_data->Geqlt_u, sizeof(double), L*N*N, false);
-	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); WriteData(path, meas_data->Gtau0_d, sizeof(double), L*N*N, false);
-	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); WriteData(path, meas_data->G0tau_d, sizeof(double), L*N*N, false);
-	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); WriteData(path, meas_data->Geqlt_d, sizeof(double), L*N*N, false);
+	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); WriteData(path, meas_data->Gtau0_u, sizeof(double), N*L*N, false);
+	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); WriteData(path, meas_data->G0tau_u, sizeof(double), N*N*L, false);
+	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); WriteData(path, meas_data->Geqlt_u, sizeof(double), N*N*L, false);
+	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); WriteData(path, meas_data->Gtau0_d, sizeof(double), N*L*N, false);
+	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); WriteData(path, meas_data->G0tau_d, sizeof(double), N*N*L, false);
+	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); WriteData(path, meas_data->Geqlt_d, sizeof(double), N*N*L, false);
 
-	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); WriteData(path, meas_data->nn_corr, sizeof(double), L*N*N, false);
-	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); WriteData(path, meas_data->zz_corr, sizeof(double), L*N*N, false);
-	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); WriteData(path, meas_data->xx_corr, sizeof(double), L*N*N, false);
+	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); WriteData(path, meas_data->nn_corr, sizeof(double), N*N*L, false);
+	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); WriteData(path, meas_data->zz_corr, sizeof(double), N*N*L, false);
+	sprintf(path, "%s_uneqlt_xx_corr.dat", fnbase); WriteData(path, meas_data->xx_corr, sizeof(double), N*N*L, false);
 
-	sprintf(path, "%s_uneqlt_sc_c_sw.dat", fnbase); WriteData(path, meas_data->sc_c_sw, sizeof(double), L*Ncell*Ncell*Norb, false);
-	sprintf(path, "%s_uneqlt_sc_c_dw.dat", fnbase); WriteData(path, meas_data->sc_c_dw, sizeof(double), L*Ncell*Ncell*Norb, false);
-	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); WriteData(path, meas_data->sc_c_sx, sizeof(double), L*Ncell*Ncell*Norb, false);
+	sprintf(path, "%s_uneqlt_sc_c_sw.dat", fnbase); WriteData(path, meas_data->sc_c_sw, sizeof(double), Ncell*Ncell*Norb*L, false);
+	sprintf(path, "%s_uneqlt_sc_c_dw.dat", fnbase); WriteData(path, meas_data->sc_c_dw, sizeof(double), Ncell*Ncell*Norb*L, false);
+	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); WriteData(path, meas_data->sc_c_sx, sizeof(double), Ncell*Ncell*Norb*L, false);
 
-	sprintf(path, "%s_uneqlt_ram_b1g.dat", fnbase); WriteData(path, meas_data->ram_b1g, sizeof(double), L*Ncell*Ncell*Norb, false);
+	sprintf(path, "%s_uneqlt_ram_b1g.dat", fnbase); WriteData(path, meas_data->ram_b1g, sizeof(double), Ncell*Ncell*Norb*L, false);
 }
