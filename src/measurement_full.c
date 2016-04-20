@@ -417,6 +417,7 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 
 	// Raman
 	meas_data->ram_b1g = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->ram_b2g = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
 
 	// construct lattice nearest neighbor map
 	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
@@ -448,6 +449,7 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 	MKL_free(meas_data->Hd);
 	MKL_free(meas_data->Hu);
 
+	MKL_free(meas_data->ram_b2g);
 	MKL_free(meas_data->ram_b1g);
 
 	MKL_free(meas_data->sc_c_sw);
@@ -576,6 +578,12 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 				const int ipy = meas_data->latt_yp1_map[i];
 				const int imy = meas_data->latt_ym1_map[i];
 
+				// next-nearest neighbors of lattice site i
+				const int ipxpy = meas_data->latt_yp1_map[ipx];
+				const int ipxmy = meas_data->latt_ym1_map[ipx];
+				const int imxpy = meas_data->latt_yp1_map[imx];
+				const int imxmy = meas_data->latt_ym1_map[imx];
+
 				for (j = 0; j < Ncell; j++)
 				{
 					// nearest neighbors of lattice site j
@@ -583,6 +591,12 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 					const int jmx = meas_data->latt_xm1_map[j];
 					const int jpy = meas_data->latt_yp1_map[j];
 					const int jmy = meas_data->latt_ym1_map[j];
+
+					// next-nearest neighbors of lattice site j
+					const int jpxpy = meas_data->latt_yp1_map[jpx];
+					const int jpxmy = meas_data->latt_ym1_map[jpx];
+					const int jmxpy = meas_data->latt_yp1_map[jmx];
+					const int jmxmy = meas_data->latt_ym1_map[jmx];
 
 					const double Gt0_u_ij = Gt0_u_base[i + N*L*j];
 					const double Gt0_d_ij = Gt0_d_base[i + N*L*j];
@@ -631,6 +645,35 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 						- ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jmx] + G00_d_base[j + N*jmx]) - Gt0_u_base[i + N*L*jmx]*(G0t_u_base[j + N*imy] - delta_tau_j_imy) - Gt0_d_base[i + N*L*jmx]*(G0t_d_base[j + N*imy] - delta_tau_j_imy))
 						+ ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jpy] + G00_d_base[j + N*jpy]) - Gt0_u_base[i + N*L*jpy]*(G0t_u_base[j + N*imy] - delta_tau_j_imy) - Gt0_d_base[i + N*L*jpy]*(G0t_d_base[j + N*imy] - delta_tau_j_imy))
 						+ ((Gtt_u_base[i + N*imy] + Gtt_d_base[i + N*imy])*(G00_u_base[j + N*jmy] + G00_d_base[j + N*jmy]) - Gt0_u_base[i + N*L*jmy]*(G0t_u_base[j + N*imy] - delta_tau_j_imy) - Gt0_d_base[i + N*L*jmy]*(G0t_d_base[j + N*imy] - delta_tau_j_imy))
+					);
+
+					// Raman B2g
+
+					const double delta_tau_j_ipxpy = (l == 0 && j == ipxpy ? 1 : 0);
+					const double delta_tau_j_imxpy = (l == 0 && j == imxpy ? 1 : 0);
+					const double delta_tau_j_ipxmy = (l == 0 && j == ipxmy ? 1 : 0);
+					const double delta_tau_j_imxmy = (l == 0 && j == imxmy ? 1 : 0);
+
+					meas_data->ram_b2g[i + Ncell*j + offset] += sign * 0.0625 * (
+						+ ((Gtt_u_base[i + N*ipxpy] + Gtt_d_base[i + N*ipxpy])*(G00_u_base[j + N*jpxpy] + G00_d_base[j + N*jpxpy]) - Gt0_u_base[i + N*L*jpxpy]*(G0t_u_base[j + N*ipxpy] - delta_tau_j_ipxpy) - Gt0_d_base[i + N*L*jpxpy]*(G0t_d_base[j + N*ipxpy] - delta_tau_j_ipxpy))
+						- ((Gtt_u_base[i + N*ipxpy] + Gtt_d_base[i + N*ipxpy])*(G00_u_base[j + N*jmxpy] + G00_d_base[j + N*jmxpy]) - Gt0_u_base[i + N*L*jmxpy]*(G0t_u_base[j + N*ipxpy] - delta_tau_j_ipxpy) - Gt0_d_base[i + N*L*jmxpy]*(G0t_d_base[j + N*ipxpy] - delta_tau_j_ipxpy))
+						- ((Gtt_u_base[i + N*ipxpy] + Gtt_d_base[i + N*ipxpy])*(G00_u_base[j + N*jpxmy] + G00_d_base[j + N*jpxmy]) - Gt0_u_base[i + N*L*jpxmy]*(G0t_u_base[j + N*ipxpy] - delta_tau_j_ipxpy) - Gt0_d_base[i + N*L*jpxmy]*(G0t_d_base[j + N*ipxpy] - delta_tau_j_ipxpy))
+						+ ((Gtt_u_base[i + N*ipxpy] + Gtt_d_base[i + N*ipxpy])*(G00_u_base[j + N*jmxmy] + G00_d_base[j + N*jmxmy]) - Gt0_u_base[i + N*L*jmxmy]*(G0t_u_base[j + N*ipxpy] - delta_tau_j_ipxpy) - Gt0_d_base[i + N*L*jmxmy]*(G0t_d_base[j + N*ipxpy] - delta_tau_j_ipxpy))
+
+						- ((Gtt_u_base[i + N*imxpy] + Gtt_d_base[i + N*imxpy])*(G00_u_base[j + N*jpxpy] + G00_d_base[j + N*jpxpy]) - Gt0_u_base[i + N*L*jpxpy]*(G0t_u_base[j + N*imxpy] - delta_tau_j_imxpy) - Gt0_d_base[i + N*L*jpxpy]*(G0t_d_base[j + N*imxpy] - delta_tau_j_imxpy))
+						+ ((Gtt_u_base[i + N*imxpy] + Gtt_d_base[i + N*imxpy])*(G00_u_base[j + N*jmxpy] + G00_d_base[j + N*jmxpy]) - Gt0_u_base[i + N*L*jmxpy]*(G0t_u_base[j + N*imxpy] - delta_tau_j_imxpy) - Gt0_d_base[i + N*L*jmxpy]*(G0t_d_base[j + N*imxpy] - delta_tau_j_imxpy))
+						+ ((Gtt_u_base[i + N*imxpy] + Gtt_d_base[i + N*imxpy])*(G00_u_base[j + N*jpxmy] + G00_d_base[j + N*jpxmy]) - Gt0_u_base[i + N*L*jpxmy]*(G0t_u_base[j + N*imxpy] - delta_tau_j_imxpy) - Gt0_d_base[i + N*L*jpxmy]*(G0t_d_base[j + N*imxpy] - delta_tau_j_imxpy))
+						- ((Gtt_u_base[i + N*imxpy] + Gtt_d_base[i + N*imxpy])*(G00_u_base[j + N*jmxmy] + G00_d_base[j + N*jmxmy]) - Gt0_u_base[i + N*L*jmxmy]*(G0t_u_base[j + N*imxpy] - delta_tau_j_imxpy) - Gt0_d_base[i + N*L*jmxmy]*(G0t_d_base[j + N*imxpy] - delta_tau_j_imxpy))
+
+						- ((Gtt_u_base[i + N*ipxmy] + Gtt_d_base[i + N*ipxmy])*(G00_u_base[j + N*jpxpy] + G00_d_base[j + N*jpxpy]) - Gt0_u_base[i + N*L*jpxpy]*(G0t_u_base[j + N*ipxmy] - delta_tau_j_ipxmy) - Gt0_d_base[i + N*L*jpxpy]*(G0t_d_base[j + N*ipxmy] - delta_tau_j_ipxmy))
+						+ ((Gtt_u_base[i + N*ipxmy] + Gtt_d_base[i + N*ipxmy])*(G00_u_base[j + N*jmxpy] + G00_d_base[j + N*jmxpy]) - Gt0_u_base[i + N*L*jmxpy]*(G0t_u_base[j + N*ipxmy] - delta_tau_j_ipxmy) - Gt0_d_base[i + N*L*jmxpy]*(G0t_d_base[j + N*ipxmy] - delta_tau_j_ipxmy))
+						+ ((Gtt_u_base[i + N*ipxmy] + Gtt_d_base[i + N*ipxmy])*(G00_u_base[j + N*jpxmy] + G00_d_base[j + N*jpxmy]) - Gt0_u_base[i + N*L*jpxmy]*(G0t_u_base[j + N*ipxmy] - delta_tau_j_ipxmy) - Gt0_d_base[i + N*L*jpxmy]*(G0t_d_base[j + N*ipxmy] - delta_tau_j_ipxmy))
+						- ((Gtt_u_base[i + N*ipxmy] + Gtt_d_base[i + N*ipxmy])*(G00_u_base[j + N*jmxmy] + G00_d_base[j + N*jmxmy]) - Gt0_u_base[i + N*L*jmxmy]*(G0t_u_base[j + N*ipxmy] - delta_tau_j_ipxmy) - Gt0_d_base[i + N*L*jmxmy]*(G0t_d_base[j + N*ipxmy] - delta_tau_j_ipxmy))
+
+						+ ((Gtt_u_base[i + N*imxmy] + Gtt_d_base[i + N*imxmy])*(G00_u_base[j + N*jpxpy] + G00_d_base[j + N*jpxpy]) - Gt0_u_base[i + N*L*jpxpy]*(G0t_u_base[j + N*imxmy] - delta_tau_j_imxmy) - Gt0_d_base[i + N*L*jpxpy]*(G0t_d_base[j + N*imxmy] - delta_tau_j_imxmy))
+						- ((Gtt_u_base[i + N*imxmy] + Gtt_d_base[i + N*imxmy])*(G00_u_base[j + N*jmxpy] + G00_d_base[j + N*jmxpy]) - Gt0_u_base[i + N*L*jmxpy]*(G0t_u_base[j + N*imxmy] - delta_tau_j_imxmy) - Gt0_d_base[i + N*L*jmxpy]*(G0t_d_base[j + N*imxmy] - delta_tau_j_imxmy))
+						- ((Gtt_u_base[i + N*imxmy] + Gtt_d_base[i + N*imxmy])*(G00_u_base[j + N*jpxmy] + G00_d_base[j + N*jpxmy]) - Gt0_u_base[i + N*L*jpxmy]*(G0t_u_base[j + N*imxmy] - delta_tau_j_imxmy) - Gt0_d_base[i + N*L*jpxmy]*(G0t_d_base[j + N*imxmy] - delta_tau_j_imxmy))
+						+ ((Gtt_u_base[i + N*imxmy] + Gtt_d_base[i + N*imxmy])*(G00_u_base[j + N*jmxmy] + G00_d_base[j + N*jmxmy]) - Gt0_u_base[i + N*L*jmxmy]*(G0t_u_base[j + N*imxmy] - delta_tau_j_imxmy) - Gt0_d_base[i + N*L*jmxmy]*(G0t_d_base[j + N*imxmy] - delta_tau_j_imxmy))
 					);
 				}
 			}
@@ -691,6 +734,7 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 
 	// divide Raman correlation functions by sign
 	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->ram_b1g, 1);
+	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->ram_b2g, 1);
 
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
@@ -728,6 +772,7 @@ void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); ReadData(path, meas_data->sc_c_sx, sizeof(double), Ncell*Ncell*Norb*L);
 
 	sprintf(path, "%s_uneqlt_ram_b1g.dat", fnbase); ReadData(path, meas_data->ram_b1g, sizeof(double), Ncell*Ncell*Norb*L);
+	sprintf(path, "%s_uneqlt_ram_b2g.dat", fnbase); ReadData(path, meas_data->ram_b2g, sizeof(double), Ncell*Ncell*Norb*L);
 }
 
 
@@ -762,4 +807,5 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); WriteData(path, meas_data->sc_c_sx, sizeof(double), Ncell*Ncell*Norb*L, false);
 
 	sprintf(path, "%s_uneqlt_ram_b1g.dat", fnbase); WriteData(path, meas_data->ram_b1g, sizeof(double), Ncell*Ncell*Norb*L, false);
+	sprintf(path, "%s_uneqlt_ram_b2g.dat", fnbase); WriteData(path, meas_data->ram_b2g, sizeof(double), Ncell*Ncell*Norb*L, false);
 }
