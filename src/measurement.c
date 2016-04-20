@@ -464,12 +464,12 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 	meas_data->Hd = (double *)MKL_malloc(L*L*N*N * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hd == NULL) { return -1; }
 
 	// allocate and initialize Green's functions with zeros
-	meas_data->Gtau0_u = (double *)MKL_calloc(N*L*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->G0tau_u = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->Geqlt_u = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->Gtau0_d = (double *)MKL_calloc(N*L*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->G0tau_d = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->Geqlt_d = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->Gtau0_u = (double *)MKL_calloc(Ncell*Norb*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->G0tau_u = (double *)MKL_calloc(Ncell*Norb*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->Geqlt_u = (double *)MKL_calloc(Ncell*Norb*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->Gtau0_d = (double *)MKL_calloc(Ncell*Norb*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->G0tau_d = (double *)MKL_calloc(Ncell*Norb*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->Geqlt_d = (double *)MKL_calloc(Ncell*Norb*Norb*L, sizeof(double), MEM_DATA_ALIGN);
 
 	// density and spin correlation data for all time differences
 	meas_data->nn_corr = (double *)MKL_calloc(Ncell*Norb*Norb*L, sizeof(double), MEM_DATA_ALIGN);
@@ -568,19 +568,9 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 	#pragma omp parallel sections
 	{
 		#pragma omp section
-		{
-			ComputeUnequalTimeGreensFunction(N, L, Bu, meas_data->Hu, curGtau0_u, curG0tau_u, curGeqlt_u, NULL, NULL, NULL);
-			cblas_daxpy(N*L*N, sign, curGtau0_u, 1, meas_data->Gtau0_u, 1);
-			cblas_daxpy(N*N*L, sign, curG0tau_u, 1, meas_data->G0tau_u, 1);
-			cblas_daxpy(N*N*L, sign, curGeqlt_u, 1, meas_data->Geqlt_u, 1);
-		}
+		ComputeUnequalTimeGreensFunction(N, L, Bu, meas_data->Hu, curGtau0_u, curG0tau_u, curGeqlt_u, NULL, NULL, NULL);
 		#pragma omp section
-		{
-			ComputeUnequalTimeGreensFunction(N, L, Bd, meas_data->Hd, curGtau0_d, curG0tau_d, curGeqlt_d, NULL, NULL, NULL);
-			cblas_daxpy(N*L*N, sign, curGtau0_d, 1, meas_data->Gtau0_d, 1);
-			cblas_daxpy(N*N*L, sign, curG0tau_d, 1, meas_data->G0tau_d, 1);
-			cblas_daxpy(N*N*L, sign, curGeqlt_d, 1, meas_data->Geqlt_d, 1);
-		}
+		ComputeUnequalTimeGreensFunction(N, L, Bd, meas_data->Hd, curGtau0_d, curG0tau_d, curGeqlt_d, NULL, NULL, NULL);
 	}
 
 	// accumulate density and spin correlation data
@@ -604,6 +594,14 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 
 					for (k = 0; k < Ncell; k++)
 					{
+						const int jp = meas_data->latt_sum_map[k + Ncell*i] + Ncell*p;
+						meas_data->Geqlt_u[k + offset] += curGeqlt_u[io + N*jp];
+						meas_data->Geqlt_d[k + offset] += curGeqlt_d[io + N*jp];
+						meas_data->Gtau0_u[k + offset] += curGtau0_u[io + N*(l + L*jp)];
+						meas_data->Gtau0_d[k + offset] += curGtau0_d[io + N*(l + L*jp)];
+						meas_data->G0tau_u[k + offset] += curG0tau_u[io + N*(jp + N*l)];
+						meas_data->G0tau_d[k + offset] += curG0tau_d[io + N*(jp + N*l)];
+
 						// special case: same lattice site, orbital and time slice
 						if (k == 0 && o == p && l == 0)
 						{
@@ -758,12 +756,12 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 	const double nfac = 1.0 / meas_data->sign;
 
 	// divide Green's functions by sign
-	cblas_dscal(N*N*L, nfac, meas_data->Gtau0_u, 1);
-	cblas_dscal(N*N*L, nfac, meas_data->G0tau_u, 1);
-	cblas_dscal(N*N*L, nfac, meas_data->Geqlt_u, 1);
-	cblas_dscal(N*N*L, nfac, meas_data->Gtau0_d, 1);
-	cblas_dscal(N*N*L, nfac, meas_data->G0tau_d, 1);
-	cblas_dscal(N*N*L, nfac, meas_data->Geqlt_d, 1);
+	cblas_dscal(Ncell*Norb*Norb*L, nfac, meas_data->Gtau0_u, 1);
+	cblas_dscal(Ncell*Norb*Norb*L, nfac, meas_data->G0tau_u, 1);
+	cblas_dscal(Ncell*Norb*Norb*L, nfac, meas_data->Geqlt_u, 1);
+	cblas_dscal(Ncell*Norb*Norb*L, nfac, meas_data->Gtau0_d, 1);
+	cblas_dscal(Ncell*Norb*Norb*L, nfac, meas_data->G0tau_d, 1);
+	cblas_dscal(Ncell*Norb*Norb*L, nfac, meas_data->Geqlt_d, 1);
 
 	// divide density and spin correlations by sign
 	cblas_dscal(Ncell*Norb*Norb*L, nfac, meas_data->nn_corr, 1);
@@ -798,12 +796,12 @@ void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 	sprintf(path, "%s_uneqlt_sign.dat",    fnbase); ReadData(path, (void *)&meas_data->sign,   sizeof(double), 1);
 	sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase); ReadData(path, (void *)&meas_data->nsampl, sizeof(int), 1);
 
-	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); ReadData(path, meas_data->Gtau0_u, sizeof(double), N*L*N);
-	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); ReadData(path, meas_data->G0tau_u, sizeof(double), N*N*L);
-	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); ReadData(path, meas_data->Geqlt_u, sizeof(double), N*N*L);
-	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); ReadData(path, meas_data->Gtau0_d, sizeof(double), N*L*N);
-	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); ReadData(path, meas_data->G0tau_d, sizeof(double), N*N*L);
-	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); ReadData(path, meas_data->Geqlt_d, sizeof(double), N*N*L);
+	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); ReadData(path, meas_data->Gtau0_u, sizeof(double), Ncell*Norb*Norb*L);
+	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); ReadData(path, meas_data->G0tau_u, sizeof(double), Ncell*Norb*Norb*L);
+	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); ReadData(path, meas_data->Geqlt_u, sizeof(double), Ncell*Norb*Norb*L);
+	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); ReadData(path, meas_data->Gtau0_d, sizeof(double), Ncell*Norb*Norb*L);
+	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); ReadData(path, meas_data->G0tau_d, sizeof(double), Ncell*Norb*Norb*L);
+	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); ReadData(path, meas_data->Geqlt_d, sizeof(double), Ncell*Norb*Norb*L);
 
 	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); ReadData(path, meas_data->nn_corr, sizeof(double), Ncell*Norb*Norb*L);
 	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); ReadData(path, meas_data->zz_corr, sizeof(double), Ncell*Norb*Norb*L);
@@ -832,12 +830,12 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 	sprintf(path, "%s_uneqlt_sign.dat",    fnbase); WriteData(path, &meas_data->sign,   sizeof(double), 1, false);
 	sprintf(path, "%s_uneqlt_nsampl.dat",  fnbase); WriteData(path, &meas_data->nsampl, sizeof(int),    1, false);
 
-	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); WriteData(path, meas_data->Gtau0_u, sizeof(double), N*L*N, false);
-	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); WriteData(path, meas_data->G0tau_u, sizeof(double), N*N*L, false);
-	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); WriteData(path, meas_data->Geqlt_u, sizeof(double), N*N*L, false);
-	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); WriteData(path, meas_data->Gtau0_d, sizeof(double), N*L*N, false);
-	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); WriteData(path, meas_data->G0tau_d, sizeof(double), N*N*L, false);
-	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); WriteData(path, meas_data->Geqlt_d, sizeof(double), N*N*L, false);
+	sprintf(path, "%s_uneqlt_Gtau0_u.dat", fnbase); WriteData(path, meas_data->Gtau0_u, sizeof(double), Ncell*Norb*Norb*L, false);
+	sprintf(path, "%s_uneqlt_G0tau_u.dat", fnbase); WriteData(path, meas_data->G0tau_u, sizeof(double), Ncell*Norb*Norb*L, false);
+	sprintf(path, "%s_uneqlt_Geqlt_u.dat", fnbase); WriteData(path, meas_data->Geqlt_u, sizeof(double), Ncell*Norb*Norb*L, false);
+	sprintf(path, "%s_uneqlt_Gtau0_d.dat", fnbase); WriteData(path, meas_data->Gtau0_d, sizeof(double), Ncell*Norb*Norb*L, false);
+	sprintf(path, "%s_uneqlt_G0tau_d.dat", fnbase); WriteData(path, meas_data->G0tau_d, sizeof(double), Ncell*Norb*Norb*L, false);
+	sprintf(path, "%s_uneqlt_Geqlt_d.dat", fnbase); WriteData(path, meas_data->Geqlt_d, sizeof(double), Ncell*Norb*Norb*L, false);
 
 	sprintf(path, "%s_uneqlt_nn_corr.dat", fnbase); WriteData(path, meas_data->nn_corr, sizeof(double), Ncell*Norb*Norb*L, false);
 	sprintf(path, "%s_uneqlt_zz_corr.dat", fnbase); WriteData(path, meas_data->zz_corr, sizeof(double), Ncell*Norb*Norb*L, false);

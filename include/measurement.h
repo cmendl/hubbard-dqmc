@@ -20,7 +20,7 @@ typedef struct
 	double *uu_corr;			//!< up-up density correlations:         <n_{i,up} n_{j,up}>
 	double *dd_corr;			//!< down-down density correlations:     <n_{i,dn} n_{j,dn}>
 	double *ud_corr;			//!< up-down density cross correlations: <n_{i,up} n_{j,dn} + n_{i,dn} n_{j,up}>
-	double *ff_corr;			//!< density fluctuation correlations:   <n_{i} n_{j}> - <n_{i}> <n_{j}>
+	double *ff_corr;			//!< probably doesn't correspond to any physical quantity
 
 	double *zz_corr;			//!< z-z spin correlations: <(n_{i,up} - n_{i,dn})(n_{j,up} - n_{j,dn})>
 	double *xx_corr;			//!< x-x spin correlations: <(x_{i,+1} + x_{i,-1})(x_{j,+1} + x_{j,-1})> with x_{i,+1} = c^{dagger}_{i,dn} c_{i,up} and x_{i,-1} = c^{dagger}_{i,up} c_{i,dn}
