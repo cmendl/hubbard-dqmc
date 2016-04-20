@@ -70,12 +70,13 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 ///
 typedef struct
 {
-	double *Gtau0_u;			//!< concatenated unequal time spin-up   Green's functions G_u(tau,   0) with tau = 0, 1, ..., L-1; array of size L*N x N
-	double *G0tau_u;			//!< concatenated unequal time spin-up   Green's functions G_u(0,   tau) with tau = 0, 1, ..., L-1; array of size N x L*N
-	double *Geqlt_u;			//!< concatenated   equal time spin-up   Green's functions G_u(tau, tau) with tau = 0, 1, ..., L-1; array of size N x L*N
-	double *Gtau0_d;			//!< concatenated unequal time spin-down Green's functions G_d(tau,   0) with tau = 0, 1, ..., L-1; array of size L*N x N
-	double *G0tau_d;			//!< concatenated unequal time spin-down Green's functions G_d(0,   tau) with tau = 0, 1, ..., L-1; array of size N x L*N
-	double *Geqlt_d;			//!< concatenated   equal time spin-down Green's functions G_d(tau, tau) with tau = 0, 1, ..., L-1; array of size N x L*N
+	// each of the following Green's functions is averaged over spatial translations and has dimension Ncell x Norb x Norb x L
+	double *Gtau0_u;			//!< unequal time spin-up   Green's functions G_u(tau,   0) with tau = 0, 1, ..., L-1
+	double *G0tau_u;			//!< unequal time spin-up   Green's functions G_u(0,   tau) with tau = 0, 1, ..., L-1
+	double *Geqlt_u;			//!< equal   time spin-up   Green's functions G_u(tau, tau) with tau = 0, 1, ..., L-1
+	double *Gtau0_d;			//!< unequal time spin-down Green's functions G_d(tau,   0) with tau = 0, 1, ..., L-1
+	double *G0tau_d;			//!< unequal time spin-down Green's functions G_d(0,   tau) with tau = 0, 1, ..., L-1
+	double *Geqlt_d;			//!< equal   time spin-down Green's functions G_d(tau, tau) with tau = 0, 1, ..., L-1
 
 	double *nn_corr;			//!< density correlations;  matrix of size Ncell x Norb x Norb x L
 	double *zz_corr;			//!< z-z spin correlations; matrix of size Ncell x Norb x Norb x L

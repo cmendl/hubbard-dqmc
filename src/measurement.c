@@ -595,8 +595,8 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 					for (k = 0; k < Ncell; k++)
 					{
 						const int jp = meas_data->latt_sum_map[k + Ncell*i] + Ncell*p;
-						meas_data->Geqlt_u[k + offset] += curGeqlt_u[io + N*jp];
-						meas_data->Geqlt_d[k + offset] += curGeqlt_d[io + N*jp];
+						meas_data->Geqlt_u[k + offset] += curGeqlt_u[io + N*(jp + N*l)];
+						meas_data->Geqlt_d[k + offset] += curGeqlt_d[io + N*(jp + N*l)];
 						meas_data->Gtau0_u[k + offset] += curGtau0_u[io + N*(l + L*jp)];
 						meas_data->Gtau0_d[k + offset] += curGtau0_d[io + N*(l + L*jp)];
 						meas_data->G0tau_u[k + offset] += curG0tau_u[io + N*(jp + N*l)];
