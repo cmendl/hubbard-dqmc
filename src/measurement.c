@@ -597,12 +597,12 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 					for (k = 0; k < Ncell; k++)
 					{
 						const int jp = meas_data->latt_sum_map[k + Ncell*i] + Ncell*p;
-						meas_data->Geqlt_u[k + offset] += curGeqlt_u[io + N*(jp + N*l)];
-						meas_data->Geqlt_d[k + offset] += curGeqlt_d[io + N*(jp + N*l)];
-						meas_data->Gtau0_u[k + offset] += curGtau0_u[io + N*(l + L*jp)];
-						meas_data->Gtau0_d[k + offset] += curGtau0_d[io + N*(l + L*jp)];
-						meas_data->G0tau_u[k + offset] += curG0tau_u[io + N*(jp + N*l)];
-						meas_data->G0tau_d[k + offset] += curG0tau_d[io + N*(jp + N*l)];
+						meas_data->Geqlt_u[k + offset] += signfac*curGeqlt_u[io + N*(jp + N*l)];
+						meas_data->Geqlt_d[k + offset] += signfac*curGeqlt_d[io + N*(jp + N*l)];
+						meas_data->Gtau0_u[k + offset] += signfac*curGtau0_u[io + N*(l + L*jp)];
+						meas_data->Gtau0_d[k + offset] += signfac*curGtau0_d[io + N*(l + L*jp)];
+						meas_data->G0tau_u[k + offset] += signfac*curG0tau_u[io + N*(jp + N*l)];
+						meas_data->G0tau_d[k + offset] += signfac*curG0tau_d[io + N*(jp + N*l)];
 
 						// special case: same lattice site, orbital and time slice
 						if (k == 0 && o == p && l == 0)
