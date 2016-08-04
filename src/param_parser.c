@@ -340,6 +340,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 
 	if ((value = HashTableGet(&hashtable, "nequil"))   != NULL) { params->nequil  = atoi(value->str[0]); }
 	if ((value = HashTableGet(&hashtable, "nsampl"))   != NULL) { params->nsampl  = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "neqlt"))    != NULL) { params->neqlt   = atoi(value->str[0]); }
 	if ((value = HashTableGet(&hashtable, "nuneqlt"))  != NULL) { params->nuneqlt = atoi(value->str[0]); }
 	if ((value = HashTableGet(&hashtable, "itime"))    != NULL) { params->itime  = atoll(value->str[0]); }
 
@@ -533,6 +534,14 @@ void PrintSimulationParameters(const sim_params_t *params)
 	duprintf("                    initial seed: %lli\n", params->itime);
 	duprintf("        equilibration iterations: %i\n", params->nequil);
 	duprintf("          measurement iterations: %i\n", params->nsampl);
+	if (params->neqlt > 0)
+	{
+		duprintf("         equal time measurements: every %i time steps\n", params->neqlt);
+	}
+	else
+	{
+		duprintf("         equal time measurements: disabled\n");
+	}
 	if (params->nuneqlt > 0)
 	{
 		duprintf("       unequal time measurements: every %i iteration(s)\n", params->nuneqlt);

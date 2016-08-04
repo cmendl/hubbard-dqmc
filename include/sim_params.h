@@ -85,6 +85,7 @@ typedef struct
 
 	int nequil;						//!< number of equilibration iterations
 	int nsampl;						//!< number of sampling iterations
+	int neqlt;						//!< number of time slices before an equal time measurement; set to 0 to disable equal time measurements
 	int nuneqlt;					//!< number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
 
 	uint64_t itime;					//!< initial time tick, used as seed for the random number generator

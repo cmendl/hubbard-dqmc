@@ -30,4 +30,5 @@ prodBlen    5
 nwraps      10
 nequil      512
 nsampl      1024
+neqlt       10
 nuneqlt     0

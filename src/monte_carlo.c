@@ -27,7 +27,8 @@
 /// \param Gd                   spin-down Green's function, must have been computed on input and will be updated
 ///
 void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params, const int nwraps,
-	randseed_t *restrict seed, spin_field_t *restrict s, time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd)
+	randseed_t *restrict seed, spin_field_t *restrict s, time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d,
+	greens_func_t *restrict Gu, greens_func_t *restrict Gd, const int neqlt, measurement_data_t *restrict meas_data)
 {
 	Profile_Begin("DQMCIter");
 	__assume_aligned(s, MEM_DATA_ALIGN);
@@ -156,6 +157,13 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 			Profile_End("DQMCIter_Grecomp");
 		}
 
+		if (neqlt > 0 && (l + 1) % neqlt == 0)
+		{
+			// accumulate equal time "measurement" data
+			Profile_Begin("DQMCSim_AccumulateEqMeas");
+			AccumulateMeasurement(Gu, Gd, meas_data);
+			Profile_End("DQMCSim_AccumulateEqMeas");
+		}
 	}
 
 	// clean up
@@ -617,26 +625,25 @@ void DQMCSimulation(const sim_params_t *restrict params,
 		if (params->use_phonons)
 		{
 			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
-		}
-		else
-		{
-			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
-		}
-
-		// perform measurements directly after constructing Green's functions to improve numerical accuracy
-		if (*iteration >= params->nequil)
-		{
 			// accumulate equal time "measurement" data
+			// TODO: move below inside DQMCPhononIteration and use neqlt
 			Profile_Begin("DQMCSim_AccumulateEqMeas");
 			AccumulateMeasurement(&Gu, &Gd, meas_data);
 			Profile_End("DQMCSim_AccumulateEqMeas");
-			// accumulate unequal time "measurement" data
-			if (params->nuneqlt > 0 && (*iteration % params->nuneqlt) == 0)
-			{
-				Profile_Begin("DQMCSim_AccumulateUneqMeas");
-				AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
-				Profile_End("DQMCSim_AccumulateUneqMeas");
-			}
+		}
+		else
+		{
+			// set neqlt to 0 in equilibration stage so that no measurements are made
+			const int neqlt = (*iteration >= params->nequil) ? params->neqlt : 0;
+			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd, neqlt, meas_data);
+		}
+
+		// accumulate unequal time "measurement" data
+		if (*iteration >= params->nequil && params->nuneqlt > 0 && (*iteration % params->nuneqlt) == 0)
+		{
+			Profile_Begin("DQMCSim_AccumulateUneqMeas");
+			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
+			Profile_End("DQMCSim_AccumulateUneqMeas");
 		}
 
 		UpdateProgress();
