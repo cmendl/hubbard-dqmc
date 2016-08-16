@@ -6,10 +6,10 @@ CC = icc
 
 # compiler options
 CCOPTS = -Wall -O2 -xHost -restrict -DNDEBUG -DMEM_DATA_ALIGN=64 -DVERSION=\"$(shell git describe --always)\"
-# uncomment to enable profiling; make sure to run 'make clean' before recompiling
-#CCOPTS += -DPROFILE_ENABLE
-# replace by -qopenmp to enable OpenMP shared-memory parallelization
-CCOPTS += -qopenmp-stubs
+# comment to disable profiling; make sure to run 'make clean' before recompiling
+CCOPTS += -DPROFILE_ENABLE
+# replace by -qopenmp-stubs to disable OpenMP shared-memory parallelization
+CCOPTS += -qopenmp
 
 # set these with appropriate libraries for your system
 MKL = -mkl=sequential
