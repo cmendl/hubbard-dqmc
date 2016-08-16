@@ -8,10 +8,6 @@
 #include <mkl.h>
 #include <omp.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 typedef struct
 {
 	uint64_t start_tick;
@@ -139,13 +135,7 @@ void Profile_Stop(void)
 	uint64_t main_total = GetTicks() - main_start_tick;
 
 	// get the tick resolution
-#ifdef _WIN32
-	LARGE_INTEGER freq;
-	QueryPerformanceFrequency(&freq);
-	const double ticks_per_sec = (double)freq.QuadPart;
-#else // clock_gettime has nanosecond resolution
-	const double ticks_per_sec = (double)1000000000;
-#endif
+	const double ticks_per_sec = (double)GetTickRes();
 
 	// place (pointers to) every entry into a simple array, and sort with entry_compare.
 	ht_entry_t **entries_table = (ht_entry_t **)MKL_malloc(profile_table.n_entries * sizeof(ht_entry_t *), MEM_DATA_ALIGN);

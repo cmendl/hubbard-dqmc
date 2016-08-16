@@ -16,7 +16,7 @@ typedef struct
 	int nsampl;										//!< total number of measurement sweeps
 	int niter;										//!< number of iterations in current state and current run
 	int *iteration;									//!< pointer to number of total iterations (i.e. including previous checkpoints)
-	uint64_t t_start;								//!< starting time (in nanoseconds)
+	uint64_t t_start;								//!< starting time (in ticks)
 	uint64_t t_equilib_start;						//!< starting time of warmup iterations
 	uint64_t t_measure_start;						//!< starting time of measurement iterations
 	uint64_t t_last_iter;							//!< time last iteration finished
@@ -37,9 +37,11 @@ static void PrintProgress(int signum)
 	// avoid "unused parameter" warning
 	(void)(signum);
 
-	uint64_t t_current = GetTicks();
+	const uint64_t t_current = GetTicks();
+	const double ticks_per_sec = (double)GetTickRes();
+
 	duprintf("_______________________________________________________________________________\n");
-	duprintf("Total elapsed time in current run (seconds): %.2f\n", (double)(t_current - p.t_start) / 1000000000.);
+	duprintf("Total elapsed time in current run (seconds): %.2f\n", (t_current - p.t_start) / ticks_per_sec);
 	switch (p.state)
 	{
 		case INIT:
@@ -52,9 +54,9 @@ static void PrintProgress(int signum)
 			duprintf("Completed equilibration iterations: %d out of %d\n", *p.iteration, p.nequil);
 			if (p.niter > 0)
 			{
-				double time_per_iter = (double)(p.t_last_iter - p.t_equilib_start) / p.niter;
-				duprintf("Estimated remaining time (equilibration): %.2f\n", (time_per_iter * (p.nequil - *p.iteration) + p.t_last_iter - t_current) / 1000000000.);
-				duprintf("Estimated total remaining time (ignoring measurement cost): %.2f\n", (time_per_iter * (p.nequil + p.nsampl - *p.iteration) + p.t_last_iter - t_current) / 1000000000.);
+				const double time_per_iter = (double)(p.t_last_iter - p.t_equilib_start) / p.niter;
+				duprintf("Estimated remaining time (equilibration): %.2f\n", (time_per_iter * (p.nequil - *p.iteration) + p.t_last_iter - t_current) / ticks_per_sec);
+				duprintf("Estimated total remaining time (ignoring measurement cost): %.2f\n", (time_per_iter * (p.nequil + p.nsampl - *p.iteration) + p.t_last_iter - t_current) / ticks_per_sec);
 			}
 			break;
 		}
@@ -64,8 +66,8 @@ static void PrintProgress(int signum)
 			duprintf("Completed measurement iterations: %d out of %d\n", *p.iteration - p.nequil, p.nsampl);
 			if (p.niter > 0)
 			{
-				double time_per_iter = (double)(p.t_last_iter - p.t_measure_start) / p.niter;
-				duprintf("Estimated remaining time: %.2f\n", (time_per_iter * (p.nequil + p.nsampl - *p.iteration) + p.t_last_iter - t_current) / 1000000000.);
+				const double time_per_iter = (double)(p.t_last_iter - p.t_measure_start) / p.niter;
+				duprintf("Estimated remaining time: %.2f\n", (time_per_iter * (p.nequil + p.nsampl - *p.iteration) + p.t_last_iter - t_current) / ticks_per_sec);
 			}
 			break;
 		}
@@ -113,7 +115,7 @@ int InitProgressTracking(int *iteration, const int nequil, const int nsampl)
 ///
 void UpdateProgress()
 {
-	uint64_t t_current = GetTicks();
+	const uint64_t t_current = GetTicks();
 
 	switch (p.state)
 	{

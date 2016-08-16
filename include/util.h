@@ -49,6 +49,8 @@ int WriteData(const char *filename, const void *data, const size_t size, const s
 
 uint64_t GetTicks();
 
+uint64_t GetTickRes();
+
 
 
 #endif

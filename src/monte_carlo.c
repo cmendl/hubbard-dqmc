@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <memory.h>
 #include <assert.h>
+#include <stdint.h>
 
 
 //________________________________________________________________________________________________________________________
@@ -558,6 +559,9 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	const int Ncell = params->Nx * params->Ny;
 	const int N     = Norb * Ncell;
 
+	// get the time (in ticks) for automatic stopping and checkpointing
+	const uint64_t t_end = GetTicks() + params->max_time * GetTickRes();
+
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
 	RectangularKineticExponential(params, &kinetic);
@@ -616,7 +620,13 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	duprintf("Starting DQMC iterations...\n");
 	for (; *iteration < params->nequil + params->nsampl; (*iteration)++)
 	{
-		if (stopped == 1)
+		if (params->max_time > 0 && GetTicks() >= t_end)
+		{
+			duprintf("Reached time limit of %d seconds.\n", params->max_time);
+			stopped = 1;
+		}
+
+		if (stopped == 1) // either the above happened or SIGINT was received
 		{
 			duprintf("Stopping DQMC iterations early.\n");
 			break;

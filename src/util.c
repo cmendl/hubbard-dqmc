@@ -91,3 +91,23 @@ uint64_t GetTicks()
 
 	#endif
 }
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Get tick resolution
+///
+uint64_t GetTickRes()
+{
+	#ifdef _WIN32
+
+	LARGE_INTEGER freq;
+	QueryPerformanceFrequency(&freq);
+	return (uint64_t)(freq.QuadPart);
+
+	#else // clock_gettime has nanosecond resolution
+
+	return (uint64_t)1000000000ULL;
+
+	#endif
+}

@@ -89,6 +89,7 @@ typedef struct
 	int nuneqlt;					//!< number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
 
 	uint64_t itime;					//!< initial time tick, used as seed for the random number generator
+	int max_time;					//!< maximum run time in seconds before automatically stopping and checkpointing. 0 to disable.
 }
 sim_params_t;
 

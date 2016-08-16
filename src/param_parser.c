@@ -338,11 +338,12 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 	if ((value = HashTableGet(&hashtable, "prodBlen")) != NULL) { params->prodBlen = atoi(value->str[0]); }
 	if ((value = HashTableGet(&hashtable, "nwraps"))   != NULL) { params->nwraps   = atoi(value->str[0]); }
 
-	if ((value = HashTableGet(&hashtable, "nequil"))   != NULL) { params->nequil  = atoi(value->str[0]); }
-	if ((value = HashTableGet(&hashtable, "nsampl"))   != NULL) { params->nsampl  = atoi(value->str[0]); }
-	if ((value = HashTableGet(&hashtable, "neqlt"))    != NULL) { params->neqlt   = atoi(value->str[0]); }
-	if ((value = HashTableGet(&hashtable, "nuneqlt"))  != NULL) { params->nuneqlt = atoi(value->str[0]); }
-	if ((value = HashTableGet(&hashtable, "itime"))    != NULL) { params->itime  = atoll(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "nequil"))   != NULL) { params->nequil   = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "nsampl"))   != NULL) { params->nsampl   = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "neqlt"))    != NULL) { params->neqlt    = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "nuneqlt"))  != NULL) { params->nuneqlt  = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "itime"))    != NULL) { params->itime   = atoll(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "max_time")) != NULL) { params->max_time = atoi(value->str[0]); }
 
 	// deallocate everything in the hash table
 	DeleteHashTable(&hashtable, FreeValueListMemory);

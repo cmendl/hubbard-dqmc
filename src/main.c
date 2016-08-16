@@ -290,5 +290,5 @@ int main(int argc, char *argv[])
 	}
 	#endif
 
-	return stopped; // 0 if simulation ran to completion, 1 if stopped by SIGINT
+	return stopped; // 0 if simulation ran to completion, 1 if stopped by SIGINT or reaching the max run time limit
 }
