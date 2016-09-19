@@ -86,9 +86,13 @@ int MonteCarloIterTest()
 	randseed_t seed;
 	Random_SeedInit(1865811235122147685LL * params.itime, &seed);
 
+	// measurement data (unused here)
+	measurement_data_t meas_data;
+	AllocateMeasurementData(params.Norb, params.Nx, params.Ny, params.pbc_shift, &meas_data);
+
 	// perform a Determinant Quantum Monte Carlo (DQMC) iteration
 	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice with %i orbitals per unit cell at beta = %g...\n", params.Nx, params.Ny, params.Norb, params.L*params.dt);
-	DQMCIteration(&kinetic, &stratonovich_params, params.nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd);
+	DQMCIteration(&kinetic, &stratonovich_params, params.nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd, params.L, &meas_data);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
 	spin_field_t *s_ref = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
@@ -140,6 +144,7 @@ int MonteCarloIterTest()
 	MKL_free(Gd_mat_ref);
 	MKL_free(Gu_mat_ref);
 	MKL_free(s_ref);
+	DeleteMeasurementData(&meas_data);
 	DeleteGreensFunction(&Gd);
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);

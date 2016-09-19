@@ -77,7 +77,7 @@ int MeasurementTest()
 
 	// allocate equal time measurement data structure
 	measurement_data_t meas_data;
-	AllocateMeasurementData(params.Norb, params.Nx, params.Ny, params.pbc_shift , &meas_data);
+	AllocateMeasurementData(params.Norb, params.Nx, params.Ny, params.pbc_shift, &meas_data);
 
 	// allocate unequal time measurement data structure
 	measurement_data_unequal_time_t meas_data_uneqlt;
