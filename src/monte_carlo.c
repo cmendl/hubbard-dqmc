@@ -109,8 +109,8 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		}
 		Profile_End("DQMCIter_SiteUpdate");
 
-		Profile_Begin("DQMCIter_Brecomp");
 		// re-compute corresponding B matrices
+		Profile_Begin("DQMCIter_Brecomp");
 		#pragma omp parallel sections
 		{
 			#pragma omp section
@@ -161,9 +161,9 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		if (neqlt > 0 && (l + 1) % neqlt == 0)
 		{
 			// accumulate equal time "measurement" data
-			Profile_Begin("DQMCSim_AccumulateEqMeas");
+			Profile_Begin("DQMCIter_AccumulateEqMeas");
 			AccumulateMeasurement(Gu, Gd, meas_data);
-			Profile_End("DQMCSim_AccumulateEqMeas");
+			Profile_End("DQMCIter_AccumulateEqMeas");
 		}
 	}
 
@@ -350,8 +350,12 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 ///
 void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params, const phonon_params_t *restrict phonon_params,
 	const int nwraps, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX,
-	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd)
+	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
+	const int neqlt, measurement_data_t *restrict meas_data)
 {
+	Profile_Begin("DQMCIter");
+	__assume_aligned(s, MEM_DATA_ALIGN);
+
 	// dimension consistency checks
 	assert(tsm_u->N == kinetic->Ncell * kinetic->Norb);
 	assert(tsm_u->N == tsm_d->N);
@@ -385,6 +389,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 	int l;
 	for (l = 0; l < L; l++)
 	{
+		Profile_Begin("DQMCIter_Wraps");
 		#pragma omp parallel sections
 		{
 			#pragma omp section
@@ -392,8 +397,10 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			#pragma omp section
 			GreenTimeSliceWrap(N, tsm_d->B[l], tsm_d->invB[l], Gd->mat);
 		}
+		Profile_End("DQMCIter_Wraps");
 
 		// iterate over lattice sites randomly, updating the Hubbard-Stratonovich field
+		Profile_Begin("DQMCIter_HSUpdate");
 		Random_Shuffle(seed, N, orb_cell_order);
 		int j;
 		for (j = 0; j < N; j++)
@@ -427,12 +434,14 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 				s[i + l*N] = 1 - s[i + l*N];
 			}
 		}
+		Profile_End("DQMCIter_HSUpdate");
 
 		// next and previous time slices; required for the phonon field with periodic boundary conditions
 		const int l_next = (l + 1    ) % L;
 		const int l_prev = (l + L - 1) % L;
 
 		// iterate over lattice sites, updating the phonon field
+		Profile_Begin("DQMCIter_XUpdate");
 		Random_Shuffle(seed, N, orb_cell_order);
 		for (j = 0; j < N; j++)
 		{
@@ -479,8 +488,10 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 				expX[i + l*N] = exp(-dt*phonon_params->g[o] * X[i + l*N]);
 			}
 		}
+		Profile_End("DQMCIter_XUpdate");
 
 		// re-compute corresponding B matrices
+		Profile_Begin("DQMCIter_Brecomp");
 		#pragma omp parallel sections
 		{
 			#pragma omp section
@@ -488,10 +499,12 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			#pragma omp section
 			UpdatePhononTimeStepMatrices(kinetic, stratonovich_params->expVd, s, expX, l, tsm_d);
 		}
+		Profile_End("DQMCIter_Brecomp");
 
 		// recompute Green's function after several time slice "wraps"
 		if ((l + 1) % nwraps == 0)
 		{
+			Profile_Begin("DQMCIter_Grecomp");
 			// store current Green's function matrices to compare with newly constructed ones
 			#if defined(DEBUG) | defined(_DEBUG)
 			CopyGreensFunction(Gu, &Gu_old);
@@ -523,18 +536,29 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 				duprintf("Warning: after calling 'GreenConstruct()', determinant sign has changed.\n");
 			}
 			#endif
+			Profile_End("DQMCIter_Grecomp");
+		}
+
+		if (neqlt > 0 && (l + 1) % neqlt == 0)
+		{
+			// accumulate equal time "measurement" data
+			Profile_Begin("DQMCIter_AccumulateEqMeas");
+			AccumulateMeasurement(Gu, Gd, meas_data);
+			Profile_End("DQMCIter_AccumulateEqMeas");
 		}
 	}
 
 	// perform block updates
+	Profile_Begin("DQMCIter_PhononBlock");
 	PhononBlockUpdates(dt, kinetic, stratonovich_params, phonon_params, seed, s, X, expX, tsm_u, tsm_d, Gu, Gd);
-
+	Profile_End("DQMCIter_PhononBlock");
 	// clean up
 	MKL_free(orb_cell_order);
 	#if defined(DEBUG) | defined(_DEBUG)
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);
 	#endif
+	Profile_End("DQMCIter");
 }
 
 
@@ -632,19 +656,15 @@ void DQMCSimulation(const sim_params_t *restrict params,
 			break;
 		}
 
+		// set neqlt to 0 in equilibration stage so that no measurements are made
+		const int neqlt = (*iteration >= params->nequil) ? params->neqlt : 0;
+
 		if (params->use_phonons)
 		{
-			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
-			// accumulate equal time "measurement" data
-			// TODO: move below inside DQMCPhononIteration and use neqlt
-			Profile_Begin("DQMCSim_AccumulateEqMeas");
-			AccumulateMeasurement(&Gu, &Gd, meas_data);
-			Profile_End("DQMCSim_AccumulateEqMeas");
+			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, neqlt, meas_data);
 		}
 		else
 		{
-			// set neqlt to 0 in equilibration stage so that no measurements are made
-			const int neqlt = (*iteration >= params->nequil) ? params->neqlt : 0;
 			DQMCIteration(&kinetic, &stratonovich_params, params->nwraps, seed, s, &tsm_u, &tsm_d, &Gu, &Gd, neqlt, meas_data);
 		}
 

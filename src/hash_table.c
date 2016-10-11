@@ -119,7 +119,7 @@ void *HashTableGet(const hash_table_t *ht, const char *key)
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Remove entry with given key from hash table and return corresponding value; if the key cannot be not found, return NULL
+/// \brief Remove entry with given key from hash table and return corresponding value; if the key cannot be found, return NULL
 ///
 void *HashTableRemove(hash_table_t *ht, const char *key)
 {
