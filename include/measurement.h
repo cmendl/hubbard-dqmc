@@ -125,5 +125,38 @@ void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_unequal_time_t *meas_data);
 
 
+//________________________________________________________________________________________________________________________
+///
+/// \brief Phonon measurement data structure
+///
+typedef struct
+{
+	double *X_iteration;			//!< average X for every measurement. use this to estimate autocorrelation
+	double *X_avg;				//!< average X
+	double *X_sq;				//!< average X^2
+
+	int Norb;					//!< number of orbitals per unit cell
+	int Ncell;					//!< total number of unit cells
+	int L;
+
+	double sign;				//!< accumulated Green's function signs (+-1)
+
+	int nsampl;					//!< number of accumulated samples
+	int max_nsampl;					//!< what nsampl should be at the end
+}
+measurement_data_phonon_t;
+
+void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, const int max_nsampl, measurement_data_phonon_t *restrict meas_data);
+
+void DeletePhononData(measurement_data_phonon_t *restrict meas_data);
+
+void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, measurement_data_phonon_t *restrict meas_data);
+
+void NormalizePhononData(measurement_data_phonon_t *meas_data);
+
+void PrintPhononData(const measurement_data_phonon_t *meas_data);
+
+void SavePhononData(const char *fnbase, const measurement_data_phonon_t *meas_data);
+
 
 #endif

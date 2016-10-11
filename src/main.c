@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 	}
 	makedir(path);
 	duprintf("Using output directory '%s'.\n\n", path);
-	
+
 	// base output file name
 	char fnbase[1024];
 	sprintf(fnbase, "%s/sim_%llu", path, params.itime);
@@ -126,6 +126,14 @@ int main(int argc, char *argv[])
 			duprintf("Could not allocate unequal time measurement data structure (probably out of memory), exiting...\n");
 			return -4;
 		}
+	}
+
+	// allocate and initialize phonon measurement data structure
+	measurement_data_phonon_t meas_data_phonon;
+	if (params.use_phonons)
+	{
+		AllocatePhononData(params.Norb, params.Nx, params.Ny, params.pbc_shift, params.L,
+			params.nsampl * params.L / params.neqlt, &meas_data_phonon);
 	}
 
 	// dimensions
@@ -218,7 +226,7 @@ int main(int argc, char *argv[])
 	const clock_t t_start = clock();
 
 	// perform simulation
-	DQMCSimulation(&params, &meas_data, &meas_data_uneqlt, &iteration, &seed, s, X, expX);
+	DQMCSimulation(&params, &meas_data, &meas_data_uneqlt, &meas_data_phonon, &iteration, &seed, s, X, expX);
 
 	// stop timer
 	const clock_t t_end = clock();
@@ -236,6 +244,12 @@ int main(int argc, char *argv[])
 		}
 		// show some simulation results
 		PrintMeasurementDataSummary(&meas_data);
+
+		if (params.use_phonons)
+		{
+			NormalizePhononData(&meas_data_phonon);
+			PrintPhononData(&meas_data_phonon);
+		}
 	}
 
 	// save checkpoint for next run. even if simulation is finished, saving the HS field
@@ -256,6 +270,10 @@ int main(int argc, char *argv[])
 	{
 		SaveUnequalTimeMeasurementData(fnbase, &meas_data_uneqlt);
 	}
+	if (params.use_phonons)
+	{
+		SavePhononData(fnbase, &meas_data_phonon);
+	}
 	duprintf(" done.\n");
 
 	// clean up
@@ -265,6 +283,7 @@ int main(int argc, char *argv[])
 	{
 		MKL_free(expX);
 		MKL_free(X);
+		DeletePhononData(&meas_data_phonon);
 	}
 	MKL_free(s);
 	if (params.nuneqlt > 0)

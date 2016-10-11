@@ -348,10 +348,10 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 /// \param Gu                   spin-up   Green's function, must have been computed on input and will be updated
 /// \param Gd                   spin-down Green's function, must have been computed on input and will be updated
 ///
-void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params, const phonon_params_t *restrict phonon_params,
+void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, const int noHS, const stratonovich_params_t *restrict stratonovich_params, const phonon_params_t *restrict phonon_params,
 	const int nwraps, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX,
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
-	const int neqlt, measurement_data_t *restrict meas_data)
+	const int neqlt, measurement_data_t *restrict meas_data, measurement_data_phonon_t *restrict meas_data_phonon)
 {
 	Profile_Begin("DQMCIter");
 	__assume_aligned(s, MEM_DATA_ALIGN);
@@ -399,42 +399,45 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		}
 		Profile_End("DQMCIter_Wraps");
 
-		// iterate over lattice sites randomly, updating the Hubbard-Stratonovich field
-		Profile_Begin("DQMCIter_HSUpdate");
-		Random_Shuffle(seed, N, orb_cell_order);
-		int j;
-		for (j = 0; j < N; j++)
+		if (!noHS)
 		{
-			const int i = orb_cell_order[j];
-			const int o = i / Ncell;	// orbital index
-			assert(0 <= i && i < N);
-			assert(0 <= o && o < kinetic->Norb);
-
-			// Eq. (13)
-			// suggest flipping s_{i,l}
-			const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]][o];
-			const double dd = 1 + (1 - Gd->mat[i + i*N]) * stratonovich_params->delta[1-s[i + l*N]][o];
-			if (Random_GetUniform(seed) < fabs(du*dd))
+			// iterate over lattice sites randomly, updating the Hubbard-Stratonovich field
+			Profile_Begin("DQMCIter_HSUpdate");
+			Random_Shuffle(seed, N, orb_cell_order);
+			int j;
+			for (j = 0; j < N; j++)
 			{
-				// Eq. (15)
-				#pragma omp parallel sections
-				{
-					#pragma omp section
-					GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]][o], N, i, Gu->mat);
-					#pragma omp section
-					GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]][o], N, i, Gd->mat);
-				}
-				// correspondingly update determinants
-				Gu->logdet -= log(fabs(du));
-				Gd->logdet -= log(fabs(dd));
-				if (du < 0) { Gu->sgndet = -Gu->sgndet; }
-				if (dd < 0) { Gd->sgndet = -Gd->sgndet; }
+				const int i = orb_cell_order[j];
+				const int o = i / Ncell;	// orbital index
+				assert(0 <= i && i < N);
+				assert(0 <= o && o < kinetic->Norb);
 
-				// actually flip spin
-				s[i + l*N] = 1 - s[i + l*N];
+				// Eq. (13)
+				// suggest flipping s_{i,l}
+				const double du = 1 + (1 - Gu->mat[i + i*N]) * stratonovich_params->delta[  s[i + l*N]][o];
+				const double dd = 1 + (1 - Gd->mat[i + i*N]) * stratonovich_params->delta[1-s[i + l*N]][o];
+				if (Random_GetUniform(seed) < fabs(du*dd))
+				{
+					// Eq. (15)
+					#pragma omp parallel sections
+					{
+						#pragma omp section
+						GreenShermanMorrisonUpdate(stratonovich_params->delta[  s[i + l*N]][o], N, i, Gu->mat);
+						#pragma omp section
+						GreenShermanMorrisonUpdate(stratonovich_params->delta[1-s[i + l*N]][o], N, i, Gd->mat);
+					}
+					// correspondingly update determinants
+					Gu->logdet -= log(fabs(du));
+					Gd->logdet -= log(fabs(dd));
+					if (du < 0) { Gu->sgndet = -Gu->sgndet; }
+					if (dd < 0) { Gd->sgndet = -Gd->sgndet; }
+
+					// actually flip spin
+					s[i + l*N] = 1 - s[i + l*N];
+				}
 			}
+			Profile_End("DQMCIter_HSUpdate");
 		}
-		Profile_End("DQMCIter_HSUpdate");
 
 		// next and previous time slices; required for the phonon field with periodic boundary conditions
 		const int l_next = (l + 1    ) % L;
@@ -443,6 +446,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		// iterate over lattice sites, updating the phonon field
 		Profile_Begin("DQMCIter_XUpdate");
 		Random_Shuffle(seed, N, orb_cell_order);
+		int j;
 		for (j = 0; j < N; j++)
 		{
 			const int i = orb_cell_order[j];
@@ -545,6 +549,11 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			Profile_Begin("DQMCIter_AccumulateEqMeas");
 			AccumulateMeasurement(Gu, Gd, meas_data);
 			Profile_End("DQMCIter_AccumulateEqMeas");
+
+			// accumulate phonon data
+			Profile_Begin("DQMCIter_AccumulatePhonon");
+			AccumulatePhononData(Gu, Gd, X, meas_data_phonon);
+			Profile_End("DQMCIter_AccumulatePhonon");
 		}
 	}
 
@@ -576,7 +585,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 /// \param expX                 entrywise exponential of the phonon field: exp(-dt g X)
 ///
 void DQMCSimulation(const sim_params_t *restrict params,
-	measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt,
+	measurement_data_t *restrict meas_data, measurement_data_unequal_time_t *restrict meas_data_uneqlt, measurement_data_phonon_t *restrict meas_data_phonon,
 	int *restrict iteration, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX)
 {
 	const int Norb  = params->Norb;
@@ -591,6 +600,15 @@ void DQMCSimulation(const sim_params_t *restrict params,
 	RectangularKineticExponential(params, &kinetic);
 
 	// pre-calculate some stuff related to the Hubbard-Stratonovich field, for every orbital
+	int noHS = 1; // flag to disable H-S updates if all U == 0
+	for (int o = 0; o < Norb; o++)
+	{
+		if (params->U[o] != 0)
+		{
+			noHS = 0;
+			break;
+		}
+	}
 	stratonovich_params_t stratonovich_params;
 	FillStratonovichParameters(Norb, params->U, params->dt, &stratonovich_params);
 
@@ -661,7 +679,7 @@ void DQMCSimulation(const sim_params_t *restrict params,
 
 		if (params->use_phonons)
 		{
-			DQMCPhononIteration(params->dt, &kinetic, &stratonovich_params, &params->phonon_params, params->nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, neqlt, meas_data);
+			DQMCPhononIteration(params->dt, &kinetic, noHS, &stratonovich_params, &params->phonon_params, params->nwraps, seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, neqlt, meas_data, meas_data_phonon);
 		}
 		else
 		{
