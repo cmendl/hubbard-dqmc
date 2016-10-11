@@ -601,7 +601,8 @@ void DQMCSimulation(const sim_params_t *restrict params,
 
 	// pre-calculate some stuff related to the Hubbard-Stratonovich field, for every orbital
 	int noHS = 1; // flag to disable H-S updates if all U == 0
-	for (int o = 0; o < Norb; o++)
+	int o;
+	for (o = 0; o < Norb; o++)
 	{
 		if (params->U[o] != 0)
 		{
