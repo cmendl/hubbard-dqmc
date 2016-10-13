@@ -154,5 +154,5 @@ int MonteCarloIterTest()
 	DeleteStratonovichParameters(&stratonovich_params);
 	DeleteSimulationParameters(&params);
 
-	return (err_field == 0 && err_rel < 1e-10 && err_abs < 4e-14 && err_det < 2e-13 ? 0 : 1);
+	return (err_field == 0 && err_rel < 1e-10 && err_abs < 4e-14 && err_det < 5e-13 ? 0 : 1);
 }

@@ -156,5 +156,5 @@ int TimeFlowTest3()
 	DeleteKineticExponential(&kinetic);
 	DeleteSimulationParameters(&params);
 
-	return (err_rel < 1e-10 && err_abs < 4e-10 ? 0 : 1);
+	return (err_rel < 1e-9 && err_abs < 4e-9 ? 0 : 1);
 }

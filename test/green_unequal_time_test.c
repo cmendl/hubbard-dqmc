@@ -85,5 +85,5 @@ int GreenUnequalTimeTest()
 	}
 	MKL_free(B);
 
-	return (err < 2e-15 ? 0 : 1);
+	return (err < 4e-15 ? 0 : 1);
 }

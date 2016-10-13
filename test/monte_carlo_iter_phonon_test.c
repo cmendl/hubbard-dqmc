@@ -109,7 +109,7 @@ int MonteCarloIterPhononTest()
 
 	// perform a Determinant Quantum Monte Carlo (DQMC) iteration
 	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice with %i orbitals per unit cell, taking phonons into account...\n", params.Nx, params.Ny, params.Norb);
-	DQMCPhononIteration(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, params.nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
+	DQMCPhononIteration(params.dt, &kinetic, false, &stratonovich_params, &params.phonon_params, params.nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, 0, NULL, NULL);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
 	spin_field_t *s_ref = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
@@ -183,5 +183,5 @@ int MonteCarloIterPhononTest()
 	DeleteStratonovichParameters(&stratonovich_params);
 	DeleteSimulationParameters(&params);
 
-	return (err_field == 0 && errX < 1e-15 && errG_rel < 5e-11 && errG_abs < 1e-14 && err_detG < 4e-14 ? 0 : 1);
+	return (err_field == 0 && errX < 1e-15 && errG_rel < 5e-11 && errG_abs < 1e-14 && err_detG < 4e-13 ? 0 : 1);
 }

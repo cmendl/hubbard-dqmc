@@ -138,5 +138,5 @@ int GreensFuncInitTest4()
 	MKL_free(expV[0]);
 	DeleteSimulationParameters(&params);
 
-	return (err_rel < 1e-11 && err_abs < 2e-14 ? 0 : 1);
+	return (err_rel < 5e-11 && err_abs < 2e-14 ? 0 : 1);
 }

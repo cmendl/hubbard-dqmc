@@ -34,5 +34,5 @@ int MatrixExpTest()
 	}
 	printf("Largest entrywise relative error: %g\n", err);
 
-	return (err < 4e-15 ? 0 : 1);
+	return (err < 4e-14 ? 0 : 1);
 }

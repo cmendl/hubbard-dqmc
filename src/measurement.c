@@ -202,7 +202,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 		meas_data->doubleocc[o] += signfac*oc;
 	}
 
-	// green's functions
+	// Green's functions
 	cblas_daxpy(N*N, sign, Gu->mat, 1, meas_data->grfun_u, 1);
 	cblas_daxpy(N*N, sign, Gd->mat, 1, meas_data->grfun_d, 1);
 
@@ -895,13 +895,17 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 }
 
 
+//________________________________________________________________________________________________________________________
+///
+/// \brief Allocate and initialize phonon measurement data structure
+///
 void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, const int max_nsampl, measurement_data_phonon_t *restrict meas_data)
 {
-	const int Ncell = Nx * Ny;
-	const int N     = Ncell * Norb;
+	// avoid "not referenced" compiler warning
+	(void)pbc_shift;
 
 	meas_data->Norb  = Norb;
-	meas_data->Ncell = Ncell;
+	meas_data->Ncell = Nx * Ny;
 	meas_data->L     = L;
 
 	// no samples collected so far
@@ -911,23 +915,29 @@ void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pb
 	meas_data->sign = 0;
 
 	meas_data->X_iteration = (double *)MKL_calloc(Norb * max_nsampl, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->X_avg = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->X_sq = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->X_avg       = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->X_sqr       = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Delete phonon measurement data structure (free memory)
+///
 void DeletePhononData(measurement_data_phonon_t *restrict meas_data)
 {
-	MKL_free(meas_data->X_sq);
+	MKL_free(meas_data->X_sqr);
 	MKL_free(meas_data->X_avg);
 	MKL_free(meas_data->X_iteration);
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Accumulate phonon "measurement" data
+///
 void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, measurement_data_phonon_t *restrict meas_data)
 {
-	int l;
-	int i, k;	// spatial indices
-	int o, p;	// orbital indices
-
 	// lattice dimensions
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
@@ -941,15 +951,18 @@ void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t 
 	// sign and normalization factor
 	const double signfac = sign / Ncell / L;
 
+	int l;
 	for (l = 0; l < L; l++)		// for all discrete time differences...
 	{
+		int o;
 		for (o = 0; o < Norb; o++)
 		{
+			int i;
 			for (i = 0; i < Ncell; i++)
 			{
 				meas_data->X_avg[o] += signfac * X[i + o*Ncell + l*N];
-				meas_data->X_sq[o] += signfac * square(X[i + o*Ncell + l*N]);
-				meas_data->X_iteration[o + meas_data->nsampl * Norb] += X[i + o*Ncell + l*N] / Ncell / L;
+				meas_data->X_sqr[o] += signfac * square(X[i + o*Ncell + l*N]);
+				meas_data->X_iteration[o + meas_data->nsampl * Norb] += X[i + o*Ncell + l*N] / (Ncell * L);
 			}
 		}
 	}
@@ -961,24 +974,32 @@ void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t 
 	meas_data->nsampl++;
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Normalize phonon measurement data (divide by accumulated sign)
+///
 void NormalizePhononData(measurement_data_phonon_t *meas_data)
 {
 	// total number of orbitals and cells
 	const int Norb  = meas_data->Norb;
-	const int Ncell = meas_data->Ncell;
-	const int N     = Ncell * Norb;
 
 	// normalization factor; sign must be non-zero
 	const double nfac = 1.0 / meas_data->sign;
 
 	// divide by sign
 	cblas_dscal(Norb, nfac, meas_data->X_avg, 1);
-	cblas_dscal(Norb, nfac, meas_data->X_sq, 1);
+	cblas_dscal(Norb, nfac, meas_data->X_sqr, 1);
 
 	// calculate average sign
 	meas_data->sign /= meas_data->nsampl;
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Print a basic phonon measurement summary
+///
 void PrintPhononData(const measurement_data_phonon_t *meas_data)
 {
 	duprintf("_______________________________________________________________________________\n");
@@ -989,15 +1010,18 @@ void PrintPhononData(const measurement_data_phonon_t *meas_data)
 	{
 		duprintf("\nResults for orbital %d\n", o);
 		duprintf("                       average X: %g\n", meas_data->X_avg[o]);
-		duprintf("                     average X^2: %g\n", meas_data->X_sq[o]);
+		duprintf("                     average X^2: %g\n", meas_data->X_sqr[o]);
 	}
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Save phonon measurement data structure to disk
+///
 void SavePhononData(const char *fnbase, const measurement_data_phonon_t *meas_data)
 {
 	const int Norb       = meas_data->Norb;
-	const int Ncell      = meas_data->Ncell;
-	const int N          = Ncell * Norb;
 	const int max_nsampl = meas_data->max_nsampl;
 
 	char path[1024];
@@ -1005,6 +1029,5 @@ void SavePhononData(const char *fnbase, const measurement_data_phonon_t *meas_da
 	sprintf(path, "%s_phonon_nsampl.dat",      fnbase); WriteData(path, &meas_data->nsampl,     sizeof(int),    1, false);
 	sprintf(path, "%s_phonon_X_iteration.dat", fnbase); WriteData(path, meas_data->X_iteration, sizeof(double), Norb * max_nsampl, false);
 	sprintf(path, "%s_phonon_X_avg.dat",       fnbase); WriteData(path, meas_data->X_avg,       sizeof(double), Norb, false);
-	sprintf(path, "%s_phonon_X_sq.dat",        fnbase); WriteData(path, meas_data->X_sq,        sizeof(double), Norb, false);
-
+	sprintf(path, "%s_phonon_X_sq.dat",        fnbase); WriteData(path, meas_data->X_sqr,       sizeof(double), Norb, false);
 }

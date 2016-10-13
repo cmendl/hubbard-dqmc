@@ -112,5 +112,5 @@ int GreensFuncInitTest1()
 	MKL_free(s);
 	DeleteSimulationParameters(&params);
 
-	return (err_rel < 2e-10 && err_abs < 1e-14 && err_det < 2e-14 ? 0 : 1);
+	return (err_rel < 2e-10 && err_abs < 1e-14 && err_det < 2e-13 ? 0 : 1);
 }

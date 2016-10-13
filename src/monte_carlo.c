@@ -26,6 +26,8 @@
 /// \param tsm_d                time step matrices for the spin-down Green's function, will be updated
 /// \param Gu                   spin-up   Green's function, must have been computed on input and will be updated
 /// \param Gd                   spin-down Green's function, must have been computed on input and will be updated
+/// \param neqlt                perform an equal time measurement every 'neqlt' time slices
+/// \param meas_data            measurement data
 ///
 void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params, const int nwraps,
 	randseed_t *restrict seed, spin_field_t *restrict s, time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d,
@@ -336,6 +338,7 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 ///
 /// \param dt                   imaginary-time step
 /// \param kinetic              matrix exponential of kinetic energy operator
+/// \param noHS                 set to true to skip updating the Hubbard-Stratonovich field
 /// \param stratonovich_params  precomputed Hubbard-Stratonovich parameters
 /// \param phonon_params        phonon field parameters
 /// \param nwraps               number of "time slice wraps" before recomputing the Green's function
@@ -347,6 +350,9 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 /// \param tsm_d                time step matrices for the spin-down Green's function, will be updated
 /// \param Gu                   spin-up   Green's function, must have been computed on input and will be updated
 /// \param Gd                   spin-down Green's function, must have been computed on input and will be updated
+/// \param neqlt                perform an equal time measurement every 'neqlt' time slices
+/// \param meas_data            basic measurement data
+/// \param meas_data_phonon     phonon measurement data
 ///
 void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, const int noHS, const stratonovich_params_t *restrict stratonovich_params, const phonon_params_t *restrict phonon_params,
 	const int nwraps, randseed_t *restrict seed, spin_field_t *restrict s, double *restrict X, double *restrict expX,
@@ -578,6 +584,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 /// \param params               simulation parameters
 /// \param meas_data            measurement data structure for accumulating measurements
 /// \param meas_data_uneqlt     unequal time measurement data structure
+/// \param meas_data_phonon     phonon measurement data structure
 /// \param iteration            pointer to iteration counter (i.e. number of iterations completed from previous runs)
 /// \param seed                 random number generator seed
 /// \param s                    Hubbard-Stratonovich field; will be updated
