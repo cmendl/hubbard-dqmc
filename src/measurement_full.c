@@ -473,7 +473,7 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 ///
 /// \brief Accumulate unequal time "measurement" data
 ///
-void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu, const double *const *Bd, measurement_data_unequal_time_t *restrict meas_data)
+void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrices_t *restrict tsm_u, const time_step_matrices_t *restrict tsm_d, measurement_data_unequal_time_t *restrict meas_data)
 {
 	int l;
 	int i, j;
@@ -498,14 +498,14 @@ void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu
 	{
 		#pragma omp section
 		{
-			ComputeUnequalTimeGreensFunction(N, L, Bu, meas_data->Hu, curGtau0_u, curG0tau_u, curGeqlt_u, NULL, NULL, NULL);
+			ComputeUnequalTimeGreensFunction(N, L, tsm_u, meas_data->Hu, curGtau0_u, curG0tau_u, curGeqlt_u);
 			cblas_daxpy(N*L*N, sign, curGtau0_u, 1, meas_data->Gtau0_u, 1);
 			cblas_daxpy(N*N*L, sign, curG0tau_u, 1, meas_data->G0tau_u, 1);
 			cblas_daxpy(N*N*L, sign, curGeqlt_u, 1, meas_data->Geqlt_u, 1);
 		}
 		#pragma omp section
 		{
-			ComputeUnequalTimeGreensFunction(N, L, Bd, meas_data->Hd, curGtau0_d, curG0tau_d, curGeqlt_d, NULL, NULL, NULL);
+			ComputeUnequalTimeGreensFunction(N, L, tsm_d, meas_data->Hd, curGtau0_d, curG0tau_d, curGeqlt_d);
 			cblas_daxpy(N*L*N, sign, curGtau0_d, 1, meas_data->Gtau0_d, 1);
 			cblas_daxpy(N*N*L, sign, curG0tau_d, 1, meas_data->G0tau_d, 1);
 			cblas_daxpy(N*N*L, sign, curGeqlt_d, 1, meas_data->Geqlt_d, 1);

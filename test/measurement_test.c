@@ -101,7 +101,7 @@ int MeasurementTest()
 		GreenConstruct(&tsm_d, 0, &Gd);
 
 		AccumulateMeasurement(&Gu, &Gd, &meas_data);
-		AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, &meas_data_uneqlt);
+		AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), &tsm_u, &tsm_d, &meas_data_uneqlt);
 	}
 
 	NormalizeMeasurementData(&meas_data);

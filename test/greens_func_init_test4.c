@@ -109,7 +109,7 @@ int GreensFuncInitTest4()
 	double *Gtau0 = (double *)MKL_malloc(params.L*N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *G0tau = (double *)MKL_malloc(params.L*N*N * sizeof(double), MEM_DATA_ALIGN);
 	double *Geqlt = (double *)MKL_malloc(params.L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	ComputeUnequalTimeGreensFunction(N, params.L, tsm.B, H, Gtau0, G0tau, Geqlt, NULL, NULL, NULL);
+	ComputeUnequalTimeGreensFunction(N, params.L, &tsm, H, Gtau0, G0tau, Geqlt);
 
 	// reference to first block, should be equal to 'G'
 	const double *G00 = Geqlt;

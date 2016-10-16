@@ -698,7 +698,7 @@ void DQMCSimulation(const sim_params_t *restrict params,
 		if (*iteration >= params->nequil && params->nuneqlt > 0 && (*iteration % params->nuneqlt) == 0)
 		{
 			Profile_Begin("DQMCSim_AccumulateUneqMeas");
-			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), tsm_u.B, tsm_d.B, meas_data_uneqlt);
+			AccumulateUnequalTimeMeasurement((double)(Gu.sgndet * Gd.sgndet), &tsm_u, &tsm_d, meas_data_uneqlt);
 			Profile_End("DQMCSim_AccumulateUneqMeas");
 		}
 

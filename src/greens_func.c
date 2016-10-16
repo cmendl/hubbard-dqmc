@@ -221,113 +221,107 @@ void GreenTimeSliceWrap(const int N, const double *restrict B, const double *res
 ///
 /// \param N            number of lattice sites
 /// \param L            number of time steps
-/// \param B            array of B matrices (discrete time step evolution operators), array of length L
+/// \param tsm          time step B matrices and precomputed products
 /// \param H            temporary array of size L*N x L*N, will be overwritten
 /// \param Gtau0        concatenated unequal time Green's functions G(tau,   0) with tau = 0, 1, ..., L-1; array of size L*N x N
 /// \param G0tau        concatenated unequal time Green's functions G(0,   tau) with tau = 0, 1, ..., L-1; array of size N x L*N
 /// \param Geqlt        concatenated   equal time Green's functions G(tau, tau) with tau = 0, 1, ..., L-1; array of size N x L*N
-/// \param Gtau0_avr    G(tau + tau', tau') averaged over tau', with tau, tau' = 0, 1, ..., L-1; array of size L*N x N
-/// \param G0tau_avr    G(tau', tau + tau') averaged over tau', with tau, tau' = 0, 1, ..., L-1; array of size N x L*N
-/// \param Geqlt_avr    G(tau', tau') averaged over tau', with tau' = 0, 1, ..., L-1; array of size N x N
 ///
 /// Reference:
 ///   - R. Blankenbecler, D. J. Scalapino, R. L. Sugar\n
 ///     Monte Carlo calculations of coupled boson-fermion systems. I\n
 ///     Phys. Rev. D 24, 2278 (1981)
+///   - C. Jiang, Z. Bai, R. Scalettar\n
+///     A fast selected inversion algorithm for Green's function calculation in many-body quantum Monte Carlo simulations\n
+///     IEEE International Parallel and Distributed Processing Symposium, 2016 [http://dx.doi.org/10.1109/IPDPS.2016.69]
 ///
-void ComputeUnequalTimeGreensFunction(const int N, const int L, const double *const *B, double *restrict H, double *restrict Gtau0, double *restrict G0tau, double *restrict Geqlt, double *restrict Gtau0_avr, double *restrict G0tau_avr, double *restrict Geqlt_avr)
+void ComputeUnequalTimeGreensFunction(const int N, const int L, const time_step_matrices_t *restrict tsm, double *restrict H, double *restrict Gtau0, double *restrict G0tau, double *restrict Geqlt)
 {
-	int i, j, k;
+	int i;
+
+	const int numBprod = tsm->numBprod;
 
 	// set H to the identity matrix
-	memset(H, 0, N*N*L*L * sizeof(double));
-	for (i = 0; i < L*N; i++)
+	memset(H, 0, N*N*numBprod*numBprod * sizeof(double));
+	for (i = 0; i < numBprod*N; i++)
 	{
-		H[i + i*L*N] = 1;
+		H[i + i*numBprod*N] = 1;
 	}
 
-	// copy B matrices as blocks into H
-	for (i = 0; i < L; i++)
+	// copy products of B matrices as blocks into H
+	for (i = 0; i < numBprod; i++)
 	{
-		if (i < L-1)
+		if (i < numBprod-1)
 		{
 			// lower off-diagonal blocks; note the factor (-1)
-			mkl_domatcopy('C', 'N', N, N, -1.0, B[i], N, &H[((i + 1) + L*N*i)*N], L*N);
+			mkl_domatcopy('C', 'N', N, N, -1.0, tsm->Bprod[i], N, &H[((i + 1) + numBprod*N*i)*N], numBprod*N);
 		}
 		else
 		{
 			// upper right block
-			mkl_domatcopy('C', 'N', N, N, 1.0, B[i], N, &H[L*N*(L - 1)*N], L*N);
+			mkl_domatcopy('C', 'N', N, N, 1.0, tsm->Bprod[i], N, &H[numBprod*N*(numBprod - 1)*N], numBprod*N);
 		}
 	}
 
-	// compute the inverse of the block L-cyclic H matrix
-	BlockCyclicInverse(N, L, H);
+	// compute the inverse of the block p-cyclic H matrix, with p = numBprod
+	BlockCyclicInverse(N, numBprod, H);
 
-	// Gtau0 is the first column block of H
-	memcpy(Gtau0, H, L*N*N * sizeof(double));
-
-	// G0tau is the first row block of H
-	mkl_domatcopy('C', 'N', N, L*N, 1.0, H, L*N, G0tau, N);
-
-	// Geqlt contains the diagonal blocks of H
+	// construct Gtau0 (first column block)
 	for (i = 0; i < L; i++)
 	{
-		mkl_domatcopy('C', 'N', N, N, 1.0, &H[(i + L*N*i)*N], L*N, &Geqlt[i*N*N], N);
+		if (i % tsm->prodBlen == 0)
+		{
+			mkl_domatcopy('C', 'N', N, N, 1.0, &H[(i/tsm->prodBlen)*N], numBprod*N, &Gtau0[i*N], L*N);
+		}
+		else
+		{
+			cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, tsm->B[i-1], N, &Gtau0[(i-1)*N], L*N, 0.0, &Gtau0[i*N], L*N);
+		}
 	}
 
-	if (Gtau0_avr != NULL)
+	// construct G0tau (first row block)
+	for (i = 0; i < L; i++)
 	{
-		// Gtau0_avr is the average of cyclically shifted column blocks of H^{-1}
-		memset(Gtau0_avr, 0, L*N*N * sizeof(double));
-		for (j = 0; j < L; j++)
+		if (i % tsm->prodBlen == 0)
 		{
-			for (i = 0; i < L; i++)
+			mkl_domatcopy('C', 'N', N, N, 1.0, &H[(i/tsm->prodBlen)*numBprod*N*N], numBprod*N, &G0tau[i*N*N], N);
+		}
+		else
+		{
+			if (i == 1)
 			{
-				const int ij = (i + j) % L;
-
-				for (k = 0; k < N; k++)
+				// copy first NxN block of H and subtract identity matrix
+				double *T = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+				mkl_domatcopy('C', 'N', N, N, 1.0, H, numBprod*N, T, N);
+				int j;
+				for (j = 0; j < N; j++)
 				{
-					cblas_daxpy(N, 1.0, &H[(ij + L*(k + N*j))*N], 1, &Gtau0_avr[(i + k*L)*N], 1);
+					T[j + N*j]--;
 				}
+
+				cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, T, N, tsm->invB[i-1], N, 0.0, &G0tau[i*N*N], N);
+
+				MKL_free(T);
+			}
+			else
+			{
+				cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, &G0tau[(i-1)*N*N], N, tsm->invB[i-1], N, 0.0, &G0tau[i*N*N], N);
 			}
 		}
-		// normalize (divide by L)
-		cblas_dscal(L*N*N, 1.0/L, Gtau0_avr, 1);
 	}
 
-	if (G0tau_avr != NULL)
+	// construct Geqlt (diagonal blocks)
+	for (i = 0; i < L; i++)
 	{
-		// G0tau_avr is the average of cyclically shifted row blocks of H^{-1}
-		memset(G0tau_avr, 0, L*N*N * sizeof(double));
-		for (j = 0; j < L; j++)
+		if (i % tsm->prodBlen == 0)
 		{
-			for (i = 0; i < L; i++)
-			{
-				const int ij = (i + j) % L;
-
-				for (k = 0; k < N; k++)
-				{
-					cblas_daxpy(N, 1.0, &H[(ij + L*(k + N*j))*N], 1, &G0tau_avr[(k + j*N)*N], 1);
-				}
-			}
+			const int ib = (i/tsm->prodBlen);
+			mkl_domatcopy('C', 'N', N, N, 1.0, &H[(ib + ib*numBprod*N)*N], numBprod*N, &Geqlt[i*N*N], N);
 		}
-		// normalize (divide by L)
-		cblas_dscal(L*N*N, 1.0/L, G0tau_avr, 1);
-	}
-
-	if (Geqlt_avr != NULL)
-	{
-		// Geqlt_avr is the average of the diagonal blocks of H^{-1}
-		memset(Geqlt_avr, 0, N*N * sizeof(double));
-		for (i = 0; i < L; i++)
+		else
 		{
-			for (k = 0; k < N; k++)
-			{
-				cblas_daxpy(N, 1.0, &H[(i + L*(k + N*i))*N], 1, &Geqlt_avr[k*N], 1);
-			}
+			memcpy(&Geqlt[i*N*N], &Geqlt[(i-1)*N*N], N*N * sizeof(double));
+			GreenTimeSliceWrap(N, tsm->B[i-1], tsm->invB[i-1], &Geqlt[i*N*N]);
 		}
-		// normalize (divide by L)
-		cblas_dscal(N*N, 1.0/L, Geqlt_avr, 1);
 	}
 }

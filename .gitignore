@@ -21,3 +21,6 @@ Debug/
 Release/
 
 /vcproj/
+
+# ignore obsolete directories
+obsolete/

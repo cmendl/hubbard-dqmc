@@ -33,7 +33,7 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 void GreenTimeSliceWrap(const int N, const double *restrict B, const double *restrict invB, double *restrict Gmat);
 
 
-void ComputeUnequalTimeGreensFunction(const int N, const int L, const double *const *B, double *restrict H, double *restrict Gtau0, double *restrict G0tau, double *restrict Geqlt, double *restrict Gtau0_avr, double *restrict G0tau_avr, double *restrict Geqlt_avr);
+void ComputeUnequalTimeGreensFunction(const int N, const int L, const time_step_matrices_t *restrict tsm, double *restrict H, double *restrict Gtau0, double *restrict G0tau, double *restrict Geqlt);
 
 
 

@@ -115,7 +115,7 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict meas_data);
 
 
-void AccumulateUnequalTimeMeasurement(const double sign, const double *const *Bu, const double *const *Bd, measurement_data_unequal_time_t *restrict meas_data);
+void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrices_t *restrict tsm_u, const time_step_matrices_t *restrict tsm_d, measurement_data_unequal_time_t *restrict meas_data);
 
 void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_data);
 
