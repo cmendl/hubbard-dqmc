@@ -378,7 +378,7 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 ///
 /// \brief Allocate and initialize unequal time measurement data structure
 ///
-int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, measurement_data_unequal_time_t *restrict meas_data)
+int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, const int numBprod, measurement_data_unequal_time_t *restrict meas_data)
 {
 	// unused parameter
 	(void)pbc_shift;
@@ -394,8 +394,8 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 	meas_data->L = L;
 
 	// allocate temporary H matrices
-	meas_data->Hu = (double *)MKL_malloc(L*L*N*N * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hu == NULL) { return -1; }
-	meas_data->Hd = (double *)MKL_malloc(L*L*N*N * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hd == NULL) { return -1; }
+	meas_data->Hu = (double *)MKL_malloc(N*N*numBprod*numBprod * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hu == NULL) { return -1; }
+	meas_data->Hd = (double *)MKL_malloc(N*N*numBprod*numBprod * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hd == NULL) { return -1; }
 
 	// allocate and initialize Green's functions with zeros
 	meas_data->Gtau0_u = (double *)MKL_calloc(N*L*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Gtau0_u == NULL) { return -1; }

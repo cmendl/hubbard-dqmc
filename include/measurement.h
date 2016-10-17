@@ -110,7 +110,7 @@ typedef struct
 measurement_data_unequal_time_t;
 
 
-int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, measurement_data_unequal_time_t *restrict meas_data);
+int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, const int numBprod, measurement_data_unequal_time_t *restrict meas_data);
 
 void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict meas_data);
 

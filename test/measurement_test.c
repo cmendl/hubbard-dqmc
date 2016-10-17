@@ -81,7 +81,7 @@ int MeasurementTest()
 
 	// allocate unequal time measurement data structure
 	measurement_data_unequal_time_t meas_data_uneqlt;
-	int status = AllocateUnequalTimeMeasurementData(params.Norb, params.Nx, params.Ny, params.pbc_shift, params.L, &meas_data_uneqlt);
+	int status = AllocateUnequalTimeMeasurementData(params.Norb, params.Nx, params.Ny, params.pbc_shift, params.L, tsm_u.numBprod, &meas_data_uneqlt);
 	if (status != 0) { return status; }
 
 	// accumulate measurements of pseudo-random data
