@@ -253,7 +253,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Normalize measurement data (divide by accumulated sign)
+/// \brief Normalize measurement data (divide by number of samples)
 ///
 void NormalizeMeasurementData(measurement_data_t *meas_data)
 {
@@ -262,19 +262,15 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 	const int Ncell = meas_data->Ncell;
 	const int N     = Ncell * Norb;
 
-	// normalization factor; sign must be non-zero
-	const double nfac = 1.0 / meas_data->sign;
+	// normalization factor
+	const double nfac = 1.0 / meas_data->nsampl;
 
-	// divide densities by sign
+	// divide by nsampl to get <s A>
 	cblas_dscal(N, nfac, meas_data->density_u, 1);
 	cblas_dscal(N, nfac, meas_data->density_d, 1);
 	cblas_dscal(N, nfac, meas_data->doubleocc, 1);
-
-	// divide green's functions by sign
 	cblas_dscal(N*N, nfac, meas_data->grfun_u, 1);
 	cblas_dscal(N*N, nfac, meas_data->grfun_d, 1);
-
-	// divide density and spin correlations by sign
 	int m = N*N;
 	cblas_dscal(m, nfac, meas_data->uu_corr, 1);
 	cblas_dscal(m, nfac, meas_data->dd_corr, 1);
@@ -282,15 +278,14 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 	cblas_dscal(m, nfac, meas_data->ff_corr, 1);
 	cblas_dscal(m, nfac, meas_data->zz_corr, 1);
 	cblas_dscal(m, nfac, meas_data->xx_corr, 1);
-
-	// divide superconducting susceptibilities by sign
+	// superconducting susceptibilities
 	m = Ncell*Ncell*Norb;
 	cblas_dscal(m, nfac, meas_data->sc_c_sw, 1);
 	cblas_dscal(m, nfac, meas_data->sc_c_dw, 1);
 	cblas_dscal(m, nfac, meas_data->sc_c_sx, 1);
 
 	// calculate average sign
-	meas_data->sign /= meas_data->nsampl;
+	meas_data->sign *= nfac;
 }
 
 
@@ -325,22 +320,22 @@ void LoadMeasurementData(const char *fnbase, measurement_data_t *meas_data)
 	const int N     = Ncell * Norb;
 
 	char path[1024];
-	sprintf(path, "%s_sign.dat",      fnbase); ReadData(path, (void *)&meas_data->sign,   sizeof(double), 1);
-	sprintf(path, "%s_nsampl.dat",    fnbase); ReadData(path, (void *)&meas_data->nsampl, sizeof(int),    1);
-	sprintf(path, "%s_density_u.dat", fnbase); ReadData(path, meas_data->density_u, sizeof(double), N);
-	sprintf(path, "%s_density_d.dat", fnbase); ReadData(path, meas_data->density_d, sizeof(double), N);
-	sprintf(path, "%s_doubleocc.dat", fnbase); ReadData(path, meas_data->doubleocc, sizeof(double), N);
-	sprintf(path, "%s_grfun_u.dat",   fnbase); ReadData(path, meas_data->grfun_u,   sizeof(double), N*N);
-	sprintf(path, "%s_grfun_d.dat",   fnbase); ReadData(path, meas_data->grfun_d,   sizeof(double), N*N);
-	sprintf(path, "%s_uu_corr.dat",   fnbase); ReadData(path, meas_data->uu_corr,   sizeof(double), N*N);
-	sprintf(path, "%s_dd_corr.dat",   fnbase); ReadData(path, meas_data->dd_corr,   sizeof(double), N*N);
-	sprintf(path, "%s_ud_corr.dat",   fnbase); ReadData(path, meas_data->ud_corr,   sizeof(double), N*N);
-	sprintf(path, "%s_ff_corr.dat",   fnbase); ReadData(path, meas_data->ff_corr,   sizeof(double), N*N);
-	sprintf(path, "%s_zz_corr.dat",   fnbase); ReadData(path, meas_data->zz_corr,   sizeof(double), N*N);
-	sprintf(path, "%s_xx_corr.dat",   fnbase); ReadData(path, meas_data->xx_corr,   sizeof(double), N*N);
-	sprintf(path, "%s_sc_c_sw.dat",   fnbase); ReadData(path, meas_data->sc_c_sw,   sizeof(double), Ncell*Ncell*Norb);
-	sprintf(path, "%s_sc_c_dw.dat",   fnbase); ReadData(path, meas_data->sc_c_dw,   sizeof(double), Ncell*Ncell*Norb);
-	sprintf(path, "%s_sc_c_sx.dat",   fnbase); ReadData(path, meas_data->sc_c_sx,   sizeof(double), Ncell*Ncell*Norb);
+	sprintf(path, "%s_eqlt_sign.dat",      fnbase); ReadData(path, (void *)&meas_data->sign,   sizeof(double), 1);
+	sprintf(path, "%s_eqlt_nsampl.dat",    fnbase); ReadData(path, (void *)&meas_data->nsampl, sizeof(int),    1);
+	sprintf(path, "%s_eqlt_density_u.dat", fnbase); ReadData(path, meas_data->density_u, sizeof(double), N);
+	sprintf(path, "%s_eqlt_density_d.dat", fnbase); ReadData(path, meas_data->density_d, sizeof(double), N);
+	sprintf(path, "%s_eqlt_doubleocc.dat", fnbase); ReadData(path, meas_data->doubleocc, sizeof(double), N);
+	sprintf(path, "%s_eqlt_grfun_u.dat",   fnbase); ReadData(path, meas_data->grfun_u,   sizeof(double), N*N);
+	sprintf(path, "%s_eqlt_grfun_d.dat",   fnbase); ReadData(path, meas_data->grfun_d,   sizeof(double), N*N);
+	sprintf(path, "%s_eqlt_uu_corr.dat",   fnbase); ReadData(path, meas_data->uu_corr,   sizeof(double), N*N);
+	sprintf(path, "%s_eqlt_dd_corr.dat",   fnbase); ReadData(path, meas_data->dd_corr,   sizeof(double), N*N);
+	sprintf(path, "%s_eqlt_ud_corr.dat",   fnbase); ReadData(path, meas_data->ud_corr,   sizeof(double), N*N);
+	sprintf(path, "%s_eqlt_ff_corr.dat",   fnbase); ReadData(path, meas_data->ff_corr,   sizeof(double), N*N);
+	sprintf(path, "%s_eqlt_zz_corr.dat",   fnbase); ReadData(path, meas_data->zz_corr,   sizeof(double), N*N);
+	sprintf(path, "%s_eqlt_xx_corr.dat",   fnbase); ReadData(path, meas_data->xx_corr,   sizeof(double), N*N);
+	sprintf(path, "%s_eqlt_sc_c_sw.dat",   fnbase); ReadData(path, meas_data->sc_c_sw,   sizeof(double), Ncell*Ncell*Norb);
+	sprintf(path, "%s_eqlt_sc_c_dw.dat",   fnbase); ReadData(path, meas_data->sc_c_dw,   sizeof(double), Ncell*Ncell*Norb);
+	sprintf(path, "%s_eqlt_sc_c_sx.dat",   fnbase); ReadData(path, meas_data->sc_c_sx,   sizeof(double), Ncell*Ncell*Norb);
 }
 
 
@@ -355,22 +350,22 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 	const int N     = Ncell * Norb;
 
 	char path[1024];
-	sprintf(path, "%s_sign.dat",      fnbase); WriteData(path, &meas_data->sign,     sizeof(double), 1, false);
-	sprintf(path, "%s_nsampl.dat",    fnbase); WriteData(path, &meas_data->nsampl,   sizeof(int),    1, false);
-	sprintf(path, "%s_density_u.dat", fnbase); WriteData(path, meas_data->density_u, sizeof(double), N, false);
-	sprintf(path, "%s_density_d.dat", fnbase); WriteData(path, meas_data->density_d, sizeof(double), N, false);
-	sprintf(path, "%s_doubleocc.dat", fnbase); WriteData(path, meas_data->doubleocc, sizeof(double), N, false);
-	sprintf(path, "%s_grfun_u.dat",   fnbase); WriteData(path, meas_data->grfun_u,   sizeof(double), N*N, false);
-	sprintf(path, "%s_grfun_d.dat",   fnbase); WriteData(path, meas_data->grfun_d,   sizeof(double), N*N, false);
-	sprintf(path, "%s_uu_corr.dat",   fnbase); WriteData(path, meas_data->uu_corr,   sizeof(double), N*N, false);
-	sprintf(path, "%s_dd_corr.dat",   fnbase); WriteData(path, meas_data->dd_corr,   sizeof(double), N*N, false);
-	sprintf(path, "%s_ud_corr.dat",   fnbase); WriteData(path, meas_data->ud_corr,   sizeof(double), N*N, false);
-	sprintf(path, "%s_ff_corr.dat",   fnbase); WriteData(path, meas_data->ff_corr,   sizeof(double), N*N, false);
-	sprintf(path, "%s_zz_corr.dat",   fnbase); WriteData(path, meas_data->zz_corr,   sizeof(double), N*N, false);
-	sprintf(path, "%s_xx_corr.dat",   fnbase); WriteData(path, meas_data->xx_corr,   sizeof(double), N*N, false);
-	sprintf(path, "%s_sc_c_sw.dat",   fnbase); WriteData(path, meas_data->sc_c_sw,   sizeof(double), Ncell*Ncell*Norb, false);
-	sprintf(path, "%s_sc_c_dw.dat",   fnbase); WriteData(path, meas_data->sc_c_dw,   sizeof(double), Ncell*Ncell*Norb, false);
-	sprintf(path, "%s_sc_c_sx.dat",   fnbase); WriteData(path, meas_data->sc_c_sx,   sizeof(double), Ncell*Ncell*Norb, false);
+	sprintf(path, "%s_eqlt_sign.dat",      fnbase); WriteData(path, &meas_data->sign,     sizeof(double), 1, false);
+	sprintf(path, "%s_eqlt_nsampl.dat",    fnbase); WriteData(path, &meas_data->nsampl,   sizeof(int),    1, false);
+	sprintf(path, "%s_eqlt_density_u.dat", fnbase); WriteData(path, meas_data->density_u, sizeof(double), N, false);
+	sprintf(path, "%s_eqlt_density_d.dat", fnbase); WriteData(path, meas_data->density_d, sizeof(double), N, false);
+	sprintf(path, "%s_eqlt_doubleocc.dat", fnbase); WriteData(path, meas_data->doubleocc, sizeof(double), N, false);
+	sprintf(path, "%s_eqlt_grfun_u.dat",   fnbase); WriteData(path, meas_data->grfun_u,   sizeof(double), N*N, false);
+	sprintf(path, "%s_eqlt_grfun_d.dat",   fnbase); WriteData(path, meas_data->grfun_d,   sizeof(double), N*N, false);
+	sprintf(path, "%s_eqlt_uu_corr.dat",   fnbase); WriteData(path, meas_data->uu_corr,   sizeof(double), N*N, false);
+	sprintf(path, "%s_eqlt_dd_corr.dat",   fnbase); WriteData(path, meas_data->dd_corr,   sizeof(double), N*N, false);
+	sprintf(path, "%s_eqlt_ud_corr.dat",   fnbase); WriteData(path, meas_data->ud_corr,   sizeof(double), N*N, false);
+	sprintf(path, "%s_eqlt_ff_corr.dat",   fnbase); WriteData(path, meas_data->ff_corr,   sizeof(double), N*N, false);
+	sprintf(path, "%s_eqlt_zz_corr.dat",   fnbase); WriteData(path, meas_data->zz_corr,   sizeof(double), N*N, false);
+	sprintf(path, "%s_eqlt_xx_corr.dat",   fnbase); WriteData(path, meas_data->xx_corr,   sizeof(double), N*N, false);
+	sprintf(path, "%s_eqlt_sc_c_sw.dat",   fnbase); WriteData(path, meas_data->sc_c_sw,   sizeof(double), Ncell*Ncell*Norb, false);
+	sprintf(path, "%s_eqlt_sc_c_dw.dat",   fnbase); WriteData(path, meas_data->sc_c_dw,   sizeof(double), Ncell*Ncell*Norb, false);
+	sprintf(path, "%s_eqlt_sc_c_sx.dat",   fnbase); WriteData(path, meas_data->sc_c_sx,   sizeof(double), Ncell*Ncell*Norb, false);
 }
 
 
@@ -698,7 +693,7 @@ void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrice
 
 //________________________________________________________________________________________________________________________
 ///
-/// \brief Normalize unequal time measurement data (divide by accumulated sign)
+/// \brief Normalize unequal time measurement data (divide by number of samples)
 ///
 void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_data)
 {
@@ -711,33 +706,27 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 	// total number of time steps
 	const int L = meas_data->L;
 
-	// normalization factor; sign must be non-zero
-	const double nfac = 1.0 / meas_data->sign;
+	// normalization factor
+	const double nfac = 1.0 / meas_data->nsampl;
 
-	// divide Green's functions by sign
+	// divide by nsampl to get <s A>
 	cblas_dscal(N*L*N, nfac, meas_data->Gtau0_u, 1);
 	cblas_dscal(N*N*L, nfac, meas_data->G0tau_u, 1);
 	cblas_dscal(N*N*L, nfac, meas_data->Geqlt_u, 1);
 	cblas_dscal(N*L*N, nfac, meas_data->Gtau0_d, 1);
 	cblas_dscal(N*N*L, nfac, meas_data->G0tau_d, 1);
 	cblas_dscal(N*N*L, nfac, meas_data->Geqlt_d, 1);
-
-	// divide density and spin correlations by sign
 	cblas_dscal(N*N*L, nfac, meas_data->nn_corr, 1);
 	cblas_dscal(N*N*L, nfac, meas_data->zz_corr, 1);
 	cblas_dscal(N*N*L, nfac, meas_data->xx_corr, 1);
-
-	// divide superconducting susceptibilities by sign
 	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->sc_c_sw, 1);
 	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->sc_c_dw, 1);
 	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->sc_c_sx, 1);
-
-	// divide Raman correlation functions by sign
 	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->ram_b1g, 1);
 	cblas_dscal(Ncell*Ncell*Norb*L, nfac, meas_data->ram_b2g, 1);
 
 	// calculate average sign
-	meas_data->sign /= meas_data->nsampl;
+	meas_data->sign *= nfac;
 }
 
 
@@ -808,4 +797,142 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 
 	sprintf(path, "%s_uneqlt_ram_b1g.dat", fnbase); WriteData(path, meas_data->ram_b1g, sizeof(double), Ncell*Ncell*Norb*L, false);
 	sprintf(path, "%s_uneqlt_ram_b2g.dat", fnbase); WriteData(path, meas_data->ram_b2g, sizeof(double), Ncell*Ncell*Norb*L, false);
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Allocate and initialize phonon measurement data structure
+///
+void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, const int max_nsampl, measurement_data_phonon_t *restrict meas_data)
+{
+	// avoid "not referenced" compiler warning
+	(void)pbc_shift;
+
+	meas_data->Norb  = Norb;
+	meas_data->Ncell = Nx * Ny;
+	meas_data->L     = L;
+
+	// no samples collected so far
+	meas_data->nsampl = 0;
+	meas_data->max_nsampl = max_nsampl;
+
+	meas_data->sign = 0;
+
+	meas_data->X_iteration = (double *)MKL_calloc(Norb * max_nsampl, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->X_avg       = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->X_sqr       = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Delete phonon measurement data structure (free memory)
+///
+void DeletePhononData(measurement_data_phonon_t *restrict meas_data)
+{
+	MKL_free(meas_data->X_sqr);
+	MKL_free(meas_data->X_avg);
+	MKL_free(meas_data->X_iteration);
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Accumulate phonon "measurement" data
+///
+void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, measurement_data_phonon_t *restrict meas_data)
+{
+	// lattice dimensions
+	const int Norb  = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
+	const int L = meas_data->L;
+	const int N = Ncell * Norb;
+
+	// product of the determinant signs of the Green's function matrices
+	const double sign = (double)(Gu->sgndet * Gd->sgndet);
+	assert(sign != 0);
+
+	// sign and normalization factor
+	const double signfac = sign / Ncell / L;
+
+	int l;
+	for (l = 0; l < L; l++)		// for all discrete time differences...
+	{
+		int o;
+		for (o = 0; o < Norb; o++)
+		{
+			int i;
+			for (i = 0; i < Ncell; i++)
+			{
+				meas_data->X_avg[o] += signfac * X[i + o*Ncell + l*N];
+				meas_data->X_sqr[o] += signfac * square(X[i + o*Ncell + l*N]);
+				meas_data->X_iteration[o + meas_data->nsampl * Norb] += X[i + o*Ncell + l*N] / (Ncell * L);
+			}
+		}
+	}
+
+	// add current sign
+	meas_data->sign += sign;
+
+	// increment sample counter
+	meas_data->nsampl++;
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Normalize phonon measurement data (divide by number of samples)
+///
+void NormalizePhononData(measurement_data_phonon_t *meas_data)
+{
+	// total number of orbitals and cells
+	const int Norb  = meas_data->Norb;
+
+	// normalization factor
+	const double nfac = 1.0 / meas_data->nsampl;
+
+	// divide by nsampl to get <s A>
+	cblas_dscal(Norb, nfac, meas_data->X_avg, 1);
+	cblas_dscal(Norb, nfac, meas_data->X_sqr, 1);
+
+	// calculate average sign
+	meas_data->sign *= nfac;
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Print a basic phonon measurement summary
+///
+void PrintPhononData(const measurement_data_phonon_t *meas_data)
+{
+	duprintf("_______________________________________________________________________________\n");
+	duprintf("Summary of phonon data\n\n");
+	duprintf("                    average sign: %g\n", meas_data->sign);
+	int o;
+	for (o = 0; o < meas_data->Norb; o++)
+	{
+		duprintf("\nResults for orbital %d\n", o);
+		duprintf("                       average X: %g\n", meas_data->X_avg[o]);
+		duprintf("                     average X^2: %g\n", meas_data->X_sqr[o]);
+	}
+}
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Save phonon measurement data structure to disk
+///
+void SavePhononData(const char *fnbase, const measurement_data_phonon_t *meas_data)
+{
+	const int Norb       = meas_data->Norb;
+	const int max_nsampl = meas_data->max_nsampl;
+
+	char path[1024];
+	sprintf(path, "%s_phonon_sign.dat",        fnbase); WriteData(path, &meas_data->sign,       sizeof(double), 1, false);
+	sprintf(path, "%s_phonon_nsampl.dat",      fnbase); WriteData(path, &meas_data->nsampl,     sizeof(int),    1, false);
+	sprintf(path, "%s_phonon_X_iteration.dat", fnbase); WriteData(path, meas_data->X_iteration, sizeof(double), Norb * max_nsampl, false);
+	sprintf(path, "%s_phonon_X_avg.dat",       fnbase); WriteData(path, meas_data->X_avg,       sizeof(double), Norb, false);
+	sprintf(path, "%s_phonon_X_sq.dat",        fnbase); WriteData(path, meas_data->X_sqr,       sizeof(double), Norb, false);
 }
