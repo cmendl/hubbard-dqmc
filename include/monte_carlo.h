@@ -21,7 +21,8 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 
 void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
 	const phonon_params_t *restrict phonon_params, randseed_t *restrict seed, const spin_field_t *restrict s, double *restrict X, double *restrict expX,
-	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd);
+	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
+	int *n_block_accept, int *n_block_total);
 
 
 void DQMCSimulation(const sim_params_t *restrict params,

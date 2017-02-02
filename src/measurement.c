@@ -883,17 +883,13 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 }
 
 
-//________________________________________________________________________________________________________________________
-///
-/// \brief Allocate and initialize phonon measurement data structure
-///
 void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, const int max_nsampl, measurement_data_phonon_t *restrict meas_data)
 {
-	// avoid "not referenced" compiler warning
-	(void)pbc_shift;
+	const int Ncell = Nx * Ny;
+	const int N     = Ncell * Norb;
 
 	meas_data->Norb  = Norb;
-	meas_data->Ncell = Nx * Ny;
+	meas_data->Ncell = Ncell;
 	meas_data->L     = L;
 
 	// no samples collected so far
@@ -902,30 +898,40 @@ void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pb
 
 	meas_data->sign = 0;
 
-	meas_data->X_iteration = (double *)MKL_calloc(Norb * max_nsampl, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->X_avg       = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->X_sqr       = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->X_avg = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->X_avg_sq = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->X_sq_avg = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->V_avg = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->V_sq_avg = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->PE = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->KE = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->iteration_X_avg = (double *)MKL_calloc(Norb * max_nsampl, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->iteration_X0 = (double *)MKL_calloc(Norb * max_nsampl, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->n_local_accept = 0;
+	meas_data->n_local_total = 0;
+	meas_data->n_block_accept = 0;
+	meas_data->n_block_total = 0;
 }
 
-
-//________________________________________________________________________________________________________________________
-///
-/// \brief Delete phonon measurement data structure (free memory)
-///
 void DeletePhononData(measurement_data_phonon_t *restrict meas_data)
 {
-	MKL_free(meas_data->X_sqr);
+	MKL_free(meas_data->iteration_X0);
+	MKL_free(meas_data->iteration_X_avg);
+	MKL_free(meas_data->KE);
+	MKL_free(meas_data->PE);
+	MKL_free(meas_data->V_sq_avg);
+	MKL_free(meas_data->V_avg);
+	MKL_free(meas_data->X_sq_avg);
+	MKL_free(meas_data->X_avg_sq);
 	MKL_free(meas_data->X_avg);
-	MKL_free(meas_data->X_iteration);
 }
 
-
-//________________________________________________________________________________________________________________________
-///
-/// \brief Accumulate phonon "measurement" data
-///
-void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, measurement_data_phonon_t *restrict meas_data)
+void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, const double dt, const double *restrict omega, measurement_data_phonon_t *restrict meas_data)
 {
+	int l;
+	int i, k;	// spatial indices
+	int o, p;	// orbital indices
+
 	// lattice dimensions
 	const int Norb  = meas_data->Norb;
 	const int Ncell = meas_data->Ncell;
@@ -939,20 +945,31 @@ void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t 
 	// sign and normalization factor
 	const double signfac = sign / Ncell / L;
 
-	int l;
+	double *cur_X_avg = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
 	for (l = 0; l < L; l++)		// for all discrete time differences...
 	{
-		int o;
+		const int lplus = (l+1)%L;
 		for (o = 0; o < Norb; o++)
 		{
-			int i;
 			for (i = 0; i < Ncell; i++)
 			{
-				meas_data->X_avg[o] += signfac * X[i + o*Ncell + l*N];
-				meas_data->X_sqr[o] += signfac * square(X[i + o*Ncell + l*N]);
-				meas_data->X_iteration[o + meas_data->nsampl * Norb] += X[i + o*Ncell + l*N] / (Ncell * L);
+				cur_X_avg[o] += signfac * X[i + o*Ncell + l*N];
+				meas_data->X_sq_avg[o] += signfac * square(X[i + o*Ncell + l*N]);
+				meas_data->iteration_X_avg[o + meas_data->nsampl * Norb] += signfac * X[i + o*Ncell + l*N];
+				meas_data->V_avg[o] += signfac/dt * (X[i + o*Ncell + lplus*N] - X[i + o*Ncell + l*N]);
+				meas_data->V_sq_avg[o] += signfac/(dt*dt) * square(X[i + o*Ncell + lplus*N] - X[i + o*Ncell + l*N]);
+				meas_data->PE[o] += 0.5*square(omega[o])*signfac*square(X[i + o*Ncell + l*N]);
+				meas_data->KE[o] -= 0.5/(dt*dt)*signfac*square(X[i + o*Ncell + lplus*N] - X[i + o*Ncell + l*N]);
 			}
+			meas_data->iteration_X0[o + meas_data->nsampl * Norb] += (sign/L) * X[o*Ncell + l*N];
 		}
+	}
+
+	for (o = 0; o < Norb; o++)
+	{
+		meas_data->X_avg[o] += cur_X_avg[o];
+		meas_data->X_avg_sq[o] += square(cur_X_avg[o]);
+		meas_data->KE[0] += sign*0.5/dt;
 	}
 
 	// add current sign
@@ -962,34 +979,33 @@ void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t 
 	meas_data->nsampl++;
 }
 
-
-//________________________________________________________________________________________________________________________
-///
-/// \brief Normalize phonon measurement data (divide by number of samples)
-///
 void NormalizePhononData(measurement_data_phonon_t *meas_data)
 {
 	// total number of orbitals and cells
 	const int Norb  = meas_data->Norb;
+	const int Ncell = meas_data->Ncell;
+	const int N     = Ncell * Norb;
 
-	// normalization factor
-	const double nfac = 1.0 / meas_data->nsampl;
+	// normalization factor; sign must be non-zero
+	const double nfac = 1.0 / meas_data->sign;
 
-	// divide by nsampl to get <s A>
+	// divide by sign
 	cblas_dscal(Norb, nfac, meas_data->X_avg, 1);
-	cblas_dscal(Norb, nfac, meas_data->X_sqr, 1);
+	cblas_dscal(Norb, nfac, meas_data->X_avg_sq, 1);
+	cblas_dscal(Norb, nfac, meas_data->X_sq_avg, 1);
+	cblas_dscal(Norb, nfac, meas_data->V_avg, 1);
+	cblas_dscal(Norb, nfac, meas_data->V_sq_avg, 1);
+	cblas_dscal(Norb, nfac, meas_data->PE, 1);
+	cblas_dscal(Norb, nfac, meas_data->KE, 1);
 
 	// calculate average sign
-	meas_data->sign *= nfac;
+	meas_data->sign /= meas_data->nsampl;
 }
 
-
-//________________________________________________________________________________________________________________________
-///
-/// \brief Print a basic phonon measurement summary
-///
 void PrintPhononData(const measurement_data_phonon_t *meas_data)
 {
+	const int Ncell = meas_data->Ncell;
+
 	duprintf("_______________________________________________________________________________\n");
 	duprintf("Summary of phonon data\n\n");
 	duprintf("                    average sign: %g\n", meas_data->sign);
@@ -997,25 +1013,36 @@ void PrintPhononData(const measurement_data_phonon_t *meas_data)
 	for (o = 0; o < meas_data->Norb; o++)
 	{
 		duprintf("\nResults for orbital %d\n", o);
+		duprintf("          local acceptance ratio: %g\n", (double)meas_data->n_local_accept/meas_data->n_local_total);
+		duprintf("          block acceptance ratio: %g\n", (double)meas_data->n_block_accept/meas_data->n_block_total);
 		duprintf("                       average X: %g\n", meas_data->X_avg[o]);
-		duprintf("                     average X^2: %g\n", meas_data->X_sqr[o]);
+		duprintf("                     average X^2: %g\n", meas_data->X_sq_avg[o]);
+		duprintf("                     average V^2: %g\n", meas_data->V_sq_avg[o]);
+		duprintf("               average phonon KE: %g\n", meas_data->KE[o]);
+		duprintf("               average phonon PE: %g\n", meas_data->PE[o]);
 	}
 }
 
-
-//________________________________________________________________________________________________________________________
-///
-/// \brief Save phonon measurement data structure to disk
-///
 void SavePhononData(const char *fnbase, const measurement_data_phonon_t *meas_data)
 {
 	const int Norb       = meas_data->Norb;
+	const int Ncell      = meas_data->Ncell;
+	const int N          = Ncell * Norb;
 	const int max_nsampl = meas_data->max_nsampl;
 
 	char path[1024];
 	sprintf(path, "%s_phonon_sign.dat",        fnbase); WriteData(path, &meas_data->sign,       sizeof(double), 1, false);
 	sprintf(path, "%s_phonon_nsampl.dat",      fnbase); WriteData(path, &meas_data->nsampl,     sizeof(int),    1, false);
-	sprintf(path, "%s_phonon_X_iteration.dat", fnbase); WriteData(path, meas_data->X_iteration, sizeof(double), Norb * max_nsampl, false);
 	sprintf(path, "%s_phonon_X_avg.dat",       fnbase); WriteData(path, meas_data->X_avg,       sizeof(double), Norb, false);
-	sprintf(path, "%s_phonon_X_sq.dat",        fnbase); WriteData(path, meas_data->X_sqr,       sizeof(double), Norb, false);
+	sprintf(path, "%s_phonon_X_avg_sq.dat",    fnbase); WriteData(path, meas_data->X_avg_sq,    sizeof(double), Norb, false);
+	sprintf(path, "%s_phonon_X_sq_avg.dat",    fnbase); WriteData(path, meas_data->X_sq_avg,    sizeof(double), Norb, false);
+	sprintf(path, "%s_phonon_V_sq_avg.dat",    fnbase); WriteData(path, meas_data->V_sq_avg,    sizeof(double), Norb, false);
+	sprintf(path, "%s_phonon_KE.dat",          fnbase); WriteData(path, meas_data->KE,          sizeof(double), Norb, false);
+	sprintf(path, "%s_phonon_PE.dat",          fnbase); WriteData(path, meas_data->PE,          sizeof(double), Norb, false);
+	sprintf(path, "%s_phonon_iteration_X_avg.dat", fnbase); WriteData(path, meas_data->iteration_X_avg, sizeof(double), Norb * max_nsampl, false);
+	sprintf(path, "%s_phonon_iteration_X0.dat",    fnbase); WriteData(path, meas_data->iteration_X0,    sizeof(double), Norb * max_nsampl, false);
+	sprintf(path, "%s_phonon_n_local_accept.dat",  fnbase); WriteData(path, &meas_data->n_local_accept, sizeof(int), 1, false);
+	sprintf(path, "%s_phonon_n_local_total.dat",   fnbase); WriteData(path, &meas_data->n_local_total,  sizeof(int), 1, false);
+	sprintf(path, "%s_phonon_n_block_accept.dat",  fnbase); WriteData(path, &meas_data->n_block_accept, sizeof(int), 1, false);
+	sprintf(path, "%s_phonon_n_block_total.dat",   fnbase); WriteData(path, &meas_data->n_block_total,  sizeof(int), 1, false);
 }

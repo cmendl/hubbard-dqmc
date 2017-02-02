@@ -199,7 +199,8 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 ///
 void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
 	const phonon_params_t *restrict phonon_params, randseed_t *restrict seed, const spin_field_t *restrict s, double *restrict X, double *restrict expX,
-	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd)
+	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
+	int *n_block_accept, int *n_block_total)
 {
 	__assume_aligned(   X, MEM_DATA_ALIGN);
 	__assume_aligned(expX, MEM_DATA_ALIGN);
@@ -233,9 +234,6 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	time_step_matrices_t tsm_d_new;
 	AllocateTimeStepMatrices(N, L, tsm_u->prodBlen, &tsm_u_new);
 	AllocateTimeStepMatrices(N, L, tsm_d->prodBlen, &tsm_d_new);
-
-	int nblock_accept = 0;		// number of accepted block updates
-	int nblock_reject = 0;		// number of rejected block updates
 
 	int n;
 	for (n = 0; n < phonon_params->nblock_updates; n++)
@@ -298,9 +296,10 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 		}
 
 		// decide whether block update is accepted; note that det(G) = 1/det(M)
+		(*n_block_total)++;
 		if (Random_GetUniform(seed) < exp((Gu_ref.logdet + Gd_ref.logdet) - (Gu->logdet + Gd->logdet) - dt * dEph))
 		{
-			nblock_accept++;
+			(*n_block_accept)++;
 
 			// copy new time step matrices
 			CopyTimeStepMatrices(&tsm_u_new, tsm_u);
@@ -308,8 +307,6 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 		}
 		else
 		{
-			nblock_reject++;
-
 			// undo changes
 			int l;
 			for (l = 0; l < L; l++)
@@ -477,8 +474,10 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			// change of the phonon (lattice) energy
 			const double dEph = dx * (0.5*square(phonon_params->omega[o])*(dx + 2*X[i + l*N]) + inv_dt_sq*(dx - (X[i + l_next*N] - 2*X[i + l*N] + X[i + l_prev*N])));
 
+			meas_data_phonon->n_local_total++;
 			if (Random_GetUniform(seed) < fabs(du*dd) * exp(-dt * dEph))
 			{
+				meas_data_phonon->n_local_accept++;
 				// Eq. (15)
 				#pragma omp parallel sections
 				{
@@ -558,14 +557,15 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 
 			// accumulate phonon data
 			Profile_Begin("DQMCIter_AccumulatePhonon");
-			AccumulatePhononData(Gu, Gd, X, meas_data_phonon);
+			AccumulatePhononData(Gu, Gd, X, dt, phonon_params->omega, meas_data_phonon);
 			Profile_End("DQMCIter_AccumulatePhonon");
 		}
 	}
 
 	// perform block updates
 	Profile_Begin("DQMCIter_PhononBlock");
-	PhononBlockUpdates(dt, kinetic, stratonovich_params, phonon_params, seed, s, X, expX, tsm_u, tsm_d, Gu, Gd);
+	PhononBlockUpdates(dt, kinetic, stratonovich_params, phonon_params, seed, s, X, expX, tsm_u, tsm_d, Gu, Gd,
+	                   &meas_data_phonon->n_block_accept, &meas_data_phonon->n_block_total);
 	Profile_End("DQMCIter_PhononBlock");
 	// clean up
 	MKL_free(orb_cell_order);

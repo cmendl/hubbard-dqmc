@@ -131,36 +131,45 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 ///
 typedef struct
 {
-	double *X_iteration;		//!< average X for every measurement; use this to estimate autocorrelation
-	double *X_avg;				//!< average X
-	double *X_sqr;				//!< average X^2
+	double *X_avg;				//!< <1/N sum_r X(r)>
+	double *X_avg_sq;			//!< <(1/N sum_r X(r))^2>
+	double *X_sq_avg;			//!< <1/N sum_r X(r)^2>
+	double *V_avg;
+	double *V_sq_avg;
+	double *PE;
+	double *KE;
+
+	// use these to plot sample autocorrelation functions
+	double *iteration_X_avg;			//!< X_avg for every measurement.
+	double *iteration_X0;				//!< X(r=0)
+
+	int n_local_accept;		//!< number of accepted updates per (momentum) site
+	int n_local_total;		//!< number of total updates per (momentum) site
+	int n_block_accept;		//!< number of accepted block updates per (momentum) site
+	int n_block_total;		//!< number of total block updates per (momentum) site
 
 	int Norb;					//!< number of orbitals per unit cell
 	int Ncell;					//!< total number of unit cells
-	int L;						//!< total number of time steps
+	int L;
 
 	double sign;				//!< accumulated Green's function signs (+-1)
 
 	int nsampl;					//!< number of accumulated samples
-	int max_nsampl;				//!< number of intended samples
+	int max_nsampl;					//!< what nsampl should be at the end
 }
 measurement_data_phonon_t;
-
 
 void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, const int max_nsampl, measurement_data_phonon_t *restrict meas_data);
 
 void DeletePhononData(measurement_data_phonon_t *restrict meas_data);
 
-
-void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, measurement_data_phonon_t *restrict meas_data);
+void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, const double dt, const double *restrict omega, measurement_data_phonon_t *restrict meas_data);
 
 void NormalizePhononData(measurement_data_phonon_t *meas_data);
-
 
 void PrintPhononData(const measurement_data_phonon_t *meas_data);
 
 void SavePhononData(const char *fnbase, const measurement_data_phonon_t *meas_data);
-
 
 
 #endif
