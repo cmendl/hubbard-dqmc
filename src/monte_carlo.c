@@ -214,7 +214,7 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	const int L = tsm_u->L;
 
 	// fast return for zero block updates
-	if (phonon_params->nblock_updates <= 0) {
+	if (phonon_params->n_block_updates <= 0) {
 		return;
 	}
 
@@ -236,7 +236,7 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	AllocateTimeStepMatrices(N, L, tsm_d->prodBlen, &tsm_d_new);
 
 	int n;
-	for (n = 0; n < phonon_params->nblock_updates; n++)
+	for (n = 0; n < phonon_params->n_block_updates; n++)
 	{
 		// randomly select a lattice site
 		int i = (int)(Random_GetBoundedUint(seed, N));
@@ -260,7 +260,7 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 		CopyGreensFunction(Gd, &Gd_ref);
 
 		// suggest a simultaneous shift of X_{i,l} for all 'l'
-		const double dx = (Random_GetUniform(seed) - 0.5) * phonon_params->box_width;
+		const double dx = (Random_GetUniform(seed) - 0.5) * phonon_params->block_box_width;
 
 		// calculate change of the phonon (lattice) energy
 		double dEph = 0;
@@ -450,9 +450,9 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 		Profile_Begin("DQMCIter_XUpdate");
 		Random_Shuffle(seed, N, orb_cell_order);
 		int j;
-		for (j = 0; j < N; j++)
+		for (j = 0; j < phonon_params->n_local_updates; j++)
 		{
-			const int i = orb_cell_order[j];
+			const int i = orb_cell_order[j % N];
 			const int o = i / Ncell;	// orbital index
 			assert(0 <= i && i < N);
 			assert(0 <= o && o < kinetic->Norb);
@@ -464,7 +464,7 @@ void DQMCPhononIteration(const double dt, const kinetic_t *restrict kinetic, con
 			}
 
 			// suggest a shift of X_{i,l}
-			const double dx = (Random_GetUniform(seed) - 0.5) * phonon_params->box_width;
+			const double dx = (Random_GetUniform(seed) - 0.5) * phonon_params->local_box_width;
 
 			// Eq. (19) in PRB 87, 235133 (2013)
 			const double delta = expm1(-dt*phonon_params->g[o] * dx);

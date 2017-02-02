@@ -17,3 +17,11 @@ nequil		512
 nsampl		512
 neqlt		8
 nuneqlt		0
+
+#use_phonons true
+#phonon_omega 1.0
+#phonon_g 2.0
+#phonon_local_box_width 2.0
+#phonon_n_local_updates 64
+#phonon_block_box_width 4.0
+#phonon_n_block_updates 16

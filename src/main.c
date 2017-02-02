@@ -212,7 +212,7 @@ int main(int argc, char *argv[])
 				}
 				else
 				{
-					X[i + l*N] = (Random_GetUniform(&seed) - 0.5) * params.phonon_params.box_width;
+					X[i + l*N] = (Random_GetUniform(&seed) - 0.5) * params.phonon_params.local_box_width;
 				}
 				expX[i + l*N] = exp(-params.dt*params.phonon_params.g[o] * X[i + l*N]);
 			}

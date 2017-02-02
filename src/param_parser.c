@@ -329,8 +329,10 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 			return -3;
 		}
 	}
-	if ((value = HashTableGet(&hashtable, "phonon_box_width")) != NULL)      { params->phonon_params.box_width      = atof(value->str[0]); }
-	if ((value = HashTableGet(&hashtable, "phonon_nblock_updates")) != NULL) { params->phonon_params.nblock_updates = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "phonon_local_box_width")) != NULL)  { params->phonon_params.local_box_width = atof(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "phonon_n_local_updates")) != NULL)  { params->phonon_params.n_local_updates = atoi(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "phonon_block_box_width"))  != NULL) { params->phonon_params.block_box_width = atof(value->str[0]); }
+	if ((value = HashTableGet(&hashtable, "phonon_n_block_updates")) != NULL)  { params->phonon_params.n_block_updates = atoi(value->str[0]); }
 
 	// time flow parameters
 	if ((value = HashTableGet(&hashtable, "dt"))       != NULL) { params->dt       = atof(value->str[0]); }
@@ -523,8 +525,10 @@ void PrintSimulationParameters(const sim_params_t *params)
 	{
 		duprintf("                phonon frequency: ");   PrintList(Norb, params->phonon_params.omega);  duprintf("\n");
 		duprintf("               electron-phonon g: ");   PrintList(Norb, params->phonon_params.g);      duprintf("\n");
-		duprintf("         phonon update box width: %g\n", params->phonon_params.box_width);
-		duprintf("  number of phonon block updates: %i\n", params->phonon_params.nblock_updates);
+		duprintf("   phonon local update box width: %g\n", params->phonon_params.local_box_width);
+		duprintf("         number of local updates: %i\n", params->phonon_params.n_local_updates);
+		duprintf("   phonon block update box width: %g\n", params->phonon_params.block_box_width);
+		duprintf("  number of phonon block updates: %i\n", params->phonon_params.n_block_updates);
 	}
 	duprintf("                       time step: %g\n", params->dt);
 	duprintf("                               L: %i\n", params->L);
