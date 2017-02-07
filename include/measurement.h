@@ -147,6 +147,8 @@ typedef struct
 	int n_local_total;		//!< number of total updates per (momentum) site
 	int n_block_accept;		//!< number of accepted block updates per (momentum) site
 	int n_block_total;		//!< number of total block updates per (momentum) site
+	int n_flip_accept;		//!< number of accepted block updates per (momentum) site
+	int n_flip_total;		//!< number of total block updates per (momentum) site
 
 	int Norb;					//!< number of orbitals per unit cell
 	int Ncell;					//!< total number of unit cells

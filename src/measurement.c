@@ -911,6 +911,8 @@ void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pb
 	meas_data->n_local_total = 0;
 	meas_data->n_block_accept = 0;
 	meas_data->n_block_total = 0;
+	meas_data->n_flip_accept = 0;
+	meas_data->n_flip_total = 0;
 }
 
 void DeletePhononData(measurement_data_phonon_t *restrict meas_data)
@@ -1015,6 +1017,7 @@ void PrintPhononData(const measurement_data_phonon_t *meas_data)
 		duprintf("\nResults for orbital %d\n", o);
 		duprintf("          local acceptance ratio: %g\n", (double)meas_data->n_local_accept/meas_data->n_local_total);
 		duprintf("          block acceptance ratio: %g\n", (double)meas_data->n_block_accept/meas_data->n_block_total);
+		duprintf("           flip acceptance ratio: %g\n", (double)meas_data->n_flip_accept/meas_data->n_flip_total);
 		duprintf("                       average X: %g\n", meas_data->X_avg[o]);
 		duprintf("                     average X^2: %g\n", meas_data->X_sq_avg[o]);
 		duprintf("                     average V^2: %g\n", meas_data->V_sq_avg[o]);

@@ -29,8 +29,10 @@ eps         4.25, 5.29, 5.29
 # use_phonons             true
 # phonon_omega            0.0, 1.0, 1.0
 # phonon_g                0.0, 2.0, 2.0
-# phonon_box_width        1.0
-# phonon_nblock_updates   3
+# phonon_local_box_width 1.0
+# phonon_n_local_updates 32
+# phonon_block_box_width 8.0
+# phonon_n_block_updates 8
 
 # chemical potential
 mu          -0.35
