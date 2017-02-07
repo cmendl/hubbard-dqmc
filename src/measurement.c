@@ -355,24 +355,25 @@ void NormalizeMeasurementData(measurement_data_t *meas_data)
 ///
 void PrintMeasurementDataSummary(const measurement_data_t *meas_data)
 {
+	const double sgn = meas_data->sign;
 	duprintf("_______________________________________________________________________________\n");
 	duprintf("Summary of simulation results\n\n");
-	duprintf("                    average sign: %g\n", meas_data->sign);
+	duprintf("                    average sign: %g\n", sgn);
 	double total_density = 0;
 	int o;
 	for (o = 0; o < meas_data->Norb; o++)
 	{
 		total_density += meas_data->density_u[o] + meas_data->density_d[o];
 	}
-	duprintf("           average total density: %g\n", total_density);
+	duprintf("           average total density: %g\n", total_density/sgn);
 	for (o = 0; o < meas_data->Norb; o++)
 	{
 		duprintf("\nResults for orbital %d\n", o);
-		duprintf("           average total density: %g\n", meas_data->density_u[o] + meas_data->density_d[o]);
-		duprintf("         average spin-up density: %g\n", meas_data->density_u[o]);
-		duprintf("       average spin-down density: %g\n", meas_data->density_d[o]);
-		duprintf("        average double occupancy: %g\n", meas_data->doubleocc[o]);
-		duprintf("            average local moment: %g\n", meas_data->density_u[o] + meas_data->density_d[o] - 2.0*meas_data->doubleocc[o]);
+		duprintf("           average total density: %g\n", (meas_data->density_u[o] + meas_data->density_d[o])/sgn);
+		duprintf("         average spin-up density: %g\n", meas_data->density_u[o]/sgn);
+		duprintf("       average spin-down density: %g\n", meas_data->density_d[o]/sgn);
+		duprintf("        average double occupancy: %g\n", meas_data->doubleocc[o]/sgn);
+		duprintf("            average local moment: %g\n", (meas_data->density_u[o] + meas_data->density_d[o] - 2.0*meas_data->doubleocc[o])/sgn);
 	}
 }
 
@@ -988,10 +989,10 @@ void NormalizePhononData(measurement_data_phonon_t *meas_data)
 	const int Ncell = meas_data->Ncell;
 	const int N     = Ncell * Norb;
 
-	// normalization factor; sign must be non-zero
-	const double nfac = 1.0 / meas_data->sign;
+	// normalization factor
+	const double nfac = 1.0 / meas_data->nsampl;
 
-	// divide by sign
+	// divide by nsampl to get <s A>
 	cblas_dscal(Norb, nfac, meas_data->X_avg, 1);
 	cblas_dscal(Norb, nfac, meas_data->X_avg_sq, 1);
 	cblas_dscal(Norb, nfac, meas_data->X_sq_avg, 1);
@@ -1001,16 +1002,17 @@ void NormalizePhononData(measurement_data_phonon_t *meas_data)
 	cblas_dscal(Norb, nfac, meas_data->KE, 1);
 
 	// calculate average sign
-	meas_data->sign /= meas_data->nsampl;
+	meas_data->sign *= nfac;
 }
 
 void PrintPhononData(const measurement_data_phonon_t *meas_data)
 {
 	const int Ncell = meas_data->Ncell;
+	const double sgn = meas_data->sign;
 
 	duprintf("_______________________________________________________________________________\n");
 	duprintf("Summary of phonon data\n\n");
-	duprintf("                    average sign: %g\n", meas_data->sign);
+	duprintf("                    average sign: %g\n", sgn);
 	int o;
 	for (o = 0; o < meas_data->Norb; o++)
 	{
@@ -1018,11 +1020,11 @@ void PrintPhononData(const measurement_data_phonon_t *meas_data)
 		duprintf("          local acceptance ratio: %g\n", (double)meas_data->n_local_accept/meas_data->n_local_total);
 		duprintf("          block acceptance ratio: %g\n", (double)meas_data->n_block_accept/meas_data->n_block_total);
 		duprintf("           flip acceptance ratio: %g\n", (double)meas_data->n_flip_accept/meas_data->n_flip_total);
-		duprintf("                       average X: %g\n", meas_data->X_avg[o]);
-		duprintf("                     average X^2: %g\n", meas_data->X_sq_avg[o]);
-		duprintf("                     average V^2: %g\n", meas_data->V_sq_avg[o]);
-		duprintf("               average phonon KE: %g\n", meas_data->KE[o]);
-		duprintf("               average phonon PE: %g\n", meas_data->PE[o]);
+		duprintf("                       average X: %g\n", meas_data->X_avg[o]/sgn);
+		duprintf("                     average X^2: %g\n", meas_data->X_sq_avg[o]/sgn);
+		duprintf("                     average V^2: %g\n", meas_data->V_sq_avg[o]/sgn);
+		duprintf("               average phonon KE: %g\n", meas_data->KE[o]/sgn);
+		duprintf("               average phonon PE: %g\n", meas_data->PE[o]/sgn);
 	}
 }
 
