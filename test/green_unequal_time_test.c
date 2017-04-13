@@ -10,9 +10,9 @@ int GreenUnequalTimeTest()
 {
 	int status;
 
-	const int N = 5;			// block size
-	const int L = 6;			// number of time steps
-	const int prodBlen = 3;		// number of B matrices pre-multiplied together
+	const int N = 5;            // block size
+	const int L = 6;            // number of time steps
+	const int prodBlen = 3;     // number of B matrices pre-multiplied together
 
 	printf("Computing the unequal time Green's function for N = %i and L = %i...\n", N, L);
 

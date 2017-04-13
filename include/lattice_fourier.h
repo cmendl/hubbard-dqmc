@@ -10,13 +10,13 @@
 ///
 typedef struct
 {
-	DFTI_DESCRIPTOR_HANDLE hand_forw;	//!< forward  Fourier transform descriptor
-	DFTI_DESCRIPTOR_HANDLE hand_back;	//!< backward Fourier transform descriptor
+	DFTI_DESCRIPTOR_HANDLE hand_forw;   //!< forward  Fourier transform descriptor
+	DFTI_DESCRIPTOR_HANDLE hand_back;   //!< backward Fourier transform descriptor
 
-	double nfac;						//!< normalization factor
+	double nfac;                        //!< normalization factor
 
-	int Nx;								//!< x-dimension of the square lattice
-	int Ny;								//!< y-dimension of the square lattice
+	int Nx;                             //!< x-dimension of the square lattice
+	int Ny;                             //!< y-dimension of the square lattice
 }
 lattice_fourier_desc_t;
 

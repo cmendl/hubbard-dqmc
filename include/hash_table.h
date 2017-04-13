@@ -8,9 +8,9 @@
 ///
 typedef struct ht_entry_s
 {
-	struct ht_entry_s *next;	//!< pointer to next entry
-	char *key;					//!< key, as character string
-	void *val;					//!< pointer to corresponding value
+	struct ht_entry_s *next;    //!< pointer to next entry
+	char *key;                  //!< key, as character string
+	void *val;                  //!< pointer to corresponding value
 }
 ht_entry_t;
 
@@ -22,9 +22,9 @@ ht_entry_t;
 ///
 typedef struct
 {
-	ht_entry_t **buckets;	//!< each bucket is a linked list of entries
-	int n_entries;			//!< number of entries
-	int n_buckets;			//!< number of buckets
+	ht_entry_t **buckets;   //!< each bucket is a linked list of entries
+	int n_entries;          //!< number of entries
+	int n_buckets;          //!< number of buckets
 }
 hash_table_t;
 

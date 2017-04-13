@@ -65,7 +65,7 @@ void GreenConstruct(const time_step_matrices_t *restrict tsm, const int slice_sh
 
 	// allocate memory for time flow map
 	double *Q   = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *tau = (double *)MKL_malloc(N   * sizeof(double), MEM_DATA_ALIGN);	// scalar factors of the elementary reflectors for the matrix Q
+	double *tau = (double *)MKL_malloc(N   * sizeof(double), MEM_DATA_ALIGN);   // scalar factors of the elementary reflectors for the matrix Q
 	double *d   = (double *)MKL_malloc(N   * sizeof(double), MEM_DATA_ALIGN);
 	double *T   = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 	__assume_aligned(Q,   MEM_DATA_ALIGN);
@@ -117,9 +117,9 @@ void GreenConstruct(const time_step_matrices_t *restrict tsm, const int slice_sh
 			G->sgndet = -G->sgndet;
 		}
 		assert(t > 0);
-		G->logdet -= log(t);	// same as log(1/t)
+		G->logdet -= log(t);    // same as log(1/t)
 
-		if (ipiv[i] != i + 1)	// ipiv uses 1-based indices!
+		if (ipiv[i] != i + 1)   // ipiv uses 1-based indices!
 		{
 			G->sgndet = -G->sgndet;
 		}
@@ -139,7 +139,7 @@ void GreenConstruct(const time_step_matrices_t *restrict tsm, const int slice_sh
 			G->sgndet = -G->sgndet;
 		}
 		assert(t > 0);
-		G->logdet -= log(t);	// same as log(1/t)
+		G->logdet -= log(t);    // same as log(1/t)
 	}
 	// Q contributes a factor 1 or -1 to determinant
 	for (i = 0; i < N; i++)

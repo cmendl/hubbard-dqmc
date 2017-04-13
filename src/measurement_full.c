@@ -37,10 +37,10 @@ static void ConstructLatticeNearestNeighborMap(const int Nx, const int Ny, int *
 			// index of (i,j) lattice site
 			const int ij = i + Nx*j;
 
-			latt_xp1_map[ij] = i_next + Nx*j;			// index of (i+1,j) lattice site
-			latt_xm1_map[ij] = i_prev + Nx*j;			// index of (i-1,j) lattice site
-			latt_yp1_map[ij] = i      + Nx*j_next;		// index of (i,j+1) lattice site
-			latt_ym1_map[ij] = i      + Nx*j_prev;		// index of (i,j-1) lattice site
+			latt_xp1_map[ij] = i_next + Nx*j;           // index of (i+1,j) lattice site
+			latt_xm1_map[ij] = i_prev + Nx*j;           // index of (i-1,j) lattice site
+			latt_yp1_map[ij] = i      + Nx*j_next;      // index of (i,j+1) lattice site
+			latt_ym1_map[ij] = i      + Nx*j_prev;      // index of (i,j-1) lattice site
 		}
 	}
 }
@@ -173,7 +173,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 			const double Gu_ji = Gu->mat[j + N*i];
 			const double Gd_ji = Gd->mat[j + N*i];
 
-			if (i == j)		// special case: same lattice site and orbital
+			if (i == j)     // special case: same lattice site and orbital
 			{
 				meas_data->uu_corr[i + N*j] += sign*(1 - Gu_ii);
 				meas_data->dd_corr[i + N*j] += sign*(1 - Gd_ii);
@@ -507,7 +507,7 @@ void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrice
 		}
 	}
 
-	for (l = 0; l < L; l++)		// for all discrete time differences...
+	for (l = 0; l < L; l++)     // for all discrete time differences...
 	{
 		// accumulate density and spin correlation data
 
@@ -857,7 +857,7 @@ void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t 
 	const double signfac = sign / Ncell / L;
 
 	int l;
-	for (l = 0; l < L; l++)		// for all discrete time differences...
+	for (l = 0; l < L; l++)     // for all discrete time differences...
 	{
 		int o;
 		for (o = 0; o < Norb; o++)

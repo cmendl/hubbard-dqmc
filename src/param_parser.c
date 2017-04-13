@@ -42,8 +42,8 @@ void DeleteBondHoppings(bond_hoppings_t *bonds)
 ///
 typedef struct
 {
-	char *str[1024];		//!< string values
-	int num;				//!< number of values
+	char *str[1024];        //!< string values
+	int num;                //!< number of values
 }
 value_list_t;
 
@@ -113,7 +113,7 @@ static int ReadHoppings(const int Norb, const value_list_t *list, double *t)
 		const int b = atoi(list->str[i + 1]);
 		if (a < 0 || a >= Norb || b < 0 || b >= Norb)
 		{
-			return -2;	// orbital index out of bounds
+			return -2;  // orbital index out of bounds
 		}
 
 		// update the t array with bond information
@@ -199,7 +199,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 		// add the (name, value) pair to the hash table;
 		// if the hash table already has an entry for the parameter name, concatenate values
 		value_list_t *val_prev = (value_list_t *)HashTableGet(&hashtable, name);
-		if (val_prev == NULL)	// not in hash table yet
+		if (val_prev == NULL)   // not in hash table yet
 		{
 			value_list_t *v = MKL_calloc(1, sizeof(value_list_t), MEM_DATA_ALIGN);
 			AppendValues(v, &value);
@@ -532,7 +532,7 @@ void PrintSimulationParameters(const sim_params_t *params)
 	}
 	duprintf("                       time step: %g\n", params->dt);
 	duprintf("                               L: %i\n", params->L);
-	duprintf("                            beta: %g\n", params->L*params->dt);	// inverse temperature
+	duprintf("                            beta: %g\n", params->L*params->dt);   // inverse temperature
 	duprintf("                        prodBlen: %i\n", params->prodBlen);
 	duprintf("                          nwraps: %i\n", params->nwraps);
 

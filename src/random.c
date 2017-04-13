@@ -15,9 +15,9 @@ void Random_SeedInit(uint64_t n, randseed_t *seed)
 	int i;
 	for (i = 0; i < 16; i++)
 	{
-		n ^= n >> 12;	// a
-		n ^= n << 25;	// b
-		n ^= n >> 27;	// c
+		n ^= n >> 12;   // a
+		n ^= n << 25;   // b
+		n ^= n >> 27;   // c
 
 		// 2685821657736338717 = 72821711 * 36882155347, from Pierre L'Ecuyer's paper
 		seed->s[i] = n * 2685821657736338717LL;
@@ -43,9 +43,9 @@ uint64_t Random_GetUint(randseed_t *seed)
 	uint64_t s0 = seed->s[seed->p];
 	seed->p = (seed->p + 1) & 15;
 	uint64_t s1 = seed->s[seed->p];
-	s1 ^= s1 << 31;		// a
-	s1 ^= s1 >> 11;		// b
-	s0 ^= s0 >> 30;		// c
+	s1 ^= s1 << 31;     // a
+	s1 ^= s1 >> 11;     // b
+	s0 ^= s0 >> 30;     // c
 	seed->s[seed->p] = s0 ^ s1;
 
 	// 1181783497276652981 = 769 * 13611541 * 112902689, from Pierre L'Ecuyer's paper
@@ -60,7 +60,7 @@ uint64_t Random_GetUint(randseed_t *seed)
 ///
 uint64_t Random_GetBoundedUint(randseed_t *seed, const uint64_t bound)
 {
-	const uint64_t thresh = (-bound) % bound;	// (-bound) = UINT64_MAX - bound + 1
+	const uint64_t thresh = (-bound) % bound;   // (-bound) = UINT64_MAX - bound + 1
 
 	for (;;)
 	{

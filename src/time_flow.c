@@ -27,7 +27,7 @@ inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const doubl
 	int i;
 	for (i = 0; i < N; i++)
 	{
-		const int o = i / Ncell;	// orbital index
+		const int o = i / Ncell;    // orbital index
 		assert(0 <= o && o < kinetic->Norb);
 		cblas_dscal(N, expV[s[i]][o], &B[i], N);
 	}
@@ -52,7 +52,7 @@ inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, cons
 	int i;
 	for (i = 0; i < N; i++)
 	{
-		const int o = i / Ncell;	// orbital index
+		const int o = i / Ncell;    // orbital index
 		assert(0 <= o && o < kinetic->Norb);
 		cblas_dscal(N, expV[1 - s[i]][o], &invB[i*N], 1);
 	}
@@ -78,7 +78,7 @@ inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const
 	int i;
 	for (i = 0; i < N; i++)
 	{
-		const int o = i / Ncell;	// orbital index
+		const int o = i / Ncell;    // orbital index
 		assert(0 <= o && o < kinetic->Norb);
 		cblas_dscal(N, expV[s[i]][o] * expX[i], &B[i], N);
 	}
@@ -103,7 +103,7 @@ inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict kinetic
 	int i;
 	for (i = 0; i < N; i++)
 	{
-		const int o = i / Ncell;	// orbital index
+		const int o = i / Ncell;    // orbital index
 		assert(0 <= o && o < kinetic->Norb);
 		cblas_dscal(N, expV[1 - s[i]][o] / expX[i], &invB[i*N], 1);
 	}
@@ -339,7 +339,7 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 
 	// divide 'slice_shift' by product length of the B matrices
 	assert(slice_shift >= 0);
-	assert(slice_shift % tsm->prodBlen == 0);	// must be a multiple of 'tsm->prodBlen'
+	assert(slice_shift % tsm->prodBlen == 0);   // must be a multiple of 'tsm->prodBlen'
 	const int prod_slice_shift = slice_shift / tsm->prodBlen;
 
 	// temporary matrix for calculating QR decompositions and obtaining column norms for pre-pivoting
@@ -367,7 +367,7 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 		memcpy(Q, srcBprod, N*N * sizeof(double));
 
 		// perform a QR-decomposition with column pivoting of the product of subsequent B matrices
-		memset(jpvt, 0, N * sizeof(lapack_int));	// all columns of the input matrix are "free" columns
+		memset(jpvt, 0, N * sizeof(lapack_int));    // all columns of the input matrix are "free" columns
 		LAPACKE_dgeqp3(LAPACK_COL_MAJOR, N, N, Q, N, jpvt, tau);
 
 		// extract diagonal entries

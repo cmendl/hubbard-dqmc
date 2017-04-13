@@ -11,15 +11,15 @@
 ///
 typedef struct
 {
-	enum { INIT, EQUILIB, MEASURE, OUTPUT } state;	//!< current state
-	int nequil;										//!< total number of equilibration sweeps
-	int nsampl;										//!< total number of measurement sweeps
-	int niter;										//!< number of iterations in current state and current run
-	int *iteration;									//!< pointer to number of total iterations (i.e. including previous checkpoints)
-	uint64_t t_start;								//!< starting time (in ticks)
-	uint64_t t_equilib_start;						//!< starting time of warmup iterations
-	uint64_t t_measure_start;						//!< starting time of measurement iterations
-	uint64_t t_last_iter;							//!< time last iteration finished
+	enum { INIT, EQUILIB, MEASURE, OUTPUT } state;  //!< current state
+	int nequil;                                     //!< total number of equilibration sweeps
+	int nsampl;                                     //!< total number of measurement sweeps
+	int niter;                                      //!< number of iterations in current state and current run
+	int *iteration;                                 //!< pointer to number of total iterations (i.e. including previous checkpoints)
+	uint64_t t_start;                               //!< starting time (in ticks)
+	uint64_t t_equilib_start;                       //!< starting time of warmup iterations
+	uint64_t t_measure_start;                       //!< starting time of measurement iterations
+	uint64_t t_last_iter;                           //!< time last iteration finished
 }
 dqmc_progress_t;
 

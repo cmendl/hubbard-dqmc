@@ -67,10 +67,10 @@ static void ConstructLatticeNearestNeighborMap(const int Nx, const int Ny, int *
 			// index of (i,j) lattice site
 			const int ij = i + Nx*j;
 
-			latt_xp1_map[ij] = i_next + Nx*j;			// index of (i+1,j) lattice site
-			latt_xm1_map[ij] = i_prev + Nx*j;			// index of (i-1,j) lattice site
-			latt_yp1_map[ij] = i      + Nx*j_next;		// index of (i,j+1) lattice site
-			latt_ym1_map[ij] = i      + Nx*j_prev;		// index of (i,j-1) lattice site
+			latt_xp1_map[ij] = i_next + Nx*j;           // index of (i+1,j) lattice site
+			latt_xm1_map[ij] = i_prev + Nx*j;           // index of (i-1,j) lattice site
+			latt_yp1_map[ij] = i      + Nx*j_next;      // index of (i,j+1) lattice site
+			latt_ym1_map[ij] = i      + Nx*j_prev;      // index of (i,j-1) lattice site
 		}
 	}
 }
@@ -169,8 +169,8 @@ void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 ///
 void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, measurement_data_t *restrict meas_data)
 {
-	int i, k;	// spatial indices
-	int o, p;	// orbital indices
+	int i, k;   // spatial indices
+	int o, p;   // orbital indices
 
 	// lattice dimensions
 	const int Norb  = meas_data->Norb;
@@ -232,7 +232,7 @@ void AccumulateMeasurement(const greens_func_t *restrict Gu, const greens_func_t
 					const double Gu_ji = Gu->mat[jp + N*io];
 					const double Gd_ji = Gd->mat[jp + N*io];
 
-					if (k == 0 && o == p)	// special case: same lattice site and orbital
+					if (k == 0 && o == p)   // special case: same lattice site and orbital
 					{
 						meas_data->uu_corr[k + offset] += signfac*(1 - Gu_ii);
 						meas_data->dd_corr[k + offset] += signfac*(1 - Gd_ii);
@@ -575,7 +575,7 @@ void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrice
 	// sign and normalization factor
 	const double signfac = sign / Ncell;
 
-	for (l = 0; l < L; l++)		// for all discrete time differences...
+	for (l = 0; l < L; l++)     // for all discrete time differences...
 	{
 		for (o = 0; o < Norb; o++)
 		{
@@ -884,10 +884,13 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 }
 
 
+//________________________________________________________________________________________________________________________
+///
+/// \brief Allocate phonon measurement data
+///
 void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, const int max_nsampl, measurement_data_phonon_t *restrict meas_data)
 {
 	const int Ncell = Nx * Ny;
-	const int N     = Ncell * Norb;
 
 	meas_data->Norb  = Norb;
 	meas_data->Ncell = Ncell;
@@ -916,6 +919,11 @@ void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pb
 	meas_data->n_flip_total = 0;
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Delete phonon measurement data (free memory)
+///
 void DeletePhononData(measurement_data_phonon_t *restrict meas_data)
 {
 	MKL_free(meas_data->iteration_X0);
@@ -929,11 +937,16 @@ void DeletePhononData(measurement_data_phonon_t *restrict meas_data)
 	MKL_free(meas_data->X_avg);
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Accumulate phonon measurements
+///
 void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, const double dt, const double *restrict omega, measurement_data_phonon_t *restrict meas_data)
 {
 	int l;
-	int i, k;	// spatial indices
-	int o, p;	// orbital indices
+	int i;      // spatial index
+	int o;      // orbital index
 
 	// lattice dimensions
 	const int Norb  = meas_data->Norb;
@@ -949,9 +962,9 @@ void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t 
 	const double signfac = sign / Ncell / L;
 
 	double *cur_X_avg = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
-	for (l = 0; l < L; l++)		// for all discrete time differences...
+	for (l = 0; l < L; l++)     // for all discrete time differences...
 	{
-		const int lplus = (l+1)%L;
+		const int lplus = (l + 1) % L;
 		for (o = 0; o < Norb; o++)
 		{
 			for (i = 0; i < Ncell; i++)
@@ -982,12 +995,15 @@ void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t 
 	meas_data->nsampl++;
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Normalize phonon measurement data (divide by number of samples)
+///
 void NormalizePhononData(measurement_data_phonon_t *meas_data)
 {
-	// total number of orbitals and cells
+	// total number of orbitals
 	const int Norb  = meas_data->Norb;
-	const int Ncell = meas_data->Ncell;
-	const int N     = Ncell * Norb;
 
 	// normalization factor
 	const double nfac = 1.0 / meas_data->nsampl;
@@ -1005,9 +1021,13 @@ void NormalizePhononData(measurement_data_phonon_t *meas_data)
 	meas_data->sign *= nfac;
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Print phonon measurement summary
+///
 void PrintPhononData(const measurement_data_phonon_t *meas_data)
 {
-	const int Ncell = meas_data->Ncell;
 	const double sgn = meas_data->sign;
 
 	duprintf("_______________________________________________________________________________\n");
@@ -1028,11 +1048,14 @@ void PrintPhononData(const measurement_data_phonon_t *meas_data)
 	}
 }
 
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Save phonon measurement data structure to disk
+///
 void SavePhononData(const char *fnbase, const measurement_data_phonon_t *meas_data)
 {
 	const int Norb       = meas_data->Norb;
-	const int Ncell      = meas_data->Ncell;
-	const int N          = Ncell * Norb;
 	const int max_nsampl = meas_data->max_nsampl;
 
 	char path[1024];

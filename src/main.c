@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 	// make sure there's an input file
 	if (argc < 2)
 	{
-		duprintf("No input file specified!.\n");
+		duprintf("No input file specified!\n");
 		return -1;
 	}
 
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 
 	// read parameters from input file
 	duprintf("Reading simulation parameters from file '%s'...\n", argv[1]);
-	status = ParseParameterFile(argv[1], &params);	// this also allocates memory for the arrays in params
+	status = ParseParameterFile(argv[1], &params);  // this also allocates memory for the arrays in params
 	if (status < 0)
 	{
 		duprintf("Error parsing parameter file, exiting...\n");
@@ -205,8 +205,8 @@ int main(int argc, char *argv[])
 			int i;
 			for (i = 0; i < N; i++)
 			{
-				const int o = i / Ncell;	// orbital index
-				if (params.phonon_params.g[o] == 0)	// set X to 0 if coupling is zero
+				const int o = i / Ncell;    // orbital index
+				if (params.phonon_params.g[o] == 0) // set X to 0 if coupling is zero
 				{
 					X[i + l*N] = 0;
 				}

@@ -11,8 +11,8 @@
 ///
 typedef struct
 {
-	uint64_t s[16];		//!< seed consists of 16*64 = 1024 bits
-	int p;				//!< counter
+	uint64_t s[16];     //!< seed consists of 16*64 = 1024 bits
+	int p;              //!< counter
 }
 randseed_t;
 

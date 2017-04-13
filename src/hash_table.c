@@ -67,7 +67,7 @@ void *HashTableInsert(hash_table_t *ht, const char *key, void *val)
 	// compute hash value of 'key'
 	const int i = FNV1a(key) % ht->n_buckets;
 
-	ht_entry_t **p_entry = &ht->buckets[i];		// p_entry is whatever was pointing at entry
+	ht_entry_t **p_entry = &ht->buckets[i];     // p_entry is whatever was pointing at entry
 	for (; (*p_entry) != NULL; p_entry = &(*p_entry)->next)
 	{
 		// current entry
@@ -126,7 +126,7 @@ void *HashTableRemove(hash_table_t *ht, const char *key)
 	// compute hash value of 'key'
 	const int i = FNV1a(key) % ht->n_buckets;
 
-	ht_entry_t **p_entry = &ht->buckets[i];		// p_entry is whatever was pointing at current entry
+	ht_entry_t **p_entry = &ht->buckets[i];     // p_entry is whatever was pointing at current entry
 	for (; (*p_entry) != NULL; p_entry = &(*p_entry)->next)
 	{
 		// current entry
@@ -136,9 +136,9 @@ void *HashTableRemove(hash_table_t *ht, const char *key)
 		{
 			// key found
 
-			(*p_entry) = entry->next;		// redirect pointer, effectively removing current entry from linked list
-			void *val = entry->val;			// keep reference to current value
-			MKL_free(entry->key);			// delete current entry
+			(*p_entry) = entry->next;       // redirect pointer, effectively removing current entry from linked list
+			void *val = entry->val;         // keep reference to current value
+			MKL_free(entry->key);           // delete current entry
 			MKL_free(entry);
 			ht->n_entries--;
 

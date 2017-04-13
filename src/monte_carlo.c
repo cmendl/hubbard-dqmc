@@ -45,7 +45,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	const int L = tsm_u->L;
 
 	assert(tsm_u->prodBlen == tsm_d->prodBlen);
-	assert(nwraps % tsm_u->prodBlen == 0);	// must be a multiple of 'prodBlen'
+	assert(nwraps % tsm_u->prodBlen == 0);  // must be a multiple of 'prodBlen'
 
 	// store Green's functions before recomputing them to estimate error
 	#if defined(DEBUG) | defined(_DEBUG)
@@ -81,7 +81,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 		for (j = 0; j < N; j++)
 		{
 			const int i = orb_cell_order[j];
-			const int o = i / Ncell;	// orbital index
+			const int o = i / Ncell;    // orbital index
 			assert(0 <= i && i < N);
 			assert(0 <= o && o < kinetic->Norb);
 
@@ -605,7 +605,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 	const int L = tsm_u->L;
 
 	assert(tsm_u->prodBlen == tsm_d->prodBlen);
-	assert(nwraps % tsm_u->prodBlen == 0);	// must be a multiple of 'prodBlen'
+	assert(nwraps % tsm_u->prodBlen == 0);  // must be a multiple of 'prodBlen'
 
 	// store Green's functions before recomputing them to estimate error
 	#if defined(DEBUG) | defined(_DEBUG)
@@ -646,7 +646,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 			for (j = 0; j < N; j++)
 			{
 				const int i = orb_cell_order[j];
-				const int o = i / Ncell;	// orbital index
+				const int o = i / Ncell;    // orbital index
 				assert(0 <= i && i < N);
 				assert(0 <= o && o < kinetic->Norb);
 
@@ -688,7 +688,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 		for (j = 0; j < phonon_params->n_local_updates; j++)
 		{
 			const int i = orb_cell_order[j % N];
-			const int o = i / Ncell;	// orbital index
+			const int o = i / Ncell;    // orbital index
 			assert(0 <= i && i < N);
 			assert(0 <= o && o < kinetic->Norb);
 

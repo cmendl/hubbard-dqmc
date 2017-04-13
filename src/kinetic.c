@@ -20,8 +20,8 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 	kinetic->Norb  = Norb;
 	kinetic->Ncell = Ncell;
 
-	int i, j;	// spatial lattice indices
-	int o, p;	// orbital indices
+	int i, j;   // spatial lattice indices
+	int o, p;   // orbital indices
 
 	double *T = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
 

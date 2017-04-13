@@ -10,10 +10,10 @@
 ///
 typedef struct
 {
-	double *expK;			//!< exp(-dt K)
-	double *inv_expK;		//!< exp( dt K)
-	int Norb;				//!< number of orbitals per unit cell
-	int Ncell;				//!< total number of unit cells of the lattice
+	double *expK;           //!< exp(-dt K)
+	double *inv_expK;       //!< exp( dt K)
+	int Norb;               //!< number of orbitals per unit cell
+	int Ncell;              //!< total number of unit cells of the lattice
 }
 kinetic_t;
 

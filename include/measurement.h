@@ -10,38 +10,38 @@
 ///
 typedef struct
 {
-	double *density_u;			//!< spin-up density, per orbital
-	double *density_d;			//!< spin-down density, per orbital
-	double *doubleocc;			//!< double occupancy, per orbital
+	double *density_u;          //!< spin-up density, per orbital
+	double *density_d;          //!< spin-down density, per orbital
+	double *doubleocc;          //!< double occupancy, per orbital
 
-	double *grfun_u;			//!< green's function for up spins:      <c_{i,up} c^{dagger}_{j,up}>
-	double *grfun_d;			//!< green's function for down spins:    <c_{i,dn} c^{dagger}_{j,dn}>
+	double *grfun_u;            //!< green's function for up spins:      <c_{i,up} c^{dagger}_{j,up}>
+	double *grfun_d;            //!< green's function for down spins:    <c_{i,dn} c^{dagger}_{j,dn}>
 
-	double *uu_corr;			//!< up-up density correlations:         <n_{i,up} n_{j,up}>
-	double *dd_corr;			//!< down-down density correlations:     <n_{i,dn} n_{j,dn}>
-	double *ud_corr;			//!< up-down density cross correlations: <n_{i,up} n_{j,dn} + n_{i,dn} n_{j,up}>
-	double *ff_corr;			//!< probably doesn't correspond to any physical quantity
+	double *uu_corr;            //!< up-up density correlations:         <n_{i,up} n_{j,up}>
+	double *dd_corr;            //!< down-down density correlations:     <n_{i,dn} n_{j,dn}>
+	double *ud_corr;            //!< up-down density cross correlations: <n_{i,up} n_{j,dn} + n_{i,dn} n_{j,up}>
+	double *ff_corr;            //!< probably doesn't correspond to any physical quantity
 
-	double *zz_corr;			//!< z-z spin correlations: <(n_{i,up} - n_{i,dn})(n_{j,up} - n_{j,dn})>
-	double *xx_corr;			//!< x-x spin correlations: <(x_{i,+1} + x_{i,-1})(x_{j,+1} + x_{j,-1})> with x_{i,+1} = c^{dagger}_{i,dn} c_{i,up} and x_{i,-1} = c^{dagger}_{i,up} c_{i,dn}
+	double *zz_corr;            //!< z-z spin correlations: <(n_{i,up} - n_{i,dn})(n_{j,up} - n_{j,dn})>
+	double *xx_corr;            //!< x-x spin correlations: <(x_{i,+1} + x_{i,-1})(x_{j,+1} + x_{j,-1})> with x_{i,+1} = c^{dagger}_{i,dn} c_{i,up} and x_{i,-1} = c^{dagger}_{i,up} c_{i,dn}
 
-	double *sc_c_sw;			//!< superconducting susceptibility for s-wave pairing
-	double *sc_c_dw;			//!< superconducting susceptibility for d-wave pairing
-	double *sc_c_sx;			//!< superconducting susceptibility for extended s-wave pairing
+	double *sc_c_sw;            //!< superconducting susceptibility for s-wave pairing
+	double *sc_c_dw;            //!< superconducting susceptibility for d-wave pairing
+	double *sc_c_sx;            //!< superconducting susceptibility for extended s-wave pairing
 
-	int *latt_sum_map;			//!< lattice site index of coordinate sum of two lattice sites; matrix of size Ncell x Ncell
+	int *latt_sum_map;          //!< lattice site index of coordinate sum of two lattice sites; matrix of size Ncell x Ncell
 
-	int *latt_xp1_map;			//!< index of right  neighbor lattice site (x+1,y); array of length Ncell
-	int *latt_xm1_map;			//!< index of left   neighbor lattice site (x-1,y); array of length Ncell
-	int *latt_yp1_map;			//!< index of top    neighbor lattice site (x,y+1); array of length Ncell
-	int *latt_ym1_map;			//!< index of bottom neighbor lattice site (x,y-1); array of length Ncell
+	int *latt_xp1_map;          //!< index of right  neighbor lattice site (x+1,y); array of length Ncell
+	int *latt_xm1_map;          //!< index of left   neighbor lattice site (x-1,y); array of length Ncell
+	int *latt_yp1_map;          //!< index of top    neighbor lattice site (x,y+1); array of length Ncell
+	int *latt_ym1_map;          //!< index of bottom neighbor lattice site (x,y-1); array of length Ncell
 
-	int Norb;					//!< number of orbitals per unit cell
-	int Ncell;					//!< total number of unit cells
+	int Norb;                   //!< number of orbitals per unit cell
+	int Ncell;                  //!< total number of unit cells
 
-	double sign;				//!< accumulated Green's function signs (+-1)
+	double sign;                //!< accumulated Green's function signs (+-1)
 
-	int nsampl;					//!< number of accumulated samples
+	int nsampl;                 //!< number of accumulated samples
 }
 measurement_data_t;
 
@@ -71,41 +71,41 @@ void SaveMeasurementData(const char *fnbase, const measurement_data_t *meas_data
 typedef struct
 {
 	// each of the following Green's functions is averaged over spatial translations and has dimension Ncell x Norb x Norb x L
-	double *Gtau0_u;			//!< unequal time spin-up   Green's functions G_u(tau,   0) with tau = 0, 1, ..., L-1
-	double *G0tau_u;			//!< unequal time spin-up   Green's functions G_u(0,   tau) with tau = 0, 1, ..., L-1
-	double *Geqlt_u;			//!< equal   time spin-up   Green's functions G_u(tau, tau) with tau = 0, 1, ..., L-1
-	double *Gtau0_d;			//!< unequal time spin-down Green's functions G_d(tau,   0) with tau = 0, 1, ..., L-1
-	double *G0tau_d;			//!< unequal time spin-down Green's functions G_d(0,   tau) with tau = 0, 1, ..., L-1
-	double *Geqlt_d;			//!< equal   time spin-down Green's functions G_d(tau, tau) with tau = 0, 1, ..., L-1
+	double *Gtau0_u;            //!< unequal time spin-up   Green's functions G_u(tau,   0) with tau = 0, 1, ..., L-1
+	double *G0tau_u;            //!< unequal time spin-up   Green's functions G_u(0,   tau) with tau = 0, 1, ..., L-1
+	double *Geqlt_u;            //!< equal   time spin-up   Green's functions G_u(tau, tau) with tau = 0, 1, ..., L-1
+	double *Gtau0_d;            //!< unequal time spin-down Green's functions G_d(tau,   0) with tau = 0, 1, ..., L-1
+	double *G0tau_d;            //!< unequal time spin-down Green's functions G_d(0,   tau) with tau = 0, 1, ..., L-1
+	double *Geqlt_d;            //!< equal   time spin-down Green's functions G_d(tau, tau) with tau = 0, 1, ..., L-1
 
-	double *nn_corr;			//!< density correlations;  matrix of size Ncell x Norb x Norb x L
-	double *zz_corr;			//!< z-z spin correlations; matrix of size Ncell x Norb x Norb x L
-	double *xx_corr;			//!< x-x spin correlations; matrix of size Ncell x Norb x Norb x L
+	double *nn_corr;            //!< density correlations;  matrix of size Ncell x Norb x Norb x L
+	double *zz_corr;            //!< z-z spin correlations; matrix of size Ncell x Norb x Norb x L
+	double *xx_corr;            //!< x-x spin correlations; matrix of size Ncell x Norb x Norb x L
 
-	double *sc_c_sw;			//!< superconducting susceptibility for s-wave pairing
-	double *sc_c_dw;			//!< superconducting susceptibility for d-wave pairing
-	double *sc_c_sx;			//!< superconducting susceptibility for extended s-wave pairing
+	double *sc_c_sw;            //!< superconducting susceptibility for s-wave pairing
+	double *sc_c_dw;            //!< superconducting susceptibility for d-wave pairing
+	double *sc_c_sx;            //!< superconducting susceptibility for extended s-wave pairing
 
-	double *ram_b1g;			//!< Raman B1g correlation function
-	double *ram_b2g;			//!< Raman B2g correlation function
+	double *ram_b1g;            //!< Raman B1g correlation function
+	double *ram_b2g;            //!< Raman B2g correlation function
 
-	double *Hu;					//!< temporary matrix of size L*N x L*N for spin-up
-	double *Hd;					//!< temporary matrix of size L*N x L*N for spin-down
+	double *Hu;                 //!< temporary matrix of size L*N x L*N for spin-up
+	double *Hd;                 //!< temporary matrix of size L*N x L*N for spin-down
 
-	int *latt_sum_map;			//!< lattice site index of coordinate sum of two lattice sites; matrix of size Ncell x Ncell
+	int *latt_sum_map;          //!< lattice site index of coordinate sum of two lattice sites; matrix of size Ncell x Ncell
 
-	int *latt_xp1_map;			//!< index of right  neighbor lattice site (x+1,y); array of length Ncell
-	int *latt_xm1_map;			//!< index of left   neighbor lattice site (x-1,y); array of length Ncell
-	int *latt_yp1_map;			//!< index of top    neighbor lattice site (x,y+1); array of length Ncell
-	int *latt_ym1_map;			//!< index of bottom neighbor lattice site (x,y-1); array of length Ncell
+	int *latt_xp1_map;          //!< index of right  neighbor lattice site (x+1,y); array of length Ncell
+	int *latt_xm1_map;          //!< index of left   neighbor lattice site (x-1,y); array of length Ncell
+	int *latt_yp1_map;          //!< index of top    neighbor lattice site (x,y+1); array of length Ncell
+	int *latt_ym1_map;          //!< index of bottom neighbor lattice site (x,y-1); array of length Ncell
 
-	int Norb;					//!< number of orbitals per unit cell
-	int Ncell;					//!< total number of unit cells
-	int L;						//!< total number of time steps
+	int Norb;                   //!< number of orbitals per unit cell
+	int Ncell;                  //!< total number of unit cells
+	int L;                      //!< total number of time steps
 
-	double sign;				//!< accumulated (equal time) Green's function signs (+-1)
+	double sign;                //!< accumulated (equal time) Green's function signs (+-1)
 
-	int nsampl;					//!< number of accumulated samples
+	int nsampl;                 //!< number of accumulated samples
 }
 measurement_data_unequal_time_t;
 
@@ -131,47 +131,51 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 ///
 typedef struct
 {
-	double *X_avg;				//!< <1/N sum_r X(r)>
-	double *X_avg_sq;			//!< <(1/N sum_r X(r))^2>
-	double *X_sq_avg;			//!< <1/N sum_r X(r)^2>
-	double *V_avg;
-	double *V_sq_avg;
-	double *PE;
-	double *KE;
+	double *X_avg;              //!< < 1/N sum_r X(r)   >
+	double *X_avg_sq;           //!< <(1/N sum_r X(r))^2>
+	double *X_sq_avg;           //!< < 1/N sum_r X(r)^2 >
+	double *V_avg;              //!< averge displacement
+	double *V_sq_avg;           //!< average of squared displacement
+	double *PE;                 //!< potential energy
+	double *KE;                 //!< kinetic energy
 
 	// use these to plot sample autocorrelation functions
-	double *iteration_X_avg;			//!< X_avg for every measurement.
-	double *iteration_X0;				//!< X(r=0)
+	double *iteration_X_avg;    //!< X_avg for every measurement
+	double *iteration_X0;       //!< X(r = 0)
 
-	int n_local_accept;		//!< number of accepted updates per (momentum) site
-	int n_local_total;		//!< number of total updates per (momentum) site
-	int n_block_accept;		//!< number of accepted block updates per (momentum) site
-	int n_block_total;		//!< number of total block updates per (momentum) site
-	int n_flip_accept;		//!< number of accepted block updates per (momentum) site
-	int n_flip_total;		//!< number of total block updates per (momentum) site
+	int n_local_accept;         //!< number of accepted updates per (momentum) site
+	int n_local_total;          //!< number of total updates per (momentum) site
+	int n_block_accept;         //!< number of accepted block updates per (momentum) site
+	int n_block_total;          //!< number of total block updates per (momentum) site
+	int n_flip_accept;          //!< number of accepted block updates per (momentum) site
+	int n_flip_total;           //!< number of total block updates per (momentum) site
 
-	int Norb;					//!< number of orbitals per unit cell
-	int Ncell;					//!< total number of unit cells
+	int Norb;                   //!< number of orbitals per unit cell
+	int Ncell;                  //!< total number of unit cells
 	int L;
 
-	double sign;				//!< accumulated Green's function signs (+-1)
+	double sign;                //!< accumulated Green's function signs (+-1)
 
-	int nsampl;					//!< number of accumulated samples
-	int max_nsampl;					//!< what nsampl should be at the end
+	int nsampl;                 //!< number of accumulated samples
+	int max_nsampl;             //!< what nsampl should be at the end
 }
 measurement_data_phonon_t;
+
 
 void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pbc_shift, const int L, const int max_nsampl, measurement_data_phonon_t *restrict meas_data);
 
 void DeletePhononData(measurement_data_phonon_t *restrict meas_data);
 
+
 void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, const double dt, const double *restrict omega, measurement_data_phonon_t *restrict meas_data);
 
 void NormalizePhononData(measurement_data_phonon_t *meas_data);
 
+
 void PrintPhononData(const measurement_data_phonon_t *meas_data);
 
 void SavePhononData(const char *fnbase, const measurement_data_phonon_t *meas_data);
+
 
 
 #endif

@@ -73,7 +73,7 @@ void MatrixProductSequence(const int n, const int num, const double *const *rest
 	// use 'W' and 'ret' as temporary matrices for the products of the A matrices,
 	// such that the final results ends up in 'ret'
 	double *T1, *T2;
-	if ((num & 1) == 0)	// if 'num' is even
+	if ((num & 1) == 0) // if 'num' is even
 	{
 		T1 = W;
 		T2 = ret;

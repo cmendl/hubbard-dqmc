@@ -28,11 +28,11 @@
 ///
 typedef struct
 {
-	double *aa;			//!< unit cell internal hopping
-	double *ab;			//!< hopping between unit cells 'a' and 'b'
-	double *ac;			//!< hopping between unit cells 'a' and 'c'
-	double *ad;			//!< hopping between unit cells 'a' and 'd'
-	double *bc;			//!< hopping between unit cells 'b' and 'c'
+	double *aa;         //!< unit cell internal hopping
+	double *ab;         //!< hopping between unit cells 'a' and 'b'
+	double *ac;         //!< hopping between unit cells 'a' and 'c'
+	double *ad;         //!< hopping between unit cells 'a' and 'd'
+	double *bc;         //!< hopping between unit cells 'b' and 'c'
 }
 bond_hoppings_t;
 
@@ -48,12 +48,12 @@ void DeleteBondHoppings(bond_hoppings_t *bonds);
 ///
 typedef struct
 {
-	double *omega;				//!< phonon frequency, per orbital
-	double *g;					//!< electron-phonon interaction strength, per orbital
-	double local_box_width;			//!< normal updates of the phonon field variables are drawn from a uniform box-probability distribution on the interval [-box_width/2, box_width/2]
+	double *omega;              //!< phonon frequency, per orbital
+	double *g;                  //!< electron-phonon interaction strength, per orbital
+	double local_box_width;     //!< normal updates of the phonon field variables are drawn from a uniform box-probability distribution on the interval [-box_width/2, box_width/2]
 	int n_local_updates;
-	double block_box_width;				//!< as above, for block updates
-	int n_block_updates;			//!< number of phonon block updates at random sites, for each full iteration over lattice sites and time slices; set to zero to disable block updates
+	double block_box_width;     //!< as above, for block updates
+	int n_block_updates;        //!< number of phonon block updates at random sites, for each full iteration over lattice sites and time slices; set to zero to disable block updates
 }
 phonon_params_t;
 
@@ -65,33 +65,33 @@ phonon_params_t;
 typedef struct
 {
 	// lattice definition
-	int Norb;						//!< number of orbitals per unit cell
-	int Nx;							//!< lattice field x dimension
-	int Ny;							//!< lattice field y dimension
-	int pbc_shift;					//!< shift of x-coordinate when wrapping around in y-direction
+	int Norb;                       //!< number of orbitals per unit cell
+	int Nx;                         //!< lattice field x dimension
+	int Ny;                         //!< lattice field y dimension
+	int pbc_shift;                  //!< shift of x-coordinate when wrapping around in y-direction
 
 	// Hamiltonian parameters
-	bond_hoppings_t t;				//!< hopping parameters
-	double *U;						//!< on-site repulsion, per orbital
-	double *eps;					//!< site energies, per orbital
-	double mu;						//!< chemical potential
+	bond_hoppings_t t;              //!< hopping parameters
+	double *U;                      //!< on-site repulsion, per orbital
+	double *eps;                    //!< site energies, per orbital
+	double mu;                      //!< chemical potential
 
-	bool use_phonons;				//!< whether phonons should be included (Hubbard-Holstein model)
-	phonon_params_t phonon_params;	//!< phonon parameters (only accessed if 'use_phonons' is true)
+	bool use_phonons;               //!< whether phonons should be included (Hubbard-Holstein model)
+	phonon_params_t phonon_params;  //!< phonon parameters (only accessed if 'use_phonons' is true)
 
 	// time flow parameters
-	double dt;						//!< imaginary-time step size
-	int L;							//!< number of time steps
-	int prodBlen;					//!< largest number of B_l matrices multiplied together before performing a QR decomposition
-	int nwraps;						//!< number of "time slice wraps" before recomputing the Green's function
+	double dt;                      //!< imaginary-time step size
+	int L;                          //!< number of time steps
+	int prodBlen;                   //!< largest number of B_l matrices multiplied together before performing a QR decomposition
+	int nwraps;                     //!< number of "time slice wraps" before recomputing the Green's function
 
-	int nequil;						//!< number of equilibration iterations
-	int nsampl;						//!< number of sampling iterations
-	int neqlt;						//!< number of time slices before an equal time measurement; set to 0 to disable equal time measurements
-	int nuneqlt;					//!< number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
+	int nequil;                     //!< number of equilibration iterations
+	int nsampl;                     //!< number of sampling iterations
+	int neqlt;                      //!< number of time slices before an equal time measurement; set to 0 to disable equal time measurements
+	int nuneqlt;                    //!< number of iterations before performing an unequal time measurement; set to 0 to disable unequal time measurements
 
-	uint64_t itime;					//!< initial time tick, used as seed for the random number generator
-	int max_time;					//!< maximum run time in seconds before automatically stopping and checkpointing. 0 to disable.
+	uint64_t itime;                 //!< initial time tick, used as seed for the random number generator
+	int max_time;                   //!< maximum run time in seconds before automatically stopping and checkpointing. 0 to disable.
 }
 sim_params_t;
 

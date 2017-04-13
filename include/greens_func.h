@@ -11,10 +11,10 @@
 ///
 typedef struct
 {
-	double *mat;		//!< matrix entries, array of size N x N
-	double logdet;		//!< logarithm of absolute value of determinant
-	int    sgndet;		//!< sign of determinant
-	int N;				//!< dimension
+	double *mat;        //!< matrix entries, array of size N x N
+	double logdet;      //!< logarithm of absolute value of determinant
+	int    sgndet;      //!< sign of determinant
+	int N;              //!< dimension
 }
 greens_func_t;
 
