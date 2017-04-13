@@ -70,8 +70,10 @@ int MonteCarloPhononBlockTest()
 	params.phonon_params.omega[1] = 5.0/6;
 	params.phonon_params.g[0] = 13.0/20;
 	params.phonon_params.g[1] = 19.0/17;
-	params.phonon_params.box_width = 2;
-	params.phonon_params.nblock_updates = 2;
+	params.phonon_params.local_box_width = 2;
+	params.phonon_params.block_box_width = 2;
+	params.phonon_params.n_local_updates = 2;
+	params.phonon_params.n_block_updates = 2;
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
@@ -120,7 +122,8 @@ int MonteCarloPhononBlockTest()
 
 	// perform phonon block updates (first update will be accepted and second rejected)
 	printf("Performing phonon block updates on a %i x %i lattice with %i orbitals per unit cell at beta = %g...\n", params.Nx, params.Ny, params.Norb, params.L*params.dt);
-	PhononBlockUpdates(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd);
+	int n_block_accept, n_block_total;
+	PhononBlockUpdates(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, &n_block_accept, &n_block_total);
 
 	// load reference phonon field from disk
 	double *X_ref    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);

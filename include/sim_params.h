@@ -51,7 +51,7 @@ typedef struct
 	double *omega;              //!< phonon frequency, per orbital
 	double *g;                  //!< electron-phonon interaction strength, per orbital
 	double local_box_width;     //!< normal updates of the phonon field variables are drawn from a uniform box-probability distribution on the interval [-box_width/2, box_width/2]
-	int n_local_updates;
+	int n_local_updates;        //!< number of local phonon updates
 	double block_box_width;     //!< as above, for block updates
 	int n_block_updates;        //!< number of phonon block updates at random sites, for each full iteration over lattice sites and time slices; set to zero to disable block updates
 }

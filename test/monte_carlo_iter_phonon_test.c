@@ -60,8 +60,8 @@ int MonteCarloIterPhononTest()
 	params.phonon_params.omega[1] = 7.0/8;
 	params.phonon_params.g[0] = 5.0/11;
 	params.phonon_params.g[1] = 7.0/10;
-	params.phonon_params.box_width = 12;
-	params.phonon_params.nblock_updates = 0;	// disable block updates
+	params.phonon_params.local_box_width = 12;
+	params.phonon_params.n_local_updates = 0;   // disable block updates
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
@@ -80,7 +80,7 @@ int MonteCarloIterPhononTest()
 	{
 		for (i = 0; i < N; i++)
 		{
-			const int o = i / kinetic.Ncell;	// orbital index
+			const int o = i / kinetic.Ncell;    // orbital index
 			expX[i + l*N] = exp(-params.dt*params.phonon_params.g[o] * X[i + l*N]);
 		}
 	}
@@ -109,7 +109,7 @@ int MonteCarloIterPhononTest()
 
 	// perform a Determinant Quantum Monte Carlo (DQMC) iteration
 	printf("Performing a Determinant Quantum Monte Carlo (DQMC) iteration on a %i x %i lattice with %i orbitals per unit cell, taking phonons into account...\n", params.Nx, params.Ny, params.Norb);
-	DQMCPhononIteration(params.dt, &kinetic, false, &stratonovich_params, &params.phonon_params, params.nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, 0, NULL, NULL);
+	DQMCPhononIteration(params.dt, params.mu, &kinetic, false, &stratonovich_params, &params.phonon_params, params.nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, 0, NULL, NULL);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
 	spin_field_t *s_ref = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);

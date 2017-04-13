@@ -569,6 +569,7 @@ void PhononGlobalFlipUpdates(const double dt, const double mu, const kinetic_t *
 /// \brief Perform a Determinant Quantum Monte Carlo (DQMC) iteration, taking phonons into account
 ///
 /// \param dt                   imaginary-time step
+/// \param mu                   chemical potential
 /// \param kinetic              matrix exponential of kinetic energy operator
 /// \param noHS                 set to true to skip updating the Hubbard-Stratonovich field
 /// \param stratonovich_params  precomputed Hubbard-Stratonovich parameters
