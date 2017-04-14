@@ -793,7 +793,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 
 			// accumulate phonon data
 			Profile_Begin("DQMCIter_AccumulatePhonon");
-			AccumulatePhononData(Gu, Gd, X, dt, phonon_params->omega, meas_data_phonon);
+			AccumulatePhononData(Gu, Gd, l, X, dt, phonon_params->omega, meas_data_phonon);
 			Profile_End("DQMCIter_AccumulatePhonon");
 		}
 	}

@@ -1,27 +1,28 @@
-Norb	1
-Nx		6
-Ny		6
-t_ab	0,0,1.0
-t_ac	0,0,1.0
-# uncomment for next nearest neighbor hopping
-# t_ad	0,0,-0.3
-# t_bc	0,0,-0.3
-U		4
-eps		0
-mu		0
-dt		0.05
-L		40
-prodBlen	8
-nwraps		8
-nequil		512
-nsampl		512
-neqlt		8
-nuneqlt		0
+Norb        1
+Nx          6
+Ny          6
+t_ab        0,0,1.0
+t_ac        0,0,1.0
+# uncomment for next-nearest neighbor hopping
+# t_ad        0,0,-0.3
+# t_bc        0,0,-0.3
+U           4
+eps         0
+mu          0
+dt          0.05
+L           40
+prodBlen    8
+nwraps      8
+nequil      512
+nsampl      512
+neqlt       8
+nuneqlt     0
 
-#use_phonons true
-#phonon_omega 1.0
-#phonon_g 2.0
-#phonon_local_box_width 2.0
-#phonon_n_local_updates 64
-#phonon_block_box_width 4.0
-#phonon_n_block_updates 16
+# uncomment to enable phonons
+# use_phonons                 true
+# phonon_omega                1.0
+# phonon_g                    2.0
+# phonon_local_box_width      2.0
+# phonon_n_local_updates      64
+# phonon_block_box_width      4.0
+# phonon_n_block_updates      16

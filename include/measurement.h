@@ -131,13 +131,14 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 ///
 typedef struct
 {
-	double *X_avg;              //!< < 1/N sum_r X(r)   >
+	double *X_avg;              //!< < 1/N sum_r X(r)>
 	double *X_avg_sq;           //!< <(1/N sum_r X(r))^2>
-	double *X_sq_avg;           //!< < 1/N sum_r X(r)^2 >
+	double *X_sq_avg;           //!< < 1/N sum_r X(r)^2>
 	double *V_avg;              //!< averge displacement
 	double *V_sq_avg;           //!< average of squared displacement
 	double *PE;                 //!< potential energy
 	double *KE;                 //!< kinetic energy
+	double *nX;                 //!< <1/N sum_i n_i X_i>, with n_i the electron density
 
 	// use these to plot sample autocorrelation functions
 	double *iteration_X_avg;    //!< X_avg for every measurement
@@ -167,7 +168,7 @@ void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pb
 void DeletePhononData(measurement_data_phonon_t *restrict meas_data);
 
 
-void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, const double dt, const double *restrict omega, measurement_data_phonon_t *restrict meas_data);
+void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const int l_green, const double *restrict X, const double dt, const double *restrict omega, measurement_data_phonon_t *restrict meas_data);
 
 void NormalizePhononData(measurement_data_phonon_t *meas_data);
 
