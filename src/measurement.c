@@ -476,6 +476,10 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 	meas_data->sc_c_dw = (double *)MKL_calloc(N*L, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->sc_c_sx = (double *)MKL_calloc(N*L, sizeof(double), MEM_DATA_ALIGN);
 
+	// current correlations
+	meas_data->Jcorr_x = (double *)MKL_calloc(N*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->Jcorr_y = (double *)MKL_calloc(N*L, sizeof(double), MEM_DATA_ALIGN);
+
 	// Raman
 	meas_data->ram_b1g = (double *)MKL_calloc(N*L, sizeof(double), MEM_DATA_ALIGN);
 	meas_data->ram_b2g = (double *)MKL_calloc(N*L, sizeof(double), MEM_DATA_ALIGN);
@@ -518,6 +522,9 @@ void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict 
 
 	MKL_free(meas_data->ram_b2g);
 	MKL_free(meas_data->ram_b1g);
+
+	MKL_free(meas_data->Jcorr_y);
+	MKL_free(meas_data->Jcorr_x);
 
 	MKL_free(meas_data->sc_c_sw);
 	MKL_free(meas_data->sc_c_dw);
@@ -627,7 +634,7 @@ void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrice
 			}
 
 
-			// superconducting susceptibilities and Raman correlation functions (separately for each orbital type)
+			// superconducting susceptibilities, current and Raman correlation functions (separately for each orbital type)
 
 			// base pointer of unequal time Green's functions G(tau, 0) for current time difference tau = l and orbital o
 			const double *Gt0_u_base = &curGtau0_u[(Ncell*o) + N*(l + L*(Ncell*o))];
@@ -696,6 +703,36 @@ void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrice
 						+ Gt0_d_base[imx + N*L*jpx] + Gt0_d_base[imx + N*L*jmx] + Gt0_d_base[imx + N*L*jpy] + Gt0_d_base[imx + N*L*jmy]
 						+ Gt0_d_base[ipy + N*L*jpx] + Gt0_d_base[ipy + N*L*jmx] + Gt0_d_base[ipy + N*L*jpy] + Gt0_d_base[ipy + N*L*jmy]
 						+ Gt0_d_base[imy + N*L*jpx] + Gt0_d_base[imy + N*L*jmx] + Gt0_d_base[imy + N*L*jpy] + Gt0_d_base[imy + N*L*jmy]);
+
+					// current correlations
+
+					const double delta_tau_i_j   = (l == 0 && i   == j   ? 1 : 0);
+					const double delta_tau_i_jpx = (l == 0 && i   == jpx ? 1 : 0);
+					const double delta_tau_i_jpy = (l == 0 && i   == jpy ? 1 : 0);
+					const double delta_tau_ipx_j = (l == 0 && ipx == j   ? 1 : 0);
+					const double delta_tau_ipy_j = (l == 0 && ipy == j   ? 1 : 0);
+
+					// Jx-Jx
+					meas_data->Jcorr_x[k + offset] += signfac * (
+						- (Gtt_u_base[ipx + N*i] - Gtt_u_base[i + N*ipx] + Gtt_d_base[ipx + N*i] - Gtt_d_base[i + N*ipx]) *
+						  (G00_u_base[jpx + N*j] - G00_u_base[j + N*jpx] + G00_d_base[jpx + N*j] - G00_d_base[j + N*jpx])
+
+						+ (Gt0_u_base[ipx + N*L*jpx]*(delta_tau_i_j   - G0t_u_base[j   + N*i  ]) + Gt0_d_base[ipx + N*L*jpx]*(delta_tau_i_j   - G0t_d_base[j   + N*i  ]))
+						- (Gt0_u_base[ipx + N*L*j  ]*(delta_tau_i_jpx - G0t_u_base[jpx + N*i  ]) + Gt0_d_base[ipx + N*L*j  ]*(delta_tau_i_jpx - G0t_d_base[jpx + N*i  ]))
+						- (Gt0_u_base[i   + N*L*jpx]*(delta_tau_ipx_j - G0t_u_base[j   + N*ipx]) + Gt0_d_base[i   + N*L*jpx]*(delta_tau_ipx_j - G0t_d_base[j   + N*ipx]))
+						+ (Gt0_u_base[i   + N*L*j  ]*(delta_tau_i_j   - G0t_u_base[jpx + N*ipx]) + Gt0_d_base[i   + N*L*j  ]*(delta_tau_i_j   - G0t_d_base[jpx + N*ipx]))
+					);
+
+					// Jy-Jy
+					meas_data->Jcorr_y[k + offset] += signfac * (
+						- (Gtt_u_base[ipy + N*i] - Gtt_u_base[i + N*ipy] + Gtt_d_base[ipy + N*i] - Gtt_d_base[i + N*ipy]) *
+						  (G00_u_base[jpy + N*j] - G00_u_base[j + N*jpy] + G00_d_base[jpy + N*j] - G00_d_base[j + N*jpy])
+
+						+ (Gt0_u_base[ipy + N*L*jpy]*(delta_tau_i_j   - G0t_u_base[j   + N*i  ]) + Gt0_d_base[ipy + N*L*jpy]*(delta_tau_i_j   - G0t_d_base[j   + N*i  ]))
+						- (Gt0_u_base[ipy + N*L*j  ]*(delta_tau_i_jpy - G0t_u_base[jpy + N*i  ]) + Gt0_d_base[ipy + N*L*j  ]*(delta_tau_i_jpy - G0t_d_base[jpy + N*i  ]))
+						- (Gt0_u_base[i   + N*L*jpy]*(delta_tau_ipy_j - G0t_u_base[j   + N*ipy]) + Gt0_d_base[i   + N*L*jpy]*(delta_tau_ipy_j - G0t_d_base[j   + N*ipy]))
+						+ (Gt0_u_base[i   + N*L*j  ]*(delta_tau_i_j   - G0t_u_base[jpy + N*ipy]) + Gt0_d_base[i   + N*L*j  ]*(delta_tau_i_j   - G0t_d_base[jpy + N*ipy]))
+					);
 
 					// Raman B1g
 
@@ -806,6 +843,8 @@ void NormalizeUnequalTimeMeasurementData(measurement_data_unequal_time_t *meas_d
 	cblas_dscal(N*L, nfac, meas_data->sc_c_sw, 1);
 	cblas_dscal(N*L, nfac, meas_data->sc_c_dw, 1);
 	cblas_dscal(N*L, nfac, meas_data->sc_c_sx, 1);
+	cblas_dscal(N*L, nfac, meas_data->Jcorr_x, 1);
+	cblas_dscal(N*L, nfac, meas_data->Jcorr_y, 1);
 	cblas_dscal(N*L, nfac, meas_data->ram_b1g, 1);
 	cblas_dscal(N*L, nfac, meas_data->ram_b2g, 1);
 
@@ -844,6 +883,9 @@ void LoadUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 	sprintf(path, "%s_uneqlt_sc_c_dw.dat", fnbase); ReadData(path, meas_data->sc_c_dw, sizeof(double), N*L);
 	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); ReadData(path, meas_data->sc_c_sx, sizeof(double), N*L);
 
+	sprintf(path, "%s_uneqlt_Jcorr_x.dat", fnbase); ReadData(path, meas_data->Jcorr_x, sizeof(double), N*L);
+	sprintf(path, "%s_uneqlt_Jcorr_y.dat", fnbase); ReadData(path, meas_data->Jcorr_y, sizeof(double), N*L);
+
 	sprintf(path, "%s_uneqlt_ram_b1g.dat", fnbase); ReadData(path, meas_data->ram_b1g, sizeof(double), N*L);
 	sprintf(path, "%s_uneqlt_ram_b2g.dat", fnbase); ReadData(path, meas_data->ram_b2g, sizeof(double), N*L);
 }
@@ -878,6 +920,9 @@ void SaveUnequalTimeMeasurementData(const char *fnbase, const measurement_data_u
 	sprintf(path, "%s_uneqlt_sc_c_sw.dat", fnbase); WriteData(path, meas_data->sc_c_sw, sizeof(double), N*L, false);
 	sprintf(path, "%s_uneqlt_sc_c_dw.dat", fnbase); WriteData(path, meas_data->sc_c_dw, sizeof(double), N*L, false);
 	sprintf(path, "%s_uneqlt_sc_c_sx.dat", fnbase); WriteData(path, meas_data->sc_c_sx, sizeof(double), N*L, false);
+
+	sprintf(path, "%s_uneqlt_Jcorr_x.dat", fnbase); WriteData(path, meas_data->Jcorr_x, sizeof(double), N*L, false);
+	sprintf(path, "%s_uneqlt_Jcorr_y.dat", fnbase); WriteData(path, meas_data->Jcorr_y, sizeof(double), N*L, false);
 
 	sprintf(path, "%s_uneqlt_ram_b1g.dat", fnbase); WriteData(path, meas_data->ram_b1g, sizeof(double), N*L, false);
 	sprintf(path, "%s_uneqlt_ram_b2g.dat", fnbase); WriteData(path, meas_data->ram_b2g, sizeof(double), N*L, false);

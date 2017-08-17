@@ -86,6 +86,9 @@ typedef struct
 	double *sc_c_dw;            //!< superconducting susceptibility for d-wave pairing
 	double *sc_c_sx;            //!< superconducting susceptibility for extended s-wave pairing
 
+	double *Jcorr_x;            //!< x-x current correlation function
+	double *Jcorr_y;            //!< y-y current correlation function
+
 	double *ram_b1g;            //!< Raman B1g correlation function
 	double *ram_b2g;            //!< Raman B2g correlation function
 
