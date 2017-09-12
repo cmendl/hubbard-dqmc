@@ -196,6 +196,8 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 /// \param tsm_d                time step matrices for the spin-down Green's function, will be updated
 /// \param Gu                   spin-up Green's function, will be updated
 /// \param Gd                   spin-down Green's function, will be updated
+/// \param n_block_accept       number of accepted block updates (updated by function)
+/// \param n_block_total        number of total block updates (updated by function)
 ///
 void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
 	const phonon_params_t *restrict phonon_params, randseed_t *restrict seed, const spin_field_t *restrict s, double *restrict X, double *restrict expX,
@@ -326,6 +328,26 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 
 
 
+//________________________________________________________________________________________________________________________
+///
+/// \brief Perform flip updates of the phonon field
+///
+/// \param dt                   imaginary-time step
+/// \param mu                   chemical potential
+/// \param kinetic              matrix exponential of kinetic energy operator
+/// \param stratonovich_params  precomputed Hubbard-Stratonovich parameters
+/// \param phonon_params        phonon field parameters
+/// \param seed                 random number "seed" structure, will be updated during function call
+/// \param s                    Hubbard-Stratonovich field, remains constant during phonon block updates
+/// \param X                    phonon field, will be updated
+/// \param expX                 entrywise exponential of the phonon field: exp(-dt g X)
+/// \param tsm_u                time step matrices for the spin-up Green's function, will be updated
+/// \param tsm_d                time step matrices for the spin-down Green's function, will be updated
+/// \param Gu                   spin-up Green's function, will be updated
+/// \param Gd                   spin-down Green's function, will be updated
+/// \param n_flip_accept        number of accepted flip updates (updated by function)
+/// \param n_flip_total         number of total flip updates (updated by function)
+///
 void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
 	const phonon_params_t *restrict phonon_params, randseed_t *restrict seed, const spin_field_t *restrict s, double *restrict X, double *restrict expX,
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
@@ -435,121 +457,6 @@ void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restri
 				   X[i + l*N] =    X_ref[l];
 				expX[i + l*N] = expX_ref[l];
 			}
-		}
-	}
-
-	// clean up
-	DeleteTimeStepMatrices(&tsm_d_new);
-	DeleteTimeStepMatrices(&tsm_u_new);
-	DeleteGreensFunction(&Gd_new);
-	DeleteGreensFunction(&Gu_new);
-	MKL_free(expX_ref);
-	MKL_free(X_ref);
-}
-
-
-
-void PhononGlobalFlipUpdates(const double dt, const double mu, const kinetic_t *restrict kinetic, const stratonovich_params_t *restrict stratonovich_params,
-	const phonon_params_t *restrict phonon_params, randseed_t *restrict seed, const spin_field_t *restrict s, double *restrict X, double *restrict expX,
-	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
-	int *n_flip_accept, int *n_flip_total)
-{
-	__assume_aligned(   X, MEM_DATA_ALIGN);
-	__assume_aligned(expX, MEM_DATA_ALIGN);
-
-	// dimension consistency checks
-	assert(tsm_u->N == kinetic->Ncell * kinetic->Norb);
-	assert(tsm_u->N == tsm_d->N);
-	assert(tsm_u->L == tsm_d->L);
-	const int N = tsm_u->N;
-	const int Ncell = kinetic->Ncell;
-	const int L = tsm_u->L;
-
-	// fast return for zero block updates
-	if (phonon_params->n_block_updates <= 0) {
-		return;
-	}
-
-	// store X_{i,l} and corresponding exponential for all 'l'
-	double *X_ref    = (double *)MKL_malloc(N*L * sizeof(double), MEM_DATA_ALIGN);
-	double *expX_ref = (double *)MKL_malloc(N*L * sizeof(double), MEM_DATA_ALIGN);
-	__assume_aligned(X_ref,    MEM_DATA_ALIGN);
-	__assume_aligned(expX_ref, MEM_DATA_ALIGN);
-
-	// storage for new Green's functions
-	greens_func_t Gu_new, Gd_new;
-	AllocateGreensFunction(N, &Gu_new);
-	AllocateGreensFunction(N, &Gd_new);
-
-	// new time step B matrices after the phonon field update
-	time_step_matrices_t tsm_u_new;
-	time_step_matrices_t tsm_d_new;
-	AllocateTimeStepMatrices(N, L, tsm_u->prodBlen, &tsm_u_new);
-	AllocateTimeStepMatrices(N, L, tsm_d->prodBlen, &tsm_d_new);
-
-	// backup X_{i,l} and corresponding exponential for all time slices
-	int i, l;
-	for (i = 0; i < N; i++)
-	for (l = 0; l < L; l++)
-	{
-		   X_ref[i + l*N] =    X[i + l*N];
-		expX_ref[i + l*N] = expX[i + l*N];
-	}
-
-	// calculate change of the phonon (lattice) energy
-	// actually shift phonon field entries
-	double dEph = 0;
-	for (i = 0; i < N; i++)
-	{
-		const int o = i / Ncell;
-		const double flip = 2*mu/phonon_params->g[o];
-		for (l = 0; l < L; l++)
-		{
-			dEph += 0.5*square(phonon_params->omega[o]) * (-flip) * (-flip + 2*X_ref[i + l*N]);
-			X[i + l*N] = flip - X_ref[i + l*N];
-			expX[i + l*N] = exp(-dt*phonon_params->g[o] * X[i + l*N]);
-		}
-	}
-
-	// calculate new time step matrices
-	#pragma omp parallel sections
-	{
-		#pragma omp section
-		InitPhononTimeStepMatrices(kinetic, stratonovich_params->expVu, s, expX, &tsm_u_new);
-		#pragma omp section
-		InitPhononTimeStepMatrices(kinetic, stratonovich_params->expVd, s, expX, &tsm_d_new);
-	}
-
-	// calculate new Green's functions
-	#pragma omp parallel sections
-	{
-		#pragma omp section
-		GreenConstruct(&tsm_u_new, 0, &Gu_new);
-		#pragma omp section
-		GreenConstruct(&tsm_d_new, 0, &Gd_new);
-	}
-
-	// decide whether block update is accepted; note that det(G) = 1/det(M)
-	const double p = exp((Gu->logdet + Gd->logdet) - (Gu_new.logdet + Gd_new.logdet) - dt * dEph);
-	(*n_flip_total)++;
-	if (Random_GetUniform(seed) < p/(1+p))
-	{
-		(*n_flip_accept)++;
-
-		// copy new stuff
-		CopyGreensFunction(&Gu_new, Gu);
-		CopyGreensFunction(&Gd_new, Gd);
-		CopyTimeStepMatrices(&tsm_u_new, tsm_u);
-		CopyTimeStepMatrices(&tsm_d_new, tsm_d);
-	}
-	else
-	{
-		// undo changes
-		for (i = 0; i < N; i++)
-		for (l = 0; l < L; l++)
-		{
-			   X[i + l*N] =    X_ref[i + l*N];
-			expX[i + l*N] = expX_ref[i + l*N];
 		}
 	}
 
@@ -806,7 +713,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 
 	Profile_Begin("DQMCIter_PhononFlip");
 	PhononFlipUpdates(dt, mu, kinetic, stratonovich_params, phonon_params, seed, s, X, expX, tsm_u, tsm_d, Gu, Gd,
-	                   &meas_data_phonon->n_flip_accept, &meas_data_phonon->n_flip_total);
+	                  &meas_data_phonon->n_flip_accept, &meas_data_phonon->n_flip_total);
 	Profile_End("DQMCIter_PhononFlip");
 
 	// clean up
