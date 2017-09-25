@@ -10,6 +10,11 @@ To run the code, call `hubbard_dqmc <paramfile>`; some example parameter files a
 The Mathematica unit test notebooks can be opened by [Mathematica](https://www.wolfram.com/mathematica) or the free [CDF player](https://www.wolfram.com/cdf-player).
 
 
+Copyright (c) 2015-2017, Edwin Huang and Christian B. Mendl
+
+This code was developed at Stanford University with support from the U.S. Department of Energy (DOE), Office of Basic Energy Sciences, Division of Materials Sciences and Engineering, under Contract No. DE-AC02-76SF00515.
+
+
 References
 ----------
 1. R. Blankenbecler, D. J. Scalapino, R. L. Sugar  
