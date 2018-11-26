@@ -83,5 +83,5 @@ int BlockCyclicInvTest()
 	MKL_free(H_ref);
 	MKL_free(H);
 
-	return (err < 4e-15 ? 0 : 1);
+	return (err < 5e-14 ? 0 : 1);
 }
