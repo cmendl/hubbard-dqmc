@@ -1,5 +1,6 @@
 #include "measurement.h"
 #include "random.h"
+#include "profiler.h"
 #include "util.h"
 #include <mkl.h>
 #include <math.h>
@@ -46,6 +47,9 @@ int MeasurementTest()
 
 	// number of measurement iterations
 	params.nsampl = 12;
+
+	// initialize profiling (to avoid runtime exception: profiler called during GreenConstruct)
+	Profile_Start();
 
 	printf("Comparing equal time measurements to unequal time measurements at time difference zero on a %i x %i lattice and beta = %g...\n", params.Nx, params.Ny, params.L*params.dt);
 
@@ -126,6 +130,7 @@ int MeasurementTest()
 	printf("Largest entrywise absolute error: %g\n", err);
 
 	// clean up
+	Profile_Stop();
 	MKL_free(nn_corr);
 	MKL_free(s);
 	DeleteUnequalTimeMeasurementData(&meas_data_uneqlt);

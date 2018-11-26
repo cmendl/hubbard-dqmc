@@ -1,4 +1,5 @@
 #include "monte_carlo.h"
+#include "profiler.h"
 #include "util.h"
 #include <mkl.h>
 #include <math.h>
@@ -63,6 +64,10 @@ int MonteCarloIterPhononTest()
 	params.phonon_params.local_box_width = 12;
 	params.phonon_params.n_local_updates = 40;
 	params.phonon_params.n_block_updates = 0;   // disable block updates
+
+
+	// initialize profiling (to avoid runtime exception: profiler called by DQMCPhononIteration)
+	Profile_Start();
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
@@ -173,6 +178,7 @@ int MonteCarloIterPhononTest()
 	printf("Relative determinant error: %g\n", err_detG);
 
 	// clean up
+	Profile_Stop();
 	MKL_free(Gd_mat_ref);
 	MKL_free(Gu_mat_ref);
 	MKL_free(X_ref);

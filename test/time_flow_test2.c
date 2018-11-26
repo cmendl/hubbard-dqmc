@@ -1,5 +1,6 @@
 #include "time_flow.h"
 #include "kinetic.h"
+#include "profiler.h"
 #include "util.h"
 #include <mkl.h>
 #include <math.h>
@@ -82,6 +83,9 @@ int TimeFlowTest2()
 	double *d   = (double *)MKL_malloc(N   * sizeof(double), MEM_DATA_ALIGN);
 	double *T   = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
 
+	// initialize profiling (to avoid runtime exception: profiler called by TimeFlowMap)
+	Profile_Start();
+
 	// calculate the imaginary-time flow map
 	printf("Calculating imaginary-time flow map on a %i x %i lattice with a single orbital per unit cell...\n", params.Nx, params.Ny);
 	TimeFlowMap(&tsm, 0, Q, tau, d, T);
@@ -112,6 +116,7 @@ int TimeFlowTest2()
 	printf("Largest entrywise absolute error: %g\n", err_abs);
 
 	// clean up
+	Profile_Stop();
 	MKL_free(A_ref);
 	MKL_free(T);
 	MKL_free(d);

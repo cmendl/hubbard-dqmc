@@ -1,4 +1,5 @@
 #include "monte_carlo.h"
+#include "profiler.h"
 #include "util.h"
 #include <mkl.h>
 #include <math.h>
@@ -50,6 +51,9 @@ int MonteCarloIterTest()
 
 	// number of "time slice wraps" before recomputing the Green's function
 	params.nwraps = 8;
+
+	// initialize profiling (to avoid runtime exception: profiler called by DQMCIteration)
+	Profile_Start();
 
 	// Hubbard-Stratonovich parameters
 	stratonovich_params_t stratonovich_params;
@@ -141,6 +145,7 @@ int MonteCarloIterTest()
 	printf("Relative determinant error: %g\n", err_det);
 
 	// clean up
+	Profile_Stop();
 	MKL_free(Gd_mat_ref);
 	MKL_free(Gu_mat_ref);
 	MKL_free(s_ref);

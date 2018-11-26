@@ -1,5 +1,6 @@
 #include "greens_func.h"
 #include "kinetic.h"
+#include "profiler.h"
 #include "util.h"
 #include <mkl.h>
 #include <math.h>
@@ -85,6 +86,9 @@ int GreensFuncInitTest3()
 		expX[i] = exp(-params.dt*g * X[i]);
 	}
 
+	// initialize profiling (to avoid runtime exception: profiler called during GreenConstruct)
+	Profile_Start();
+
 	// allocate and initialize time step matrices
 	time_step_matrices_t tsm;
 	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm);
@@ -120,6 +124,7 @@ int GreensFuncInitTest3()
 	printf("Relative determinant error: %g\n", err_det);
 
 	// clean up
+	Profile_Stop();
 	MKL_free(Gmat_ref);
 	DeleteGreensFunction(&G);
 	DeleteTimeStepMatrices(&tsm);

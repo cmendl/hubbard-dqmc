@@ -1,4 +1,5 @@
 #include "monte_carlo.h"
+#include "profiler.h"
 #include "util.h"
 #include <mkl.h>
 #include <math.h>
@@ -74,6 +75,9 @@ int MonteCarloPhononBlockTest()
 	params.phonon_params.block_box_width = 2;
 	params.phonon_params.n_local_updates = 2;
 	params.phonon_params.n_block_updates = 2;
+
+	// initialize profiling (to avoid runtime exception: profiler called during GreenConstruct)
+	Profile_Start();
 
 	// calculate matrix exponential of the kinetic nearest neighbor hopping matrix
 	kinetic_t kinetic;
@@ -170,6 +174,7 @@ int MonteCarloPhononBlockTest()
 	printf("Relative determinant error: %g\n", err_detG);
 
 	// clean up
+	Profile_Stop();
 	MKL_free(Gd_mat_ref);
 	MKL_free(Gu_mat_ref);
 	MKL_free(expX_ref);

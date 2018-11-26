@@ -1,5 +1,6 @@
 #include "greens_func.h"
 #include "kinetic.h"
+#include "profiler.h"
 #include "util.h"
 #include <mkl.h>
 #include <math.h>
@@ -90,6 +91,9 @@ int GreensFuncInitTest4()
 		1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1, 1, 1
 	};
 
+	// initialize profiling (to avoid runtime exception: profiler called during GreenConstruct)
+	Profile_Start();
+
 	// allocate and initialize time step matrices
 	time_step_matrices_t tsm;
 	AllocateTimeStepMatrices(N, params.L, params.prodBlen, &tsm);
@@ -127,6 +131,7 @@ int GreensFuncInitTest4()
 	printf("Largest entrywise absolute error: %g\n", err_abs);
 
 	// clean up
+	Profile_Stop();
 	MKL_free(Geqlt);
 	MKL_free(G0tau);
 	MKL_free(Gtau0);
