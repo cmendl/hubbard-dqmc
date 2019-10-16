@@ -37,19 +37,10 @@ static int makedir(const char *path)
 
 #endif
 
-#if defined(_WIN32) & (defined(DEBUG) | defined(_DEBUG))
-#include <crtdbg.h>
-#endif
-
 
 int main(int argc, char *argv[])
 {
 	int status;
-
-	// enable run-time memory check for debug builds
-	#if defined(_WIN32) & (defined(DEBUG) | defined(_DEBUG))
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	#endif
 
 	// if compiled with OpenMP, use only 2 threads max for efficiency
 	omp_set_num_threads(2);
