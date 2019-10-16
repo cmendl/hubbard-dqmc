@@ -8,7 +8,9 @@
 #include "progress.h"
 #include "util.h"
 #include "dupio.h"
+#ifdef USE_MKL
 #include <mkl.h>
+#endif
 #include <math.h>
 #include <omp.h>
 #include <time.h>
@@ -136,7 +138,7 @@ int main(int argc, char *argv[])
 	// TODO: include phonons in checkpoint
 	int iteration = 0;
 	randseed_t seed;
-	spin_field_t *s = (spin_field_t *)MKL_malloc(LxN * sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s = (spin_field_t *)algn_malloc(LxN * sizeof(spin_field_t));
 
 	// check for previous data in output directory
 	if (SearchCheckpoint(fnbase) != 0) // no previous data found, start from scratch
@@ -188,8 +190,8 @@ int main(int argc, char *argv[])
 	double *X = NULL, *expX = NULL;
 	if (params.use_phonons)
 	{
-		X    = (double *)MKL_malloc(LxN * sizeof(double), MEM_DATA_ALIGN);
-		expX = (double *)MKL_malloc(LxN * sizeof(double), MEM_DATA_ALIGN);
+		X    = (double *)algn_malloc(LxN * sizeof(double));
+		expX = (double *)algn_malloc(LxN * sizeof(double));
 		int l;
 		for (l = 0; l < params.L; l++)
 		{
@@ -272,17 +274,19 @@ int main(int argc, char *argv[])
 	fclose(fd_log);
 	if (params.use_phonons)
 	{
-		MKL_free(expX);
-		MKL_free(X);
+		algn_free(expX);
+		algn_free(X);
 		DeletePhononData(&meas_data_phonon);
 	}
-	MKL_free(s);
+	algn_free(s);
 	if (params.nuneqlt > 0)
 	{
 		DeleteUnequalTimeMeasurementData(&meas_data_uneqlt);
 	}
 	DeleteMeasurementData(&meas_data);
 	DeleteSimulationParameters(&params);
+
+	#ifdef USE_MKL
 	MKL_Free_Buffers();
 
 	// check for MKL memory leaks
@@ -298,6 +302,7 @@ int main(int argc, char *argv[])
 	{
 		printf("\nMKL memory leak check appears to be fine.\n");
 	}
+	#endif
 	#endif
 
 	return stopped; // 0 if simulation ran to completion, 1 if stopped by SIGINT or reaching the max run time limit

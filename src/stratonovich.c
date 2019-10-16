@@ -1,6 +1,6 @@
 #include "stratonovich.h"
+#include "util.h"
 #include <math.h>
-#include <mkl.h>
 
 
 //________________________________________________________________________________________________________________________
@@ -11,12 +11,12 @@ void FillStratonovichParameters(const int Norb, const double *U, const double dt
 {
 	params->Norb = Norb;
 
-	params->expVu[0] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
-	params->expVu[1] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
-	params->expVd[0] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
-	params->expVd[1] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
-	params->delta[0] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
-	params->delta[1] = MKL_malloc(Norb * sizeof(double), MEM_DATA_ALIGN);
+	params->expVu[0] = algn_malloc(Norb * sizeof(double));
+	params->expVu[1] = algn_malloc(Norb * sizeof(double));
+	params->expVd[0] = algn_malloc(Norb * sizeof(double));
+	params->expVd[1] = algn_malloc(Norb * sizeof(double));
+	params->delta[0] = algn_malloc(Norb * sizeof(double));
+	params->delta[1] = algn_malloc(Norb * sizeof(double));
 
 	int o;
 	for (o = 0; o < Norb; o++)
@@ -51,10 +51,10 @@ void FillStratonovichParameters(const int Norb, const double *U, const double dt
 ///
 void DeleteStratonovichParameters(stratonovich_params_t *params)
 {
-	MKL_free(params->delta[1]);
-	MKL_free(params->delta[0]);
-	MKL_free(params->expVd[1]);
-	MKL_free(params->expVd[0]);
-	MKL_free(params->expVu[1]);
-	MKL_free(params->expVu[0]);
+	algn_free(params->delta[1]);
+	algn_free(params->delta[0]);
+	algn_free(params->expVd[1]);
+	algn_free(params->expVd[0]);
+	algn_free(params->expVu[1]);
+	algn_free(params->expVu[0]);
 }

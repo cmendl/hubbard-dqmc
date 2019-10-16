@@ -1,7 +1,6 @@
 #include "monte_carlo.h"
 #include "profiler.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
@@ -84,13 +83,13 @@ int MonteCarloPhononBlockTest()
 	RectangularKineticExponential(&params, &kinetic);
 
 	// Hubbard-Stratonovich field remains constant during phonon block updates
-	spin_field_t *s = (spin_field_t *)MKL_malloc(params.L*N * sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s = (spin_field_t *)algn_malloc(params.L*N * sizeof(spin_field_t));
 	int status;
 	status = ReadData("../test/monte_carlo_phonon_block_test_s.dat", s, sizeof(spin_field_t), params.L*N); if (status != 0) { return status; }
 
 	// initial phonon field
-	double *X    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *expX = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *X    = (double *)algn_malloc(params.L*N * sizeof(double));
+	double *expX = (double *)algn_malloc(params.L*N * sizeof(double));
 	status = ReadData("../test/monte_carlo_phonon_block_test_X0.dat", X, sizeof(double), params.L*N); if (status != 0) { return status; }
 	int i, l;
 	for (l = 0; l < params.L; l++)
@@ -130,8 +129,8 @@ int MonteCarloPhononBlockTest()
 	PhononBlockUpdates(params.dt, &kinetic, &stratonovich_params, &params.phonon_params, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, &n_block_accept, &n_block_total);
 
 	// load reference phonon field from disk
-	double *X_ref    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *expX_ref = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *X_ref    = (double *)algn_malloc(params.L*N * sizeof(double));
+	double *expX_ref = (double *)algn_malloc(params.L*N * sizeof(double));
 	status = ReadData("../test/monte_carlo_phonon_block_test_X1.dat",       X_ref, sizeof(double), params.L*N); if (status != 0) { return status; }
 	status = ReadData("../test/monte_carlo_phonon_block_test_expX1.dat", expX_ref, sizeof(double), params.L*N); if (status != 0) { return status; }
 
@@ -142,8 +141,8 @@ int MonteCarloPhononBlockTest()
 	printf("Largest entrywise absolute error of the phonon field: %g\n", errX);
 
 	// load reference Green's function matrices from disk
-	double *Gu_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *Gd_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gu_mat_ref = (double *)algn_malloc(N*N * sizeof(double));
+	double *Gd_mat_ref = (double *)algn_malloc(N*N * sizeof(double));
 	double detGu_ref, detGd_ref;
 	status = ReadData("../test/monte_carlo_phonon_block_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
 	status = ReadData("../test/monte_carlo_phonon_block_test_Gd1.dat",    Gd_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
@@ -175,17 +174,17 @@ int MonteCarloPhononBlockTest()
 
 	// clean up
 	Profile_Stop();
-	MKL_free(Gd_mat_ref);
-	MKL_free(Gu_mat_ref);
-	MKL_free(expX_ref);
-	MKL_free(X_ref);
+	algn_free(Gd_mat_ref);
+	algn_free(Gu_mat_ref);
+	algn_free(expX_ref);
+	algn_free(X_ref);
 	DeleteGreensFunction(&Gd);
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
-	MKL_free(expX);
-	MKL_free(X);
-	MKL_free(s);
+	algn_free(expX);
+	algn_free(X);
+	algn_free(s);
 	DeleteKineticExponential(&kinetic);
 	DeleteStratonovichParameters(&stratonovich_params);
 	DeleteSimulationParameters(&params);

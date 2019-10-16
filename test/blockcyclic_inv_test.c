@@ -1,6 +1,6 @@
 #include "linalg.h"
 #include "random.h"
-#include <mkl.h>
+#include "util.h"
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -22,7 +22,7 @@ int BlockCyclicInvTest()
 	Random_SeedInit(1865811235122147685LL * (uint64_t)itime, &seed);
 
 	// allocate H matrix
-	double *H = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *H = (double *)algn_malloc(N*N * sizeof(double));
 	memset(H, 0, N*N * sizeof(double));
 
 	int i, j, k;
@@ -53,7 +53,7 @@ int BlockCyclicInvTest()
 	}
 
 	// copy H for later reference
-	double *H_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *H_ref = (double *)algn_malloc(N*N * sizeof(double));
 	memcpy(H_ref, H, N*N * sizeof(double));
 
 	// Computing the inverse of the block p-cyclic H matrix
@@ -61,7 +61,7 @@ int BlockCyclicInvTest()
 	BlockCyclicInverse(n, p, H);
 
 	// calculate matrix product Hinv*H
-	double *M = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *M = (double *)algn_malloc(N*N * sizeof(double));
 	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, H, N, H_ref, N, 0.0, M, N);
 
 	// subtract identity matrix
@@ -79,9 +79,9 @@ int BlockCyclicInvTest()
 	printf("Largest entrywise absolute error: %g\n", err);
 
 	// clean up
-	MKL_free(M);
-	MKL_free(H_ref);
-	MKL_free(H);
+	algn_free(M);
+	algn_free(H_ref);
+	algn_free(H);
 
 	return (err < 5e-14 ? 0 : 1);
 }

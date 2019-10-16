@@ -1,8 +1,8 @@
 #include "time_flow.h"
 #include "linalg.h"
+#include "util.h"
 #undef PROFILE_ENABLE
 #include "profiler.h"
-#include <mkl.h>
 #include <stdlib.h>
 #include <memory.h>
 #include <assert.h>
@@ -12,7 +12,7 @@
 ///
 /// \brief Compute a time step B matrix (product of a potential and kinetic energy matrix)
 ///
-inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict B)
+void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict B)
 {
 	__assume_aligned(B, MEM_DATA_ALIGN);
 
@@ -37,7 +37,7 @@ inline void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const doubl
 ///
 /// \brief Compute an inverse time step matrix
 ///
-inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict invB)
+void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict invB)
 {
 	__assume_aligned(invB, MEM_DATA_ALIGN);
 
@@ -63,7 +63,7 @@ inline void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, cons
 ///
 /// \brief Compute a time step B matrix (product of a potential and kinetic energy matrix), including phonons
 ///
-inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict B)
+void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict B)
 {
 	__assume_aligned(B, MEM_DATA_ALIGN);
 
@@ -88,7 +88,7 @@ inline void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const
 ///
 /// \brief Compute an inverse time step matrix including phonons
 ///
-inline void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict invB)
+void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict invB)
 {
 	__assume_aligned(invB, MEM_DATA_ALIGN);
 
@@ -124,21 +124,21 @@ void AllocateTimeStepMatrices(const int N, const int L, const int prodBlen, time
 	tsm->numBprod = L / prodBlen;
 	assert(tsm->numBprod > 0);
 
-	tsm->B    = (double **)MKL_malloc(L * sizeof(double *), MEM_DATA_ALIGN);
-	tsm->invB = (double **)MKL_malloc(L * sizeof(double *), MEM_DATA_ALIGN);
+	tsm->B    = (double **)algn_malloc(L * sizeof(double *));
+	tsm->invB = (double **)algn_malloc(L * sizeof(double *));
 
-	tsm->Bprod = (double **)MKL_malloc(tsm->numBprod * sizeof(double *), MEM_DATA_ALIGN);
+	tsm->Bprod = (double **)algn_malloc(tsm->numBprod * sizeof(double *));
 
 	// ensure that each individual matrix is aligned at a 'MEM_DATA_ALIGN' boundary
 	int l;
 	for (l = 0; l < L; l++)
 	{
-		tsm->B[l]    = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-		tsm->invB[l] = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+		tsm->B[l]    = (double *)algn_malloc(N*N * sizeof(double));
+		tsm->invB[l] = (double *)algn_malloc(N*N * sizeof(double));
 	}
 	for (l = 0; l < tsm->numBprod; l++)
 	{
-		tsm->Bprod[l] = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+		tsm->Bprod[l] = (double *)algn_malloc(N*N * sizeof(double));
 	}
 }
 
@@ -152,17 +152,17 @@ void DeleteTimeStepMatrices(time_step_matrices_t *restrict tsm)
 	int l;
 	for (l = 0; l < tsm->numBprod; l++)
 	{
-		MKL_free(tsm->Bprod[l]);
+		algn_free(tsm->Bprod[l]);
 	}
 	for (l = 0; l < tsm->L; l++)
 	{
-		MKL_free(tsm->invB[l]);
-		MKL_free(tsm->B[l]);
+		algn_free(tsm->invB[l]);
+		algn_free(tsm->B[l]);
 	}
 
-	MKL_free(tsm->Bprod);
-	MKL_free(tsm->invB);
-	MKL_free(tsm->B);
+	algn_free(tsm->Bprod);
+	algn_free(tsm->invB);
+	algn_free(tsm->B);
 
 	tsm->L = 0;
 }
@@ -343,19 +343,19 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 	const int prod_slice_shift = slice_shift / tsm->prodBlen;
 
 	// temporary matrix for calculating QR decompositions and obtaining column norms for pre-pivoting
-	double *W = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *W = (double *)algn_malloc(N*N * sizeof(double));
 	__assume_aligned(W, MEM_DATA_ALIGN);
 
 	// column norms array for the pre-pivoted QR decompositions
-	double *norms = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
+	double *norms = (double *)algn_malloc(N * sizeof(double));
 	__assume_aligned(norms, MEM_DATA_ALIGN);
 
 	// permutation array for QR decomposition with pivoting
-	lapack_int* jpvt = (lapack_int *)MKL_malloc(N * sizeof(lapack_int), MEM_DATA_ALIGN);
+	lapack_int* jpvt = (lapack_int *)algn_malloc(N * sizeof(lapack_int));
 	__assume_aligned(jpvt, MEM_DATA_ALIGN);
 
 	// temporary array storing the inverse entries of 'd' or columns of 'T'
-	double *v = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
+	double *v = (double *)algn_malloc(N * sizeof(double));
 	__assume_aligned(v, MEM_DATA_ALIGN);
 
 	// initial QR decomposition
@@ -487,9 +487,9 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 	}
 
 	// clean up
-	MKL_free(v);
-	MKL_free(norms);
-	MKL_free(jpvt);
-	MKL_free(W);
+	algn_free(v);
+	algn_free(norms);
+	algn_free(jpvt);
+	algn_free(W);
 	Profile_End("TFM");
 }

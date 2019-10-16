@@ -1,6 +1,5 @@
 #include "kinetic.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -51,8 +50,8 @@ int KineticTest2()
 
 	// load reference data from disk
 	const int N = kinetic.Ncell * kinetic.Norb;
-	double *expK_ref     = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *inv_expK_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *expK_ref     = (double *)algn_malloc(N*N * sizeof(double));
+	double *inv_expK_ref = (double *)algn_malloc(N*N * sizeof(double));
 	status = ReadData("../test/kinetic_test2_expK.dat",    expK_ref,     sizeof(double), N*N);	if (status < 0) { return status; }
 	status = ReadData("../test/kinetic_test2_invexpK.dat", inv_expK_ref, sizeof(double), N*N);	if (status < 0) { return status; }
 
@@ -63,8 +62,8 @@ int KineticTest2()
 	printf("Largest entrywise absolute error: %g\n", err);
 
 	// clean up
-	MKL_free(inv_expK_ref);
-	MKL_free(expK_ref);
+	algn_free(inv_expK_ref);
+	algn_free(expK_ref);
 	DeleteKineticExponential(&kinetic);
 	DeleteSimulationParameters(&params);
 

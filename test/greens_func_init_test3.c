@@ -2,7 +2,6 @@
 #include "kinetic.h"
 #include "profiler.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -46,8 +45,8 @@ int GreensFuncInitTest3()
 
 	const double lambda = 0.75;
 	double *expV[2] = {
-		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN),
-		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN)
+		(double *)algn_malloc(sizeof(double)),
+		(double *)algn_malloc(sizeof(double))
 	};
 	expV[0][0] = exp(-lambda);
 	expV[1][0] = exp( lambda);
@@ -78,8 +77,8 @@ int GreensFuncInitTest3()
 	};
 
 	// phonon field
-	double *X    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *expX = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *X    = (double *)algn_malloc(params.L*N * sizeof(double));
+	double *expX = (double *)algn_malloc(params.L*N * sizeof(double));
 	ReadData("../test/greens_func_init_test3_X.dat", X, sizeof(double), params.L*N);
 	for (i = 0; i < params.L*N; i++)
 	{
@@ -101,7 +100,7 @@ int GreensFuncInitTest3()
 	GreenConstruct(&tsm, 0, &G);
 
 	// load reference data from disk
-	double *Gmat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gmat_ref = (double *)algn_malloc(N*N * sizeof(double));
 	double detG_ref;
 	ReadData("../test/greens_func_init_test3_G.dat", Gmat_ref, sizeof(double), N*N);
 	ReadData("../test/greens_func_init_test3_detG.dat", &detG_ref, sizeof(double), 1);
@@ -125,14 +124,14 @@ int GreensFuncInitTest3()
 
 	// clean up
 	Profile_Stop();
-	MKL_free(Gmat_ref);
+	algn_free(Gmat_ref);
 	DeleteGreensFunction(&G);
 	DeleteTimeStepMatrices(&tsm);
-	MKL_free(expX);
-	MKL_free(X);
+	algn_free(expX);
+	algn_free(X);
 	DeleteKineticExponential(&kinetic);
-	MKL_free(expV[1]);
-	MKL_free(expV[0]);
+	algn_free(expV[1]);
+	algn_free(expV[0]);
 	DeleteSimulationParameters(&params);
 
 	return (err_rel < 1e-11 && err_abs < 2e-14 && err_det < 1e-13 ? 0 : 1);

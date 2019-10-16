@@ -1,7 +1,6 @@
 #include "monte_carlo.h"
 #include "profiler.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
@@ -74,12 +73,12 @@ int MonteCarloIterPhononTest()
 	RectangularKineticExponential(&params, &kinetic);
 
 	// load initial Hubbard-Stratonovich field from disk
-	spin_field_t *s = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s = (spin_field_t *)algn_malloc(N*params.L *sizeof(spin_field_t));
 	status = ReadData("../test/monte_carlo_iter_phonon_test_HS0.dat", s, sizeof(spin_field_t), N*params.L);  if (status != 0) { return status; }
 
 	// initial phonon field
-	double *X    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *expX = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *X    = (double *)algn_malloc(params.L*N * sizeof(double));
+	double *expX = (double *)algn_malloc(params.L*N * sizeof(double));
 	status = ReadData("../test/monte_carlo_iter_phonon_test_X0.dat", X, sizeof(double), params.L*N);  if (status != 0) { return status; }
 	int i, l;
 	for (l = 0; l < params.L; l++)
@@ -122,7 +121,7 @@ int MonteCarloIterPhononTest()
 	DQMCPhononIteration(params.dt, params.mu, &kinetic, false, &stratonovich_params, &params.phonon_params, params.nwraps, &seed, s, X, expX, &tsm_u, &tsm_d, &Gu, &Gd, 0, NULL, &meas_data_phonon);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
-	spin_field_t *s_ref = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s_ref = (spin_field_t *)algn_malloc(N*params.L *sizeof(spin_field_t));
 	status = ReadData("../test/monte_carlo_iter_phonon_test_HS1.dat", s_ref, sizeof(spin_field_t), N*params.L);  if (status != 0) { return status; }
 
 	// number of deviating Hubbard-Stratonovich field entries
@@ -134,7 +133,7 @@ int MonteCarloIterPhononTest()
 	printf("Number of deviating Hubbard-Stratonovich field entries: %i\n", err_field);
 
 	// load reference phonon field from disk
-	double *X_ref = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *X_ref = (double *)algn_malloc(params.L*N * sizeof(double));
 	status = ReadData("../test/monte_carlo_iter_phonon_test_X1.dat", X_ref, sizeof(double), params.L*N);  if (status != 0) { return status; }
 
 	// entrywise absolute error of the phonon field
@@ -146,8 +145,8 @@ int MonteCarloIterPhononTest()
 	printf("Largest entrywise absolute error of the phonon field: %g\n", errX);
 
 	// load reference Green's functions from disk
-	double *Gu_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *Gd_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gu_mat_ref = (double *)algn_malloc(N*N * sizeof(double));
+	double *Gd_mat_ref = (double *)algn_malloc(N*N * sizeof(double));
 	double detGu_ref, detGd_ref;
 	status = ReadData("../test/monte_carlo_iter_phonon_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N);  if (status != 0) { return status; }
 	status = ReadData("../test/monte_carlo_iter_phonon_test_Gd1.dat",    Gd_mat_ref, sizeof(double), N*N);  if (status != 0) { return status; }
@@ -179,18 +178,18 @@ int MonteCarloIterPhononTest()
 
 	// clean up
 	Profile_Stop();
-	MKL_free(Gd_mat_ref);
-	MKL_free(Gu_mat_ref);
-	MKL_free(X_ref);
-	MKL_free(s_ref);
+	algn_free(Gd_mat_ref);
+	algn_free(Gu_mat_ref);
+	algn_free(X_ref);
+	algn_free(s_ref);
 	DeletePhononData(&meas_data_phonon);
 	DeleteGreensFunction(&Gd);
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
-	MKL_free(expX);
-	MKL_free(X);
-	MKL_free(s);
+	algn_free(expX);
+	algn_free(X);
+	algn_free(s);
 	DeleteKineticExponential(&kinetic);
 	DeleteStratonovichParameters(&stratonovich_params);
 	DeleteSimulationParameters(&params);

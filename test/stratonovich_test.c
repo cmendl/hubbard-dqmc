@@ -1,6 +1,5 @@
 #include "stratonovich.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -17,9 +16,9 @@ int StratonovichTest()
 	FillStratonovichParameters(Norb, U, dt, &stratonovich_params);
 
 	// load reference data from disk
-	double *expVu_ref = (double *)MKL_malloc(2*Norb * sizeof(double), MEM_DATA_ALIGN);
-	double *expVd_ref = (double *)MKL_malloc(2*Norb * sizeof(double), MEM_DATA_ALIGN);
-	double *delta_ref = (double *)MKL_malloc(2*Norb * sizeof(double), MEM_DATA_ALIGN);
+	double *expVu_ref = (double *)algn_malloc(2*Norb * sizeof(double));
+	double *expVd_ref = (double *)algn_malloc(2*Norb * sizeof(double));
+	double *delta_ref = (double *)algn_malloc(2*Norb * sizeof(double));
 	ReadData("../test/stratonovich_test_expVu.dat", expVu_ref, sizeof(double), 2*Norb);
 	ReadData("../test/stratonovich_test_expVd.dat", expVd_ref, sizeof(double), 2*Norb);
 	ReadData("../test/stratonovich_test_delta.dat", delta_ref, sizeof(double), 2*Norb);
@@ -41,9 +40,9 @@ int StratonovichTest()
 	printf("Largest absolute error: %g\n", err);
 
 	// clean up
-	MKL_free(delta_ref);
-	MKL_free(expVd_ref);
-	MKL_free(expVu_ref);
+	algn_free(delta_ref);
+	algn_free(expVd_ref);
+	algn_free(expVu_ref);
 	DeleteStratonovichParameters(&stratonovich_params);
 
 	return (err < 5e-16 ? 0 : 1);

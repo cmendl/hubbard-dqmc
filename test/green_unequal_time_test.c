@@ -1,7 +1,6 @@
 #include "greens_func.h"
 #include "linalg.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -42,18 +41,18 @@ int GreenUnequalTimeTest()
 	}
 
 	// temporary H matrix
-	double *H = (double *)MKL_malloc(N*N*tsm.numBprod*tsm.numBprod * sizeof(double), MEM_DATA_ALIGN);
+	double *H = (double *)algn_malloc(N*N*tsm.numBprod*tsm.numBprod * sizeof(double));
 
 	// compute unequal time Green's functions
-	double *Gtau0 = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *G0tau = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *Geqlt = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gtau0 = (double *)algn_malloc(L*N*N * sizeof(double));
+	double *G0tau = (double *)algn_malloc(L*N*N * sizeof(double));
+	double *Geqlt = (double *)algn_malloc(L*N*N * sizeof(double));
 	ComputeUnequalTimeGreensFunction(N, L, &tsm, H, Gtau0, G0tau, Geqlt);
 
 	// load reference data from disk
-	double *Gtau0_ref = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *G0tau_ref = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *Geqlt_ref = (double *)MKL_malloc(L*N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gtau0_ref = (double *)algn_malloc(L*N*N * sizeof(double));
+	double *G0tau_ref = (double *)algn_malloc(L*N*N * sizeof(double));
+	double *Geqlt_ref = (double *)algn_malloc(L*N*N * sizeof(double));
 	status = ReadData("../test/green_unequal_time_test_Gtau0.dat", Gtau0_ref, sizeof(double), L*N*N); if (status != 0) { return status; }
 	status = ReadData("../test/green_unequal_time_test_G0tau.dat", G0tau_ref, sizeof(double), L*N*N); if (status != 0) { return status; }
 	status = ReadData("../test/green_unequal_time_test_Geqlt.dat", Geqlt_ref, sizeof(double), L*N*N); if (status != 0) { return status; }
@@ -66,13 +65,13 @@ int GreenUnequalTimeTest()
 	printf("Largest entrywise absolute error: %g\n", err);
 
 	// clean up
-	MKL_free(Geqlt_ref);
-	MKL_free(G0tau_ref);
-	MKL_free(Gtau0_ref);
-	MKL_free(Geqlt);
-	MKL_free(G0tau);
-	MKL_free(Gtau0);
-	MKL_free(H);
+	algn_free(Geqlt_ref);
+	algn_free(G0tau_ref);
+	algn_free(Gtau0_ref);
+	algn_free(Geqlt);
+	algn_free(G0tau);
+	algn_free(Gtau0);
+	algn_free(H);
 	DeleteTimeStepMatrices(&tsm);
 
 	return (err < 4e-14 ? 0 : 1);

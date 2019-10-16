@@ -2,7 +2,6 @@
 #include "random.h"
 #include "profiler.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -89,7 +88,7 @@ int MeasurementTest()
 	if (status != 0) { return status; }
 
 	// accumulate measurements of pseudo-random data
-	spin_field_t *s = (spin_field_t *)MKL_malloc(params.L*N * sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s = (spin_field_t *)algn_malloc(params.L*N * sizeof(spin_field_t));
 	for (n = 0; n < params.nsampl; n++)
 	{
 		// random Hubbard-Stratonovich field
@@ -112,7 +111,7 @@ int MeasurementTest()
 	NormalizeUnequalTimeMeasurementData(&meas_data_uneqlt);
 
 	// total density correlations (equal time)
-	double *nn_corr = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
+	double *nn_corr = (double *)algn_malloc(N * sizeof(double));
 	for (i = 0; i < N; i++)
 	{
 		nn_corr[i] = meas_data.uu_corr[i] + meas_data.dd_corr[i] + meas_data.ud_corr[i];
@@ -131,8 +130,8 @@ int MeasurementTest()
 
 	// clean up
 	Profile_Stop();
-	MKL_free(nn_corr);
-	MKL_free(s);
+	algn_free(nn_corr);
+	algn_free(s);
 	DeleteUnequalTimeMeasurementData(&meas_data_uneqlt);
 	DeleteMeasurementData(&meas_data);
 	DeleteGreensFunction(&Gd);

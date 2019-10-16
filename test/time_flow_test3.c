@@ -1,8 +1,8 @@
 #include "time_flow.h"
 #include "kinetic.h"
+#include "linalg.h"
 #include "profiler.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -72,14 +72,14 @@ int TimeFlowTest3()
 	int status;
 
 	// load Hubbard-Stratonovich field from disk
-	spin_field_t *s = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s = (spin_field_t *)algn_malloc(N*params.L *sizeof(spin_field_t));
 	status = ReadData("../test/time_flow_test3_HS.dat", s, sizeof(spin_field_t), N*params.L);
 	if (status != 0) { return status; }
 
 	// interaction potential
 	double *expV[2];
-	expV[0] = (double *)MKL_malloc(params.Norb * sizeof(double), MEM_DATA_ALIGN);
-	expV[1] = (double *)MKL_malloc(params.Norb * sizeof(double), MEM_DATA_ALIGN);
+	expV[0] = (double *)algn_malloc(params.Norb * sizeof(double));
+	expV[1] = (double *)algn_malloc(params.Norb * sizeof(double));
 	int i;
 	for (i = 0; i < params.Norb; i++)
 	{
@@ -88,8 +88,8 @@ int TimeFlowTest3()
 	}
 
 	// phonon field
-	double *X    = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *expX = (double *)MKL_malloc(params.L*N * sizeof(double), MEM_DATA_ALIGN);
+	double *X    = (double *)algn_malloc(params.L*N * sizeof(double));
+	double *expX = (double *)algn_malloc(params.L*N * sizeof(double));
 	status = ReadData("../test/time_flow_test3_X.dat", X, sizeof(double), params.L*N);
 	if (status != 0) { return status; }
 	const int Ncell = params.Nx * params.Ny;
@@ -109,10 +109,10 @@ int TimeFlowTest3()
 	InitPhononTimeStepMatrices(&kinetic, expV, s, expX, &tsm);
 
 	// allocate structures for output, represented as Q * diag(d) * T
-	double *Q   = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *tau = (double *)MKL_malloc(N   * sizeof(double), MEM_DATA_ALIGN);	// scalar factors of the elementary reflectors for the matrix Q
-	double *d   = (double *)MKL_malloc(N   * sizeof(double), MEM_DATA_ALIGN);
-	double *T   = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Q   = (double *)algn_malloc(N*N * sizeof(double));
+	double *tau = (double *)algn_malloc(N   * sizeof(double));	// scalar factors of the elementary reflectors for the matrix Q
+	double *d   = (double *)algn_malloc(N   * sizeof(double));
+	double *T   = (double *)algn_malloc(N*N * sizeof(double));
 
 	// initialize profiling (to avoid runtime exception: profiler called by TimeFlowMap)
 	Profile_Start();
@@ -130,7 +130,7 @@ int TimeFlowTest3()
 	LAPACKE_dormqr(LAPACK_COL_MAJOR, 'L', 'N', N, N, N, Q, N, tau, T, N);
 
 	// load reference data from disk
-	double *A_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *A_ref = (double *)algn_malloc(N*N * sizeof(double));
 	ReadData("../test/time_flow_test3_A.dat", A_ref, sizeof(double), N*N);
 
 	// entrywise relative error
@@ -147,17 +147,17 @@ int TimeFlowTest3()
 
 	// clean up
 	Profile_Stop();
-	MKL_free(A_ref);
-	MKL_free(T);
-	MKL_free(d);
-	MKL_free(tau);
-	MKL_free(Q);
+	algn_free(A_ref);
+	algn_free(T);
+	algn_free(d);
+	algn_free(tau);
+	algn_free(Q);
 	DeleteTimeStepMatrices(&tsm);
-	MKL_free(expV[1]);
-	MKL_free(expV[0]);
-	MKL_free(expX);
-	MKL_free(X);
-	MKL_free(s);
+	algn_free(expV[1]);
+	algn_free(expV[0]);
+	algn_free(expX);
+	algn_free(X);
+	algn_free(s);
 	DeleteKineticExponential(&kinetic);
 	DeleteSimulationParameters(&params);
 

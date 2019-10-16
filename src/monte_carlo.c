@@ -5,7 +5,6 @@
 #include "profiler.h"
 #include "checkpoint.h"
 #include "progress.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -57,7 +56,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	#endif
 
 	// random shuffle of lattice cells and orbitals
-	int *orb_cell_order = MKL_malloc(N * sizeof(int), MEM_DATA_ALIGN);
+	int *orb_cell_order = algn_malloc(N * sizeof(int));
 	__assume_aligned(orb_cell_order, MEM_DATA_ALIGN);
 
 	// iterate over time slices
@@ -170,7 +169,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	}
 
 	// clean up
-	MKL_free(orb_cell_order);
+	algn_free(orb_cell_order);
 	#if defined(DEBUG) | defined(_DEBUG)
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);
@@ -221,8 +220,8 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	}
 
 	// store X_{i,l} and corresponding exponential for all 'l'
-	double *X_i    = (double *)MKL_malloc(L * sizeof(double), MEM_DATA_ALIGN);
-	double *expX_i = (double *)MKL_malloc(L * sizeof(double), MEM_DATA_ALIGN);
+	double *X_i    = (double *)algn_malloc(L * sizeof(double));
+	double *expX_i = (double *)algn_malloc(L * sizeof(double));
 	__assume_aligned(X_i,    MEM_DATA_ALIGN);
 	__assume_aligned(expX_i, MEM_DATA_ALIGN);
 
@@ -322,8 +321,8 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	DeleteTimeStepMatrices(&tsm_u_new);
 	DeleteGreensFunction(&Gd_new);
 	DeleteGreensFunction(&Gu_new);
-	MKL_free(expX_i);
-	MKL_free(X_i);
+	algn_free(expX_i);
+	algn_free(X_i);
 }
 
 
@@ -370,8 +369,8 @@ void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restri
 	}
 
 	// store X_{i,l} and corresponding exponential for all 'l'
-	double *X_ref    = (double *)MKL_malloc(L * sizeof(double), MEM_DATA_ALIGN);
-	double *expX_ref = (double *)MKL_malloc(L * sizeof(double), MEM_DATA_ALIGN);
+	double *X_ref    = (double *)algn_malloc(L * sizeof(double));
+	double *expX_ref = (double *)algn_malloc(L * sizeof(double));
 	__assume_aligned(X_ref,    MEM_DATA_ALIGN);
 	__assume_aligned(expX_ref, MEM_DATA_ALIGN);
 
@@ -465,8 +464,8 @@ void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restri
 	DeleteTimeStepMatrices(&tsm_u_new);
 	DeleteGreensFunction(&Gd_new);
 	DeleteGreensFunction(&Gu_new);
-	MKL_free(expX_ref);
-	MKL_free(X_ref);
+	algn_free(expX_ref);
+	algn_free(X_ref);
 }
 
 
@@ -528,7 +527,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 	const double inv_dt_sq = 1.0 / square(dt);
 
 	// random shuffle of lattice cells and orbitals
-	int *orb_cell_order = MKL_malloc(N * sizeof(int), MEM_DATA_ALIGN);
+	int *orb_cell_order = algn_malloc(N * sizeof(int));
 	 __assume_aligned(orb_cell_order, MEM_DATA_ALIGN);
 
 	// iterate over time slices
@@ -717,7 +716,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 	Profile_End("DQMCIter_PhononFlip");
 
 	// clean up
-	MKL_free(orb_cell_order);
+	algn_free(orb_cell_order);
 	#if defined(DEBUG) | defined(_DEBUG)
 	DeleteGreensFunction(&Gd_old);
 	DeleteGreensFunction(&Gu_old);

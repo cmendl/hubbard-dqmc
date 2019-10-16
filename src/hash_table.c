@@ -1,5 +1,5 @@
 #include "hash_table.h"
-#include <mkl.h>
+#include "util.h"
 #include <stdint.h>
 #include <string.h>
 
@@ -13,7 +13,7 @@ void AllocateHashTable(hash_table_t *ht, const int n_buckets)
 	ht->n_buckets = n_buckets;
 	ht->n_entries = 0;
 
-	ht->buckets = (ht_entry_t **)MKL_calloc(n_buckets, sizeof(ht_entry_t *), MEM_DATA_ALIGN);
+	ht->buckets = (ht_entry_t **)algn_calloc(n_buckets, sizeof(ht_entry_t *));
 }
 
 
@@ -29,15 +29,15 @@ void DeleteHashTable(hash_table_t *ht, FreeFuncPtr *free_func)
 		ht_entry_t *entry = ht->buckets[i];
 		while (entry != NULL)
 		{
-			MKL_free(entry->key);
+			algn_free(entry->key);
 			free_func(entry->val);
 			ht_entry_t *next = entry->next;
-			MKL_free(entry);
+			algn_free(entry);
 			entry = next;
 		}
 	}
 
-	MKL_free(ht->buckets);
+	algn_free(ht->buckets);
 }
 
 
@@ -82,9 +82,9 @@ void *HashTableInsert(hash_table_t *ht, const char *key, void *val)
 	}
 
 	// key not found, insert
-	ht_entry_t *entry = (ht_entry_t *)MKL_malloc(sizeof(ht_entry_t), MEM_DATA_ALIGN);
+	ht_entry_t *entry = (ht_entry_t *)algn_malloc(sizeof(ht_entry_t));
 	// copy key string
-	entry->key = (char *)MKL_malloc(strlen(key) + 1, MEM_DATA_ALIGN);
+	entry->key = (char *)algn_malloc(strlen(key) + 1);
 	strcpy(entry->key, key);
 	entry->val = val;
 	entry->next = NULL;
@@ -138,8 +138,8 @@ void *HashTableRemove(hash_table_t *ht, const char *key)
 
 			(*p_entry) = entry->next;       // redirect pointer, effectively removing current entry from linked list
 			void *val = entry->val;         // keep reference to current value
-			MKL_free(entry->key);           // delete current entry
-			MKL_free(entry);
+			algn_free(entry->key);          // delete current entry
+			algn_free(entry);
 			ht->n_entries--;
 
 			return val;

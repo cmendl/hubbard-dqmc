@@ -1,5 +1,6 @@
 #include "lattice_fourier.h"
-#include <mkl.h>
+
+#ifdef USE_MKL
 
 
 //________________________________________________________________________________________________________________________
@@ -106,3 +107,6 @@ void DeleteLatticeFourierDescriptor(lattice_fourier_desc_t *desc)
 	desc->Ny = 0;
 	desc->Nx = 0;
 }
+
+
+#endif

@@ -2,7 +2,6 @@
 #include "kinetic.h"
 #include "profiler.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -56,12 +55,12 @@ int GreensFuncInitTest1()
 	RectangularKineticExponential(&params, &kinetic);
 
 	// load Hubbard-Stratonovich field from disk
-	spin_field_t *s = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s = (spin_field_t *)algn_malloc(N*params.L *sizeof(spin_field_t));
 	status = ReadData("../test/greens_func_init_test1_HS.dat", s, sizeof(spin_field_t), N*params.L); if (status != 0) { return status; }
 
 	double *expV[2];
-	expV[0] = (double *)MKL_malloc(params.Norb * sizeof(double), MEM_DATA_ALIGN);
-	expV[1] = (double *)MKL_malloc(params.Norb * sizeof(double), MEM_DATA_ALIGN);
+	expV[0] = (double *)algn_malloc(params.Norb * sizeof(double));
+	expV[1] = (double *)algn_malloc(params.Norb * sizeof(double));
 	int i;
 	for (i = 0; i < params.Norb; i++)
 	{
@@ -84,7 +83,7 @@ int GreensFuncInitTest1()
 	GreenConstruct(&tsm, 0, &G);
 
 	// load reference data from disk
-	double *Gmat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gmat_ref = (double *)algn_malloc(N*N * sizeof(double));
 	double detG_ref;
 	ReadData("../test/greens_func_init_test1_G.dat", Gmat_ref, sizeof(double), N*N);
 	ReadData("../test/greens_func_init_test1_detG.dat", &detG_ref, sizeof(double), 1);
@@ -108,13 +107,13 @@ int GreensFuncInitTest1()
 
 	// clean up
 	Profile_Stop();
-	MKL_free(Gmat_ref);
+	algn_free(Gmat_ref);
 	DeleteGreensFunction(&G);
 	DeleteTimeStepMatrices(&tsm);
 	DeleteKineticExponential(&kinetic);
-	MKL_free(expV[1]);
-	MKL_free(expV[0]);
-	MKL_free(s);
+	algn_free(expV[1]);
+	algn_free(expV[0]);
+	algn_free(s);
 	DeleteSimulationParameters(&params);
 
 	return (err_rel < 2e-9 && err_abs < 1e-14 && err_det < 2e-13 ? 0 : 1);

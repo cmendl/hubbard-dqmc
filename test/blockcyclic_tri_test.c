@@ -1,6 +1,6 @@
 #include "linalg.h"
 #include "random.h"
-#include <mkl.h>
+#include "util.h"
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -22,7 +22,7 @@ int BlockCyclicTriTest()
 	Random_SeedInit(1865811235122147685LL * (uint64_t)itime, &seed);
 
 	// allocate R matrix
-	double *R = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *R = (double *)algn_malloc(N*N * sizeof(double));
 	memset(R, 0, N*N * sizeof(double));
 
 	int i, j, k;
@@ -70,7 +70,7 @@ int BlockCyclicTriTest()
 	}
 
 	// copy R for later reference
-	double *R_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *R_ref = (double *)algn_malloc(N*N * sizeof(double));
 	memcpy(R_ref, R, N*N * sizeof(double));
 
 	// compute the inverse of R
@@ -79,7 +79,7 @@ int BlockCyclicTriTest()
 	//LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', N, R, N);
 
 	// calculate matrix product Rinv*R
-	double *M = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *M = (double *)algn_malloc(N*N * sizeof(double));
 	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, R, N, R_ref, N, 0.0, M, N);
 
 	// subtract identity matrix
@@ -97,9 +97,9 @@ int BlockCyclicTriTest()
 	printf("Largest entrywise absolute error: %g\n", err);
 
 	// clean up
-	MKL_free(M);
-	MKL_free(R_ref);
-	MKL_free(R);
+	algn_free(M);
+	algn_free(R_ref);
+	algn_free(R);
 
 	return (err < 8e-14 ? 0 : 1);
 }

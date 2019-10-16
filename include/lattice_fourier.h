@@ -1,6 +1,9 @@
 #ifndef LATTICE_FOURIER_H
 #define LATTICE_FOURIER_H
 
+#ifdef USE_MKL
+
+#include <complex.h>
 #include <mkl_dfti.h>
 
 
@@ -30,7 +33,7 @@ void DeleteLatticeFourierDescriptor(lattice_fourier_desc_t *desc);
 ///
 /// \brief Perform a forward Fourier transformation on the lattice
 ///
-inline void FourierTransformLatticeForward(lattice_fourier_desc_t *desc, const double *v, MKL_Complex16 *vF)
+inline void FourierTransformLatticeForward(lattice_fourier_desc_t *desc, const double *v, double complex *vF)
 {
 	DftiComputeForward(desc->hand_forw, (double *)v, vF);
 }
@@ -40,11 +43,12 @@ inline void FourierTransformLatticeForward(lattice_fourier_desc_t *desc, const d
 ///
 /// \brief Perform a reverse Fourier transformation on the lattice
 ///
-inline void FourierTransformLatticeBackward(lattice_fourier_desc_t *desc, const MKL_Complex16 *vF, double *v)
+inline void FourierTransformLatticeBackward(lattice_fourier_desc_t *desc, const double complex *vF, double *v)
 {
 	DftiComputeBackward(desc->hand_back, (double *)vF, v);
 }
 
 
+#endif
 
 #endif

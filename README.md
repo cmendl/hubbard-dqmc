@@ -1,15 +1,22 @@
 Determinant quantum Monte Carlo implementation
 ==============================================
 
-C implementation and test files of the determinant quantum Monte Carlo (DQMC) method applied to Hubbard-type models.
+C implementation of the determinant quantum Monte Carlo (DQMC) method applied to Hubbard-type models.
 
-A *Makefile* is available in the *bin* subfolder, assuming that the Intel C compiler and MKL are available.
 
-To run the code, call `hubbard_dqmc <paramfile>`; some example parameter files are provided in the *bin* subfolder.
+Quickstart
+----------
+The code depends on the [CBLAS](http://www.netlib.org/blas/#_cblas) and [LAPACKE](http://netlib.org/lapack/lapacke.html) libraries. These can be installed via `sudo apt install libblas-dev liblapacke-dev` (on Ubuntu Linux) or similar. Alternatively, the *Makefile* shows how to use the Intel compiler with MKL.
+
+Call `make` to build the project. You might have to adapt some parameters in the *Makefile* beforehand (see the comments there).
+
+To run the code, cd into the *bin* subfolder and call `hubbard_dqmc <paramfile>`; some example parameter files are provided there.
 
 The Mathematica unit test notebooks can be opened by [Mathematica](https://www.wolfram.com/mathematica) or the free [CDF player](https://www.wolfram.com/cdf-player).
 
 
+About
+-----
 Copyright (c) 2015-2017, Edwin Huang and Christian B. Mendl
 
 This code was developed at Stanford University with support from the U.S. Department of Energy (DOE), Office of Basic Energy Sciences, Division of Materials Sciences and Engineering, under Contract No. DE-AC02-76SF00515.

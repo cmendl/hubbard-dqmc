@@ -7,6 +7,45 @@
 #include <math.h>
 
 
+#define MEM_DATA_ALIGN 64
+
+
+#ifdef USE_MKL
+
+#include <mkl_service.h>
+
+#define algn_malloc(size) MKL_malloc(size, MEM_DATA_ALIGN)
+
+#define algn_free MKL_free
+
+#define algn_calloc(num, size) MKL_calloc(num, size, MEM_DATA_ALIGN)
+
+#else
+
+#include <malloc.h>
+#ifdef __GNUC__
+#include <mm_malloc.h>
+#endif
+#include <string.h>
+
+#define algn_malloc(size) _mm_malloc(size, MEM_DATA_ALIGN)
+
+#define algn_free _mm_free
+
+static inline void *algn_calloc(size_t num, size_t size)
+{
+	size_t blocksize = num * size;
+	void *ptr = algn_malloc(blocksize);
+	if (ptr != NULL)
+	{
+		memset(ptr, 0, blocksize);
+	}
+	return ptr;
+}
+
+#endif
+
+
 //________________________________________________________________________________________________________________________
 ///
 /// \brief Square function x -> x^2

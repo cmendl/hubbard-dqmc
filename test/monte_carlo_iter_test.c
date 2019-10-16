@@ -1,7 +1,6 @@
 #include "monte_carlo.h"
 #include "profiler.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <assert.h>
 #include <stdio.h>
@@ -64,7 +63,7 @@ int MonteCarloIterTest()
 	RectangularKineticExponential(&params, &kinetic);
 
 	// load initial Hubbard-Stratonovich field from disk
-	spin_field_t *s = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s = (spin_field_t *)algn_malloc(N*params.L *sizeof(spin_field_t));
 	status = ReadData("../test/monte_carlo_iter_test_HS0.dat", s, sizeof(spin_field_t), N*params.L);
 	if (status != 0) { return status; }
 
@@ -99,7 +98,7 @@ int MonteCarloIterTest()
 	DQMCIteration(&kinetic, &stratonovich_params, params.nwraps, &seed, s, &tsm_u, &tsm_d, &Gu, &Gd, params.L, &meas_data);
 
 	// reference Hubbard-Stratonovich field after DQMC iteration
-	spin_field_t *s_ref = (spin_field_t *)MKL_malloc(N*params.L *sizeof(spin_field_t), MEM_DATA_ALIGN);
+	spin_field_t *s_ref = (spin_field_t *)algn_malloc(N*params.L *sizeof(spin_field_t));
 	status = ReadData("../test/monte_carlo_iter_test_HS1.dat", s_ref, sizeof(spin_field_t), N*params.L);
 	if (status != 0) { return status; }
 
@@ -113,8 +112,8 @@ int MonteCarloIterTest()
 	printf("Number of deviating Hubbard-Stratonovich field entries: %i\n", err_field);
 
 	// load reference data from disk
-	double *Gu_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *Gd_mat_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gu_mat_ref = (double *)algn_malloc(N*N * sizeof(double));
+	double *Gd_mat_ref = (double *)algn_malloc(N*N * sizeof(double));
 	double detGu_ref, detGd_ref;
 	status = ReadData("../test/monte_carlo_iter_test_Gu1.dat",    Gu_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
 	status = ReadData("../test/monte_carlo_iter_test_Gd1.dat",    Gd_mat_ref, sizeof(double), N*N); if (status != 0) { return status; }
@@ -146,15 +145,15 @@ int MonteCarloIterTest()
 
 	// clean up
 	Profile_Stop();
-	MKL_free(Gd_mat_ref);
-	MKL_free(Gu_mat_ref);
-	MKL_free(s_ref);
+	algn_free(Gd_mat_ref);
+	algn_free(Gu_mat_ref);
+	algn_free(s_ref);
 	DeleteMeasurementData(&meas_data);
 	DeleteGreensFunction(&Gd);
 	DeleteGreensFunction(&Gu);
 	DeleteTimeStepMatrices(&tsm_d);
 	DeleteTimeStepMatrices(&tsm_u);
-	MKL_free(s);
+	algn_free(s);
 	DeleteKineticExponential(&kinetic);
 	DeleteStratonovichParameters(&stratonovich_params);
 	DeleteSimulationParameters(&params);

@@ -2,7 +2,6 @@
 #include "kinetic.h"
 #include "profiler.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -44,8 +43,8 @@ int GreensFuncInitTest4()
 
 	const double lambda = 0.75;
 	double *expV[2] = {
-		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN),
-		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN)
+		(double *)algn_malloc(sizeof(double)),
+		(double *)algn_malloc(sizeof(double))
 	};
 	expV[0][0] = exp(-lambda);
 	expV[1][0] = exp( lambda);
@@ -107,12 +106,12 @@ int GreensFuncInitTest4()
 	GreenConstruct(&tsm, 0, &G);
 
 	// temporary H matrix
-	double *H = (double *)MKL_malloc(N*N*params.L*params.L * sizeof(double), MEM_DATA_ALIGN);
+	double *H = (double *)algn_malloc(N*N*params.L*params.L * sizeof(double));
 
 	// compute unequal time Green's functions
-	double *Gtau0 = (double *)MKL_malloc(params.L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *G0tau = (double *)MKL_malloc(params.L*N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *Geqlt = (double *)MKL_malloc(params.L*N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Gtau0 = (double *)algn_malloc(params.L*N*N * sizeof(double));
+	double *G0tau = (double *)algn_malloc(params.L*N*N * sizeof(double));
+	double *Geqlt = (double *)algn_malloc(params.L*N*N * sizeof(double));
 	ComputeUnequalTimeGreensFunction(N, params.L, &tsm, H, Gtau0, G0tau, Geqlt);
 
 	// reference to first block, should be equal to 'G'
@@ -132,15 +131,15 @@ int GreensFuncInitTest4()
 
 	// clean up
 	Profile_Stop();
-	MKL_free(Geqlt);
-	MKL_free(G0tau);
-	MKL_free(Gtau0);
-	MKL_free(H);
+	algn_free(Geqlt);
+	algn_free(G0tau);
+	algn_free(Gtau0);
+	algn_free(H);
 	DeleteGreensFunction(&G);
 	DeleteTimeStepMatrices(&tsm);
 	DeleteKineticExponential(&kinetic);
-	MKL_free(expV[1]);
-	MKL_free(expV[0]);
+	algn_free(expV[1]);
+	algn_free(expV[0]);
 	DeleteSimulationParameters(&params);
 
 	return (err_rel < 5e-11 && err_abs < 2e-14 ? 0 : 1);

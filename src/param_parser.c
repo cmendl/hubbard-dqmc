@@ -1,7 +1,7 @@
 #include "sim_params.h"
 #include "dupio.h"
 #include "hash_table.h"
-#include <mkl.h>
+#include "util.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,11 +14,11 @@
 ///
 void AllocateBondHoppings(const int Norb, bond_hoppings_t *bonds)
 {
-	bonds->aa = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
-	bonds->ab = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
-	bonds->ac = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
-	bonds->ad = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
-	bonds->bc = (double *)MKL_calloc(Norb * Norb, sizeof(double), MEM_DATA_ALIGN);
+	bonds->aa = (double *)algn_calloc(Norb * Norb, sizeof(double));
+	bonds->ab = (double *)algn_calloc(Norb * Norb, sizeof(double));
+	bonds->ac = (double *)algn_calloc(Norb * Norb, sizeof(double));
+	bonds->ad = (double *)algn_calloc(Norb * Norb, sizeof(double));
+	bonds->bc = (double *)algn_calloc(Norb * Norb, sizeof(double));
 }
 
 
@@ -28,11 +28,11 @@ void AllocateBondHoppings(const int Norb, bond_hoppings_t *bonds)
 ///
 void DeleteBondHoppings(bond_hoppings_t *bonds)
 {
-	MKL_free(bonds->bc);
-	MKL_free(bonds->ad);
-	MKL_free(bonds->ac);
-	MKL_free(bonds->ab);
-	MKL_free(bonds->aa);
+	algn_free(bonds->bc);
+	algn_free(bonds->ad);
+	algn_free(bonds->ac);
+	algn_free(bonds->ab);
+	algn_free(bonds->aa);
 }
 
 
@@ -58,7 +58,7 @@ static void AppendValues(value_list_t *list, const value_list_t *ap)
 	for (i = 0; i < ap->num; i++)
 	{
 		assert(0 <= list->num && list->num < 1024);
-		list->str[list->num] = (char *)MKL_malloc((strlen(ap->str[i]) + 1) * sizeof(char), MEM_DATA_ALIGN);
+		list->str[list->num] = (char *)algn_malloc((strlen(ap->str[i]) + 1) * sizeof(char));
 		strcpy(list->str[list->num], ap->str[i]);
 		list->num++;
 	}
@@ -73,7 +73,7 @@ static void DeleteValueList(value_list_t *list)
 	int i;
 	for (i = 0; i < list->num; i++)
 	{
-		MKL_free(list->str[i]);
+		algn_free(list->str[i]);
 	}
 
 	list->num = 0;
@@ -88,7 +88,7 @@ static void FreeValueListMemory(void *ptr)
 {
 	value_list_t *list = (value_list_t *)ptr;
 	DeleteValueList(list);
-	MKL_free(list);
+	algn_free(list);
 }
 
 
@@ -201,7 +201,7 @@ int ParseParameterFile(const char *filename, sim_params_t *params)
 		value_list_t *val_prev = (value_list_t *)HashTableGet(&hashtable, name);
 		if (val_prev == NULL)   // not in hash table yet
 		{
-			value_list_t *v = MKL_calloc(1, sizeof(value_list_t), MEM_DATA_ALIGN);
+			value_list_t *v = algn_calloc(1, sizeof(value_list_t));
 			AppendValues(v, &value);
 			HashTableInsert(&hashtable, name, v);
 		}
@@ -364,10 +364,10 @@ void AllocateSimulationParameters(const int Norb, sim_params_t *params)
 
 	AllocateBondHoppings(Norb, &params->t);
 
-	params->U                   = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
-	params->eps                 = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
-	params->phonon_params.omega = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
-	params->phonon_params.g     = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	params->U                   = (double *)algn_calloc(Norb, sizeof(double));
+	params->eps                 = (double *)algn_calloc(Norb, sizeof(double));
+	params->phonon_params.omega = (double *)algn_calloc(Norb, sizeof(double));
+	params->phonon_params.g     = (double *)algn_calloc(Norb, sizeof(double));
 }
 
 
@@ -377,10 +377,10 @@ void AllocateSimulationParameters(const int Norb, sim_params_t *params)
 ///
 void DeleteSimulationParameters(sim_params_t *params)
 {
-	MKL_free(params->phonon_params.g);
-	MKL_free(params->phonon_params.omega);
-	MKL_free(params->eps);
-	MKL_free(params->U);
+	algn_free(params->phonon_params.g);
+	algn_free(params->phonon_params.omega);
+	algn_free(params->eps);
+	algn_free(params->U);
 
 	DeleteBondHoppings(&params->t);
 }

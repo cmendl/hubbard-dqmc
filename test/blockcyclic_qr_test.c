@@ -1,7 +1,6 @@
 #include "linalg.h"
 #include "random.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -23,11 +22,11 @@ int BlockCyclicQRTest()
 	Random_SeedInit(1865811235122147685LL * (uint64_t)itime, &seed);
 
 	// allocate H matrix
-	double *H = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *H = (double *)algn_malloc(N*N * sizeof(double));
 	memset(H, 0, N*N * sizeof(double));
 
 	// allocate tau vector
-	double *tau = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);;
+	double *tau = (double *)algn_malloc(N * sizeof(double));
 
 	int i, j, k;
 
@@ -57,7 +56,7 @@ int BlockCyclicQRTest()
 	}
 
 	// copy H for later reference
-	double *H_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *H_ref = (double *)algn_malloc(N*N * sizeof(double));
 	memcpy(H_ref, H, N*N * sizeof(double));
 
 	// perform block p-cyclic QR decomposition
@@ -65,7 +64,7 @@ int BlockCyclicQRTest()
 	BlockCyclicQR(n, p, H, tau);
 
 	// copy entries of 'H' to 'Q' for preserving orthogonal Q blocks
-	double *Q = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Q = (double *)algn_malloc(N*N * sizeof(double));
 	memcpy(Q, H, N*N * sizeof(double));
 
 	// set sub-diagonal entries of R (overwritten entries of H) to zero
@@ -86,10 +85,10 @@ int BlockCyclicQRTest()
 	printf("Largest entrywise absolute error: %g\n", err);
 
 	// clean up
-	MKL_free(Q);
-	MKL_free(H_ref);
-	MKL_free(tau);
-	MKL_free(H);
+	algn_free(Q);
+	algn_free(H_ref);
+	algn_free(tau);
+	algn_free(H);
 
 	return (err < 4e-16 ? 0 : 1);
 }

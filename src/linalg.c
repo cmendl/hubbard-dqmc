@@ -1,10 +1,43 @@
 #include "linalg.h"
 #include "dupio.h"
-#include <mkl.h>
+#include "util.h"
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
+#ifdef USE_MKL
+#include <mkl_trans.h>
+#endif
 #include <assert.h>
+
+
+//________________________________________________________________________________________________________________________
+///
+/// \brief Performs scaling and out-place copying of matrices
+///
+void domatcopy(size_t rows, size_t cols, const double alpha, const double *A, size_t lda, double *B, size_t ldb)
+{
+	#ifdef USE_MKL
+
+	mkl_domatcopy('C', 'N', rows, cols, alpha, A, lda, B, ldb);
+
+	#else
+
+	size_t j;
+	for (j = 0; j < cols; j++)
+	{
+		memcpy(&B[j*ldb], &A[j*lda], rows*sizeof(double));
+	}
+
+	if (alpha != 1)
+	{
+		for (j = 0; j < cols; j++)
+		{
+			cblas_dscal(rows, alpha, &B[j*ldb], 1);
+		}
+	}
+
+	#endif
+}
 
 
 //________________________________________________________________________________________________________________________
@@ -16,16 +49,16 @@ int MatrixExp(const int n, const double *restrict A, double *restrict ret)
 	__assume_aligned(A, MEM_DATA_ALIGN);
 
 	// eigenvalues
-	double *w = MKL_malloc(n * sizeof(double), MEM_DATA_ALIGN);
+	double *w = algn_malloc(n * sizeof(double));
 
 	// copy 'A' matrix (will be overwritten by eigenvectors)
-	double *U = MKL_malloc(n*n * sizeof(double), MEM_DATA_ALIGN);
+	double *U = algn_malloc(n*n * sizeof(double));
 	__assume_aligned(U, MEM_DATA_ALIGN);
 	memcpy(U, A, n*n * sizeof(double));
 
 	int info = LAPACKE_dsyev(LAPACK_COL_MAJOR, 'V', 'U', n, U, n, w);
 	if (info > 0) {
-		duprintf("Intel MKL 'dsyev' failed, error code: %i.\n", info);
+		duprintf("'LAPACKE_dsyev' failed, error code: %i.\n", info);
 		return info;
 	}
 
@@ -37,7 +70,7 @@ int MatrixExp(const int n, const double *restrict A, double *restrict ret)
 	}
 
 	// compute U * diag(exp(lambda_i))
-	double *UexpD = MKL_malloc(n*n * sizeof(double), MEM_DATA_ALIGN);
+	double *UexpD = algn_malloc(n*n * sizeof(double));
 	__assume_aligned(UexpD, MEM_DATA_ALIGN);
 	memcpy(UexpD, U, n*n * sizeof(double));
 	for (i = 0; i < n; i++)
@@ -49,9 +82,9 @@ int MatrixExp(const int n, const double *restrict A, double *restrict ret)
 	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasTrans, n, n, n, 1.0, UexpD, n, U, n, 0.0, ret, n);
 
 	// clean up
-	MKL_free(UexpD);
-	MKL_free(U);
-	MKL_free(w);
+	algn_free(UexpD);
+	algn_free(U);
+	algn_free(w);
 
 	return 0;
 }
@@ -67,7 +100,7 @@ void MatrixProductSequence(const int n, const int num, const double *const *rest
 	assert(num > 0);
 
 	// temporary matrix for calculating products of the A matrices
-	double *W = (double *)MKL_malloc(n*n * sizeof(double), MEM_DATA_ALIGN);
+	double *W = (double *)algn_malloc(n*n * sizeof(double));
 	__assume_aligned(W, MEM_DATA_ALIGN);
 
 	// use 'W' and 'ret' as temporary matrices for the products of the A matrices,
@@ -106,7 +139,7 @@ void MatrixProductSequence(const int n, const int num, const double *const *rest
 	assert(T1 == ret);
 
 	// clean up
-	MKL_free(W);
+	algn_free(W);
 }
 
 
@@ -137,7 +170,7 @@ int BlockCyclicQR(const int n, const int p, double *restrict H, double *restrict
 		// perform QR decomposition of [\tilde{A}_i;B_i]; i-th Q block defined by n Householder reflections, but of size 2n x 2n
 		info = LAPACKE_dgeqrf(LAPACK_COL_MAJOR, 2*n, n, &H[(1 + N)*i*n], N, tau);
 		if (info < 0) {
-			duprintf("Intel MKL 'dgeqrf' failed, error code: %i.\n", info);
+			duprintf("'LAPACKE_dgeqrf' failed, error code: %i.\n", info);
 			return info;
 		}
 
@@ -151,7 +184,7 @@ int BlockCyclicQR(const int n, const int p, double *restrict H, double *restrict
 	// final QR decomposition of the lower right 2n x 2n block
 	info = LAPACKE_dgeqrf(LAPACK_COL_MAJOR, 2*n, 2*n, &H[(1 + N)*(p - 2)*n], N, tau);
 	if (info < 0) {
-		duprintf("Intel MKL 'dgeqrf' failed, error code: %i.\n", info);
+		duprintf("'LAPACKE_dgeqrf' failed, error code: %i.\n", info);
 		return info;
 	}
 
@@ -183,7 +216,7 @@ int BlockCyclicTriangularInverse(const int n, const int p, double *restrict R)
 	{
 		info = LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', N, R, N);
 		if (info != 0) {
-			duprintf("Intel MKL 'dtrtri' failed, error code: %i.\n", info);
+			duprintf("'LAPACKE_dtrtri' failed, error code: %i.\n", info);
 			return info;
 		}
 	}
@@ -192,7 +225,7 @@ int BlockCyclicTriangularInverse(const int n, const int p, double *restrict R)
 		// line 2
 		info = LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', 3*n, &R[(1 + N)*(p - 3)*n], N);
 		if (info != 0) {
-			duprintf("Intel MKL 'dtrtri' failed, error code: %i.\n", info);
+			duprintf("'LAPACKE_dtrtri' failed, error code: %i.\n", info);
 			return info;
 		}
 
@@ -212,7 +245,7 @@ int BlockCyclicTriangularInverse(const int n, const int p, double *restrict R)
 				// invert diagonal block i, line 3
 				info = LAPACKE_dtrtri(LAPACK_COL_MAJOR, 'U', 'N', n, Rii, N);
 				if (info != 0) {
-					duprintf("Intel MKL 'dtrtri' failed, error code: %i.\n", info);
+					duprintf("'LAPACKE_dtrtri' failed, error code: %i.\n", info);
 					return info;
 				}
 
@@ -285,7 +318,7 @@ int BlockCyclicInverseRotation(const int n, const int p, double *restrict A, con
 	// temporary storage for orthogonal Householder reflection data
 	// use calloc instead of malloc here because any NaN's on and above the diagonals will be passed
 	// into dormqr, and lapack's NaN checking will cause dormqr to immediately return.
-	double *Q = (double *)MKL_calloc(4*n*n, sizeof(double), MEM_DATA_ALIGN);
+	double *Q = (double *)algn_calloc(4*n*n, sizeof(double));
 
 	// copy lower triangular part to 'Q' (orthogonal Householder reflection data) and set entries in 'A' to zero
 	MoveStrictlyLowerTriangularMatrix(2*n, 2*n, &A[(1 + N)*(p - 2)*n], N, Q, 2*n);
@@ -305,7 +338,7 @@ int BlockCyclicInverseRotation(const int n, const int p, double *restrict A, con
 		LAPACKE_dormqr(LAPACK_COL_MAJOR, 'R', 'T', N, 2*n, n, Q, 2*n, tau, &A[N*i*n], N);
 	}
 
-	MKL_free(Q);
+	algn_free(Q);
 
 	return 0;
 }
@@ -330,14 +363,14 @@ int BlockCyclicInverse(const int n, const int p, double *restrict H)
 	const int N = n*p;
 
 	// allocate memory for scalar factors of the elementary reflectors
-	double *tau = MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
+	double *tau = algn_malloc(N * sizeof(double));
 
 	int info;
 	info = BlockCyclicQR(n, p, H, tau);					if (info != 0) { return info; }
 	info = BlockCyclicTriangularInverse(n, p, H);		if (info != 0) { return info; }
 	info = BlockCyclicInverseRotation(n, p, H, tau);	if (info != 0) { return info; }
 
-	MKL_free(tau);
+	algn_free(tau);
 
 	return 0;
 }

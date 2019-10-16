@@ -1,7 +1,6 @@
 #include "greens_func.h"
 #include "kinetic.h"
 #include "util.h"
-#include <mkl.h>
 #include <math.h>
 #include <stdio.h>
 
@@ -37,8 +36,8 @@ int GreensFuncWrapTest()
 	// lambda parameter (depends on U in Hamiltonian)
 	const double lambda = 0.75;
 	double *expV[2] = {
-		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN),
-		(double *)MKL_malloc(sizeof(double), MEM_DATA_ALIGN)
+		(double *)algn_malloc(sizeof(double)),
+		(double *)algn_malloc(sizeof(double))
 	};
 	expV[0][0] = exp(-lambda);
 	expV[1][0] = exp( lambda);
@@ -51,13 +50,13 @@ int GreensFuncWrapTest()
 	const spin_field_t s[4 * 6] = { 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1 };
 
 	// calculate B and B^{-1}
-	double *B    = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *invB = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *B    = (double *)algn_malloc(N*N * sizeof(double));
+	double *invB = (double *)algn_malloc(N*N * sizeof(double));
 	ComputeTimeStepMatrix(&kinetic, expV, s, B);
 	ComputeInverseTimeStepMatrix(&kinetic, expV, s, invB);
 
 	// load initial "Green's function" matrix from disk
-	double *G = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *G = (double *)algn_malloc(N*N * sizeof(double));
 	ReadData("../test/greens_func_wrap_test_G0.dat", G, sizeof(double), N*N);
 
 	// perform a time slice wrap of the Green's function matrix
@@ -65,7 +64,7 @@ int GreensFuncWrapTest()
 	GreenTimeSliceWrap(N, B, invB, G);
 
 	// load reference data from disk
-	double *G_ref = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *G_ref = (double *)algn_malloc(N*N * sizeof(double));
 	ReadData("../test/greens_func_wrap_test_G1.dat", G_ref, sizeof(double), N*N);
 
 	// entrywise relative error
@@ -82,13 +81,13 @@ int GreensFuncWrapTest()
 	printf("Largest entrywise absolute error: %g\n", err_abs);
 
 	// clean up
-	MKL_free(G_ref);
-	MKL_free(G);
-	MKL_free(invB);
-	MKL_free(B);
+	algn_free(G_ref);
+	algn_free(G);
+	algn_free(invB);
+	algn_free(B);
 	DeleteKineticExponential(&kinetic);
-	MKL_free(expV[1]);
-	MKL_free(expV[0]);
+	algn_free(expV[1]);
+	algn_free(expV[0]);
 	DeleteSimulationParameters(&params);
 
 	return (err_rel < 4e-12 && err_abs < 2e-14 ? 0 : 1);

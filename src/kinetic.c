@@ -1,6 +1,6 @@
 #include "kinetic.h"
 #include "linalg.h"
-#include <mkl.h>
+#include "util.h"
 
 
 //________________________________________________________________________________________________________________________
@@ -23,7 +23,7 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 	int i, j;   // spatial lattice indices
 	int o, p;   // orbital indices
 
-	double *T = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
+	double *T = (double *)algn_calloc(N*N, sizeof(double));
 
 	// set hopping terms in 'T'
 	for (o = 0; o < Norb; o++)
@@ -88,8 +88,8 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 	// scale by -dt
 	cblas_dscal(N*N, -params->dt, T, 1);
 
-	kinetic->expK     = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	kinetic->inv_expK = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	kinetic->expK     = (double *)algn_malloc(N*N * sizeof(double));
+	kinetic->inv_expK = (double *)algn_malloc(N*N * sizeof(double));
 
 	// compute matrix exponential of the kinetic energy operator
 	MatrixExp(N, T, kinetic->expK);
@@ -101,7 +101,7 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 	MatrixExp(N, T, kinetic->inv_expK);
 
 	// clean up
-	MKL_free(T);
+	algn_free(T);
 }
 
 
@@ -111,6 +111,6 @@ void RectangularKineticExponential(const sim_params_t *restrict params, kinetic_
 ///
 void DeleteKineticExponential(kinetic_t *restrict kinetic)
 {
-	MKL_free(kinetic->inv_expK);
-	MKL_free(kinetic->expK);
+	algn_free(kinetic->inv_expK);
+	algn_free(kinetic->expK);
 }

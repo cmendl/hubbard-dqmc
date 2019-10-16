@@ -5,7 +5,6 @@
 #include "dupio.h"
 #include "util.h"
 #include <stdint.h>
-#include <mkl.h>
 #include <omp.h>
 
 typedef struct
@@ -58,7 +57,7 @@ void Profile_Begin(const char *name)
 		// initializes everything the first time around
 		if (p == NULL)
 		{
-			p = (profile_entry_t *)MKL_calloc(1, sizeof(profile_entry_t), MEM_DATA_ALIGN);
+			p = (profile_entry_t *)algn_calloc(1, sizeof(profile_entry_t));
 			HashTableInsert(&profile_table, name, p);
 		}
 
@@ -138,7 +137,7 @@ void Profile_Stop(void)
 	const double ticks_per_sec = (double)GetTickRes();
 
 	// place (pointers to) every entry into a simple array, and sort with entry_compare.
-	ht_entry_t **entries_table = (ht_entry_t **)MKL_malloc(profile_table.n_entries * sizeof(ht_entry_t *), MEM_DATA_ALIGN);
+	ht_entry_t **entries_table = (ht_entry_t **)algn_malloc(profile_table.n_entries * sizeof(ht_entry_t *));
 	int i, j = 0;
 	for (i = 0; i < profile_table.n_buckets; i++)
 	{
@@ -165,8 +164,8 @@ void Profile_Stop(void)
 	duprintf("_______________________________________________________________________________\n");
 
 	// free all allocated memory used for profiling.
-	MKL_free(entries_table);
-	DeleteHashTable(&profile_table, MKL_free);
+	algn_free(entries_table);
+	DeleteHashTable(&profile_table, algn_free);
 }
 
 

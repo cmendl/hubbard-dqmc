@@ -1,6 +1,6 @@
 #include "greens_func.h"
 #include "linalg.h"
-#include <mkl.h>
+#include "util.h"
 #include <math.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -13,7 +13,7 @@
 ///
 void AllocateGreensFunction(const int N, greens_func_t *G)
 {
-	G->mat = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	G->mat = (double *)algn_malloc(N*N * sizeof(double));
 	G->logdet = 0;
 	G->sgndet = 1;
 	G->N = N;
@@ -26,7 +26,7 @@ void AllocateGreensFunction(const int N, greens_func_t *G)
 ///
 void DeleteGreensFunction(greens_func_t *G)
 {
-	MKL_free(G->mat);
+	algn_free(G->mat);
 }
 
 
@@ -64,10 +64,10 @@ void GreenConstruct(const time_step_matrices_t *restrict tsm, const int slice_sh
 	const int N = tsm->N;
 
 	// allocate memory for time flow map
-	double *Q   = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-	double *tau = (double *)MKL_malloc(N   * sizeof(double), MEM_DATA_ALIGN);   // scalar factors of the elementary reflectors for the matrix Q
-	double *d   = (double *)MKL_malloc(N   * sizeof(double), MEM_DATA_ALIGN);
-	double *T   = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *Q   = (double *)algn_malloc(N*N * sizeof(double));
+	double *tau = (double *)algn_malloc(N   * sizeof(double));   // scalar factors of the elementary reflectors for the matrix Q
+	double *d   = (double *)algn_malloc(N   * sizeof(double));
+	double *T   = (double *)algn_malloc(N*N * sizeof(double));
 	__assume_aligned(Q,   MEM_DATA_ALIGN);
 	__assume_aligned(tau, MEM_DATA_ALIGN);
 	__assume_aligned(d,   MEM_DATA_ALIGN);
@@ -101,7 +101,7 @@ void GreenConstruct(const time_step_matrices_t *restrict tsm, const int slice_sh
 	cblas_daxpy(N*N, 1.0, G->mat, 1, T, 1);
 
 	// perform a LU decomposition of D_b^{-1} Q^T + D_s T
-	lapack_int *ipiv = MKL_malloc(N * sizeof(lapack_int), MEM_DATA_ALIGN);
+	lapack_int *ipiv = algn_malloc(N * sizeof(lapack_int));
 	LAPACKE_dgetrf(LAPACK_COL_MAJOR, N, N, T, N, ipiv);
 
 	// calculate determinant of (D_b^{-1} Q^T + D_s T)^{-1} (D_b^{-1} Q^T)
@@ -154,11 +154,11 @@ void GreenConstruct(const time_step_matrices_t *restrict tsm, const int slice_sh
 	LAPACKE_dgetrs(LAPACK_COL_MAJOR, 'N', N, N, T, N, ipiv, G->mat, N);
 
 	// clean up
-	MKL_free(ipiv);
-	MKL_free(T);
-	MKL_free(d);
-	MKL_free(tau);
-	MKL_free(Q);
+	algn_free(ipiv);
+	algn_free(T);
+	algn_free(d);
+	algn_free(tau);
+	algn_free(Q);
 }
 
 
@@ -173,7 +173,7 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 	int j;
 
 	// copy i-th row of Gmat
-	double *c = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
+	double *c = (double *)algn_malloc(N * sizeof(double));
 	__assume_aligned(c, MEM_DATA_ALIGN);
 	for (j = 0; j < N; j++)
 	{
@@ -182,7 +182,7 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 	c[i] -= 1.0;
 
 	// copy i-th column of Gmat
-	double *d = (double *)MKL_malloc(N * sizeof(double), MEM_DATA_ALIGN);
+	double *d = (double *)algn_malloc(N * sizeof(double));
 	__assume_aligned(d, MEM_DATA_ALIGN);
 	memcpy(d, &Gmat[N*i], N * sizeof(double));
 
@@ -190,8 +190,8 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 	cblas_dger(CblasColMajor, N, N, delta / (1.0 - delta * c[i]), d, 1, c, 1, Gmat, N);
 
 	// clean up
-	MKL_free(d);
-	MKL_free(c);
+	algn_free(d);
+	algn_free(c);
 }
 
 
@@ -202,7 +202,7 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 void GreenTimeSliceWrap(const int N, const double *restrict B, const double *restrict invB, double *restrict Gmat)
 {
 	// temporary matrix
-	double *T = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
+	double *T = (double *)algn_malloc(N*N * sizeof(double));
 
 	// compute B * G
 	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, B, N, Gmat, N, 0.0, T, N);
@@ -211,7 +211,7 @@ void GreenTimeSliceWrap(const int N, const double *restrict B, const double *res
 	cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, T, N, invB, N, 0.0, Gmat, N);
 
 	// clean up
-	MKL_free(T);
+	algn_free(T);
 }
 
 
@@ -254,12 +254,12 @@ void ComputeUnequalTimeGreensFunction(const int N, const int L, const time_step_
 		if (i < numBprod-1)
 		{
 			// lower off-diagonal blocks; note the factor (-1)
-			mkl_domatcopy('C', 'N', N, N, -1.0, tsm->Bprod[i], N, &H[((i + 1) + numBprod*N*i)*N], numBprod*N);
+			domatcopy(N, N, -1.0, tsm->Bprod[i], N, &H[((i + 1) + numBprod*N*i)*N], numBprod*N);
 		}
 		else
 		{
 			// upper right block
-			mkl_domatcopy('C', 'N', N, N, 1.0, tsm->Bprod[i], N, &H[numBprod*N*(numBprod - 1)*N], numBprod*N);
+			domatcopy(N, N, 1.0, tsm->Bprod[i], N, &H[numBprod*N*(numBprod - 1)*N], numBprod*N);
 		}
 	}
 
@@ -271,7 +271,7 @@ void ComputeUnequalTimeGreensFunction(const int N, const int L, const time_step_
 	{
 		if (i % tsm->prodBlen == 0)
 		{
-			mkl_domatcopy('C', 'N', N, N, 1.0, &H[(i/tsm->prodBlen)*N], numBprod*N, &Gtau0[i*N], L*N);
+			domatcopy(N, N, 1.0, &H[(i/tsm->prodBlen)*N], numBprod*N, &Gtau0[i*N], L*N);
 		}
 		else
 		{
@@ -284,15 +284,15 @@ void ComputeUnequalTimeGreensFunction(const int N, const int L, const time_step_
 	{
 		if (i % tsm->prodBlen == 0)
 		{
-			mkl_domatcopy('C', 'N', N, N, 1.0, &H[(i/tsm->prodBlen)*numBprod*N*N], numBprod*N, &G0tau[i*N*N], N);
+			domatcopy(N, N, 1.0, &H[(i/tsm->prodBlen)*numBprod*N*N], numBprod*N, &G0tau[i*N*N], N);
 		}
 		else
 		{
 			if (i == 1)
 			{
 				// copy first NxN block of H and subtract identity matrix
-				double *T = (double *)MKL_malloc(N*N * sizeof(double), MEM_DATA_ALIGN);
-				mkl_domatcopy('C', 'N', N, N, 1.0, H, numBprod*N, T, N);
+				double *T = (double *)algn_malloc(N*N * sizeof(double));
+				domatcopy(N, N, 1.0, H, numBprod*N, T, N);
 				int j;
 				for (j = 0; j < N; j++)
 				{
@@ -301,7 +301,7 @@ void ComputeUnequalTimeGreensFunction(const int N, const int L, const time_step_
 
 				cblas_dgemm(CblasColMajor, CblasNoTrans, CblasNoTrans, N, N, N, 1.0, T, N, tsm->invB[i-1], N, 0.0, &G0tau[i*N*N], N);
 
-				MKL_free(T);
+				algn_free(T);
 			}
 			else
 			{
@@ -316,7 +316,7 @@ void ComputeUnequalTimeGreensFunction(const int N, const int L, const time_step_
 		if (i % tsm->prodBlen == 0)
 		{
 			const int ib = (i/tsm->prodBlen);
-			mkl_domatcopy('C', 'N', N, N, 1.0, &H[(ib + ib*numBprod*N)*N], numBprod*N, &Geqlt[i*N*N], N);
+			domatcopy(N, N, 1.0, &H[(ib + ib*numBprod*N)*N], numBprod*N, &Geqlt[i*N*N], N);
 		}
 		else
 		{

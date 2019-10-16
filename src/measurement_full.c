@@ -7,9 +7,9 @@
 // The d-wave superconducting susceptibility still relies on a rectangular lattice geometry.
 
 #include "measurement.h"
+#include "linalg.h"
 #include "util.h"
 #include "dupio.h"
-#include <mkl.h>
 #include <stdlib.h>
 #include <memory.h>
 #include <math.h>
@@ -66,34 +66,34 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, const i
 
 	meas_data->sign = 0;
 
-	meas_data->density_u = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->density_d = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->doubleocc = (double *)MKL_calloc(N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->density_u = (double *)algn_calloc(N, sizeof(double));
+	meas_data->density_d = (double *)algn_calloc(N, sizeof(double));
+	meas_data->doubleocc = (double *)algn_calloc(N, sizeof(double));
 
 	// green's functions
-	meas_data->grfun_u = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->grfun_d = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->grfun_u = (double *)algn_calloc(N*N, sizeof(double));
+	meas_data->grfun_d = (double *)algn_calloc(N*N, sizeof(double));
 
 	// density correlation data
-	meas_data->uu_corr = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->dd_corr = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->ud_corr = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->ff_corr = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->uu_corr = (double *)algn_calloc(N*N, sizeof(double));
+	meas_data->dd_corr = (double *)algn_calloc(N*N, sizeof(double));
+	meas_data->ud_corr = (double *)algn_calloc(N*N, sizeof(double));
+	meas_data->ff_corr = (double *)algn_calloc(N*N, sizeof(double));
 
 	// spin correlation data
-	meas_data->zz_corr = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->xx_corr = (double *)MKL_calloc(N*N, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->zz_corr = (double *)algn_calloc(N*N, sizeof(double));
+	meas_data->xx_corr = (double *)algn_calloc(N*N, sizeof(double));
 
 	// superconducting susceptibilities
-	meas_data->sc_c_sw = (double *)MKL_calloc(Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->sc_c_dw = (double *)MKL_calloc(Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->sc_c_sx = (double *)MKL_calloc(Ncell*Ncell*Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_sw = (double *)algn_calloc(Ncell*Ncell*Norb, sizeof(double));
+	meas_data->sc_c_dw = (double *)algn_calloc(Ncell*Ncell*Norb, sizeof(double));
+	meas_data->sc_c_sx = (double *)algn_calloc(Ncell*Ncell*Norb, sizeof(double));
 
 	// construct lattice nearest neighbor map
-	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
-	meas_data->latt_xm1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
-	meas_data->latt_yp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
-	meas_data->latt_ym1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	meas_data->latt_xp1_map = (int *)algn_malloc(Ncell * sizeof(int));
+	meas_data->latt_xm1_map = (int *)algn_malloc(Ncell * sizeof(int));
+	meas_data->latt_yp1_map = (int *)algn_malloc(Ncell * sizeof(int));
+	meas_data->latt_ym1_map = (int *)algn_malloc(Ncell * sizeof(int));
 	ConstructLatticeNearestNeighborMap(Nx, Ny, meas_data->latt_xp1_map, meas_data->latt_xm1_map, meas_data->latt_yp1_map, meas_data->latt_ym1_map);
 }
 
@@ -104,28 +104,28 @@ void AllocateMeasurementData(const int Norb, const int Nx, const int Ny, const i
 ///
 void DeleteMeasurementData(measurement_data_t *restrict meas_data)
 {
-	MKL_free(meas_data->latt_ym1_map);
-	MKL_free(meas_data->latt_yp1_map);
-	MKL_free(meas_data->latt_xm1_map);
-	MKL_free(meas_data->latt_xp1_map);
+	algn_free(meas_data->latt_ym1_map);
+	algn_free(meas_data->latt_yp1_map);
+	algn_free(meas_data->latt_xm1_map);
+	algn_free(meas_data->latt_xp1_map);
 
-	MKL_free(meas_data->sc_c_sw);
-	MKL_free(meas_data->sc_c_dw);
-	MKL_free(meas_data->sc_c_sx);
+	algn_free(meas_data->sc_c_sw);
+	algn_free(meas_data->sc_c_dw);
+	algn_free(meas_data->sc_c_sx);
 
-	MKL_free(meas_data->xx_corr);
-	MKL_free(meas_data->zz_corr);
-	MKL_free(meas_data->ff_corr);
-	MKL_free(meas_data->ud_corr);
-	MKL_free(meas_data->dd_corr);
-	MKL_free(meas_data->uu_corr);
+	algn_free(meas_data->xx_corr);
+	algn_free(meas_data->zz_corr);
+	algn_free(meas_data->ff_corr);
+	algn_free(meas_data->ud_corr);
+	algn_free(meas_data->dd_corr);
+	algn_free(meas_data->uu_corr);
 
-	MKL_free(meas_data->grfun_d);
-	MKL_free(meas_data->grfun_u);
+	algn_free(meas_data->grfun_d);
+	algn_free(meas_data->grfun_u);
 
-	MKL_free(meas_data->doubleocc);
-	MKL_free(meas_data->density_d);
-	MKL_free(meas_data->density_u);
+	algn_free(meas_data->doubleocc);
+	algn_free(meas_data->density_d);
+	algn_free(meas_data->density_u);
 }
 
 
@@ -389,36 +389,36 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 	meas_data->L = L;
 
 	// allocate temporary H matrices
-	meas_data->Hu = (double *)MKL_malloc(N*N*numBprod*numBprod * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hu == NULL) { return -1; }
-	meas_data->Hd = (double *)MKL_malloc(N*N*numBprod*numBprod * sizeof(double), MEM_DATA_ALIGN); if (meas_data->Hd == NULL) { return -1; }
+	meas_data->Hu = (double *)algn_malloc(N*N*numBprod*numBprod * sizeof(double)); if (meas_data->Hu == NULL) { return -1; }
+	meas_data->Hd = (double *)algn_malloc(N*N*numBprod*numBprod * sizeof(double)); if (meas_data->Hd == NULL) { return -1; }
 
 	// allocate and initialize Green's functions with zeros
-	meas_data->Gtau0_u = (double *)MKL_calloc(N*L*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Gtau0_u == NULL) { return -1; }
-	meas_data->G0tau_u = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN); if (meas_data->G0tau_u == NULL) { return -1; }
-	meas_data->Geqlt_u = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_u == NULL) { return -1; }
-	meas_data->Gtau0_d = (double *)MKL_calloc(N*L*N, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Gtau0_d == NULL) { return -1; }
-	meas_data->G0tau_d = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN); if (meas_data->G0tau_d == NULL) { return -1; }
-	meas_data->Geqlt_d = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN); if (meas_data->Geqlt_d == NULL) { return -1; }
+	meas_data->Gtau0_u = (double *)algn_calloc(N*L*N, sizeof(double)); if (meas_data->Gtau0_u == NULL) { return -1; }
+	meas_data->G0tau_u = (double *)algn_calloc(N*N*L, sizeof(double)); if (meas_data->G0tau_u == NULL) { return -1; }
+	meas_data->Geqlt_u = (double *)algn_calloc(N*N*L, sizeof(double)); if (meas_data->Geqlt_u == NULL) { return -1; }
+	meas_data->Gtau0_d = (double *)algn_calloc(N*L*N, sizeof(double)); if (meas_data->Gtau0_d == NULL) { return -1; }
+	meas_data->G0tau_d = (double *)algn_calloc(N*N*L, sizeof(double)); if (meas_data->G0tau_d == NULL) { return -1; }
+	meas_data->Geqlt_d = (double *)algn_calloc(N*N*L, sizeof(double)); if (meas_data->Geqlt_d == NULL) { return -1; }
 
 	// density and spin correlation data for all time differences
-	meas_data->nn_corr = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->zz_corr = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->xx_corr = (double *)MKL_calloc(N*N*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->nn_corr = (double *)algn_calloc(N*N*L, sizeof(double));
+	meas_data->zz_corr = (double *)algn_calloc(N*N*L, sizeof(double));
+	meas_data->xx_corr = (double *)algn_calloc(N*N*L, sizeof(double));
 
 	// superconducting susceptibilities
-	meas_data->sc_c_sw = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->sc_c_dw = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->sc_c_sx = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->sc_c_sw = (double *)algn_calloc(Ncell*Ncell*Norb*L, sizeof(double));
+	meas_data->sc_c_dw = (double *)algn_calloc(Ncell*Ncell*Norb*L, sizeof(double));
+	meas_data->sc_c_sx = (double *)algn_calloc(Ncell*Ncell*Norb*L, sizeof(double));
 
 	// Raman
-	meas_data->ram_b1g = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->ram_b2g = (double *)MKL_calloc(Ncell*Ncell*Norb*L, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->ram_b1g = (double *)algn_calloc(Ncell*Ncell*Norb*L, sizeof(double));
+	meas_data->ram_b2g = (double *)algn_calloc(Ncell*Ncell*Norb*L, sizeof(double));
 
 	// construct lattice nearest neighbor map
-	meas_data->latt_xp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
-	meas_data->latt_xm1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
-	meas_data->latt_yp1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
-	meas_data->latt_ym1_map = (int *)MKL_malloc(Ncell * sizeof(int), MEM_DATA_ALIGN);
+	meas_data->latt_xp1_map = (int *)algn_malloc(Ncell * sizeof(int));
+	meas_data->latt_xm1_map = (int *)algn_malloc(Ncell * sizeof(int));
+	meas_data->latt_yp1_map = (int *)algn_malloc(Ncell * sizeof(int));
+	meas_data->latt_ym1_map = (int *)algn_malloc(Ncell * sizeof(int));
 	ConstructLatticeNearestNeighborMap(Nx, Ny, meas_data->latt_xp1_map, meas_data->latt_xm1_map, meas_data->latt_yp1_map, meas_data->latt_ym1_map);
 
 	meas_data->sign = 0;
@@ -436,31 +436,31 @@ int AllocateUnequalTimeMeasurementData(const int Norb, const int Nx, const int N
 ///
 void DeleteUnequalTimeMeasurementData(measurement_data_unequal_time_t *restrict meas_data)
 {
-	MKL_free(meas_data->latt_ym1_map);
-	MKL_free(meas_data->latt_yp1_map);
-	MKL_free(meas_data->latt_xm1_map);
-	MKL_free(meas_data->latt_xp1_map);
+	algn_free(meas_data->latt_ym1_map);
+	algn_free(meas_data->latt_yp1_map);
+	algn_free(meas_data->latt_xm1_map);
+	algn_free(meas_data->latt_xp1_map);
 
-	MKL_free(meas_data->Hd);
-	MKL_free(meas_data->Hu);
+	algn_free(meas_data->Hd);
+	algn_free(meas_data->Hu);
 
-	MKL_free(meas_data->ram_b2g);
-	MKL_free(meas_data->ram_b1g);
+	algn_free(meas_data->ram_b2g);
+	algn_free(meas_data->ram_b1g);
 
-	MKL_free(meas_data->sc_c_sw);
-	MKL_free(meas_data->sc_c_dw);
-	MKL_free(meas_data->sc_c_sx);
+	algn_free(meas_data->sc_c_sw);
+	algn_free(meas_data->sc_c_dw);
+	algn_free(meas_data->sc_c_sx);
 
-	MKL_free(meas_data->xx_corr);
-	MKL_free(meas_data->zz_corr);
-	MKL_free(meas_data->nn_corr);
+	algn_free(meas_data->xx_corr);
+	algn_free(meas_data->zz_corr);
+	algn_free(meas_data->nn_corr);
 
-	MKL_free(meas_data->Geqlt_d);
-	MKL_free(meas_data->G0tau_d);
-	MKL_free(meas_data->Gtau0_d);
-	MKL_free(meas_data->Geqlt_u);
-	MKL_free(meas_data->G0tau_u);
-	MKL_free(meas_data->Gtau0_u);
+	algn_free(meas_data->Geqlt_d);
+	algn_free(meas_data->G0tau_d);
+	algn_free(meas_data->Gtau0_d);
+	algn_free(meas_data->Geqlt_u);
+	algn_free(meas_data->G0tau_u);
+	algn_free(meas_data->Gtau0_u);
 }
 
 
@@ -479,14 +479,14 @@ void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrice
 	const int L = meas_data->L;
 
 	// current spin-up unequal time Green's functions
-	double *curGtau0_u = (double *)MKL_malloc(N*L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *curG0tau_u = (double *)MKL_malloc(N*N*L * sizeof(double), MEM_DATA_ALIGN);
-	double *curGeqlt_u = (double *)MKL_malloc(N*N*L * sizeof(double), MEM_DATA_ALIGN);
+	double *curGtau0_u = (double *)algn_malloc(N*L*N * sizeof(double));
+	double *curG0tau_u = (double *)algn_malloc(N*N*L * sizeof(double));
+	double *curGeqlt_u = (double *)algn_malloc(N*N*L * sizeof(double));
 
 	// current spin-down unequal time Green's functions
-	double *curGtau0_d = (double *)MKL_malloc(N*L*N * sizeof(double), MEM_DATA_ALIGN);
-	double *curG0tau_d = (double *)MKL_malloc(N*N*L * sizeof(double), MEM_DATA_ALIGN);
-	double *curGeqlt_d = (double *)MKL_malloc(N*N*L * sizeof(double), MEM_DATA_ALIGN);
+	double *curGtau0_d = (double *)algn_malloc(N*L*N * sizeof(double));
+	double *curG0tau_d = (double *)algn_malloc(N*N*L * sizeof(double));
+	double *curGeqlt_d = (double *)algn_malloc(N*N*L * sizeof(double));
 
 	// compute and accumulate unequal time spin-up and spin-down Green's functions
 	#pragma omp parallel sections
@@ -676,12 +676,12 @@ void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrice
 	}
 
 	// clean up
-	MKL_free(curGeqlt_d);
-	MKL_free(curG0tau_d);
-	MKL_free(curGtau0_d);
-	MKL_free(curGeqlt_u);
-	MKL_free(curG0tau_u);
-	MKL_free(curGtau0_u);
+	algn_free(curGeqlt_d);
+	algn_free(curG0tau_d);
+	algn_free(curGtau0_d);
+	algn_free(curGeqlt_u);
+	algn_free(curG0tau_u);
+	algn_free(curGtau0_u);
 
 	// add current sign
 	meas_data->sign += sign;
@@ -819,9 +819,10 @@ void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pb
 
 	meas_data->sign = 0;
 
-	meas_data->X_iteration = (double *)MKL_calloc(Norb * max_nsampl, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->X_avg       = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
-	meas_data->X_sqr       = (double *)MKL_calloc(Norb, sizeof(double), MEM_DATA_ALIGN);
+	meas_data->iteration_X_avg = (double *)algn_calloc(Norb * max_nsampl, sizeof(double));
+	meas_data->iteration_X0    = (double *)algn_calloc(Norb * max_nsampl, sizeof(double));
+	meas_data->X_avg           = (double *)algn_calloc(Norb, sizeof(double));
+	meas_data->X_sq_avg        = (double *)algn_calloc(Norb, sizeof(double));
 }
 
 
@@ -831,9 +832,10 @@ void AllocatePhononData(const int Norb, const int Nx, const int Ny, const int pb
 ///
 void DeletePhononData(measurement_data_phonon_t *restrict meas_data)
 {
-	MKL_free(meas_data->X_sqr);
-	MKL_free(meas_data->X_avg);
-	MKL_free(meas_data->X_iteration);
+	algn_free(meas_data->X_sq_avg);
+	algn_free(meas_data->X_avg);
+	algn_free(meas_data->iteration_X0);
+	algn_free(meas_data->iteration_X_avg);
 }
 
 
@@ -841,7 +843,7 @@ void DeletePhononData(measurement_data_phonon_t *restrict meas_data)
 ///
 /// \brief Accumulate phonon "measurement" data
 ///
-void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const double *restrict X, measurement_data_phonon_t *restrict meas_data)
+void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t *restrict Gd, const int l_green, const double *restrict X, const double dt, const double *restrict omega, measurement_data_phonon_t *restrict meas_data)
 {
 	// lattice dimensions
 	const int Norb  = meas_data->Norb;
@@ -866,9 +868,10 @@ void AccumulatePhononData(const greens_func_t *restrict Gu, const greens_func_t 
 			for (i = 0; i < Ncell; i++)
 			{
 				meas_data->X_avg[o] += signfac * X[i + o*Ncell + l*N];
-				meas_data->X_sqr[o] += signfac * square(X[i + o*Ncell + l*N]);
-				meas_data->X_iteration[o + meas_data->nsampl * Norb] += X[i + o*Ncell + l*N] / (Ncell * L);
+				meas_data->X_sq_avg[o] += signfac * square(X[i + o*Ncell + l*N]);
+				meas_data->iteration_X_avg[o + meas_data->nsampl * Norb] += signfac * X[i + o*Ncell + l*N];
 			}
+			meas_data->iteration_X0[o + meas_data->nsampl * Norb] += (sign/L) * X[o*Ncell + l*N];
 		}
 	}
 
@@ -894,7 +897,7 @@ void NormalizePhononData(measurement_data_phonon_t *meas_data)
 
 	// divide by nsampl to get <s A>
 	cblas_dscal(Norb, nfac, meas_data->X_avg, 1);
-	cblas_dscal(Norb, nfac, meas_data->X_sqr, 1);
+	cblas_dscal(Norb, nfac, meas_data->X_sq_avg, 1);
 
 	// calculate average sign
 	meas_data->sign *= nfac;
@@ -914,8 +917,8 @@ void PrintPhononData(const measurement_data_phonon_t *meas_data)
 	for (o = 0; o < meas_data->Norb; o++)
 	{
 		duprintf("\nResults for orbital %d\n", o);
-		duprintf("                       average X: %g\n", meas_data->X_avg[o]);
-		duprintf("                     average X^2: %g\n", meas_data->X_sqr[o]);
+		duprintf("                       average X: %g\n", meas_data->X_avg[o]/meas_data->sign);
+		duprintf("                     average X^2: %g\n", meas_data->X_sq_avg[o]/meas_data->sign);
 	}
 }
 
@@ -930,9 +933,10 @@ void SavePhononData(const char *fnbase, const measurement_data_phonon_t *meas_da
 	const int max_nsampl = meas_data->max_nsampl;
 
 	char path[1024];
-	sprintf(path, "%s_phonon_sign.dat",        fnbase); WriteData(path, &meas_data->sign,       sizeof(double), 1, false);
-	sprintf(path, "%s_phonon_nsampl.dat",      fnbase); WriteData(path, &meas_data->nsampl,     sizeof(int),    1, false);
-	sprintf(path, "%s_phonon_X_iteration.dat", fnbase); WriteData(path, meas_data->X_iteration, sizeof(double), Norb * max_nsampl, false);
-	sprintf(path, "%s_phonon_X_avg.dat",       fnbase); WriteData(path, meas_data->X_avg,       sizeof(double), Norb, false);
-	sprintf(path, "%s_phonon_X_sq.dat",        fnbase); WriteData(path, meas_data->X_sqr,       sizeof(double), Norb, false);
+	sprintf(path, "%s_phonon_sign.dat",            fnbase); WriteData(path, &meas_data->sign,           sizeof(double), 1, false);
+	sprintf(path, "%s_phonon_nsampl.dat",          fnbase); WriteData(path, &meas_data->nsampl,         sizeof(int),    1, false);
+	sprintf(path, "%s_phonon_iteration_X_avg.dat", fnbase); WriteData(path, meas_data->iteration_X_avg, sizeof(double), Norb * max_nsampl, false);
+	sprintf(path, "%s_phonon_iteration_X0.dat",    fnbase); WriteData(path, meas_data->iteration_X0,    sizeof(double), Norb * max_nsampl, false);
+	sprintf(path, "%s_phonon_X_avg.dat",           fnbase); WriteData(path, meas_data->X_avg,           sizeof(double), Norb, false);
+	sprintf(path, "%s_phonon_X_sq_avg.dat",        fnbase); WriteData(path, meas_data->X_sq_avg,        sizeof(double), Norb, false);
 }
