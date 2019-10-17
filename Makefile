@@ -7,7 +7,7 @@ TSTFILES = test/matrix_exp_test.c test/blockcyclic_qr_test.c test/blockcyclic_tr
 CC = icc
 
 # compiler options
-CCOPTS = -Wall -Iinclude -O2 -xHost -restrict -DUSE_MKL -mkl:sequential -DVERSION=\"$(shell git describe --always)\"
+CCOPTS = -Wall -Iinclude -O2 -xHost -restrict -DUSE_MKL -DMKL_DIRECT_CALL -mkl:sequential -DVERSION=\"$(shell git describe --always)\"
 # replace by -qopenmp-stubs to disable OpenMP shared-memory parallelization
 CCOPTS += -qopenmp
 
