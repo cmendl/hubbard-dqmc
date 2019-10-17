@@ -15,6 +15,7 @@
 #include <omp.h>
 #include <time.h>
 #include <string.h>
+#include <inttypes.h>
 
 // for sleep function and creating directories
 #ifdef _WIN32
@@ -84,7 +85,7 @@ int main(int argc, char *argv[])
 		duprintf("No output directory specified.\n");
 		duprintf("Creating default directory based on parameters and initial seed...\n");
 		makedir("output");
-		sprintf(path, "output/N%ix%i_beta%g_mu%g_sim_%llu", params.Nx, params.Ny, params.L * params.dt, params.mu, params.itime);
+		sprintf(path, "output/N%ix%i_beta%g_mu%g_sim_%"PRIu64"", params.Nx, params.Ny, params.L * params.dt, params.mu, params.itime);
 	}
 	else
 	{
@@ -95,7 +96,7 @@ int main(int argc, char *argv[])
 
 	// base output file name
 	char fnbase[1024];
-	sprintf(fnbase, "%s/sim_%llu", path, params.itime);
+	sprintf(fnbase, "%s/sim_%"PRIu64"", path, params.itime);
 
 	// open simulation log file for writing
 	sprintf(path, "%s_simulation.log", fnbase);

@@ -55,5 +55,5 @@ int KineticTest()
 	DeleteKineticExponential(&kinetic);
 	DeleteSimulationParameters(&params);
 
-	return (err < 2e-15 ? 0 : 1);
+	return (err < 1e-14 ? 0 : 1);
 }

@@ -1,10 +1,11 @@
+#include <stdio.h>
+
 #ifdef USE_MKL
 
 #include "lattice_fourier.h"
 #include "util.h"
 #include <math.h>
 #include <complex.h>
-#include <stdio.h>
 
 
 static int LatticeFourierTestDim(const int Nx, const int Ny)
