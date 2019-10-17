@@ -599,6 +599,7 @@ void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrice
 					for (k = 0; k < Ncell; k++)
 					{
 						const int jp = meas_data->latt_sum_map[k + Ncell*i] + Ncell*p;
+
 						meas_data->Geqlt_u[k + offset] += signfac*curGeqlt_u[io + N*(jp + N*l)];
 						meas_data->Geqlt_d[k + offset] += signfac*curGeqlt_d[io + N*(jp + N*l)];
 						meas_data->Gtau0_u[k + offset] += signfac*curGtau0_u[io + N*(l + L*jp)];
@@ -615,8 +616,6 @@ void AccumulateUnequalTimeMeasurement(const double sign, const time_step_matrice
 						}
 						else
 						{
-							const int jp = meas_data->latt_sum_map[k + Ncell*i] + Ncell*p;
-
 							const double G00_u_jj = curGeqlt_u[jp + N*jp];
 							const double G00_d_jj = curGeqlt_d[jp + N*jp];
 

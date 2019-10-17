@@ -307,7 +307,6 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 		else
 		{
 			// undo changes
-			int l;
 			for (l = 0; l < L; l++)
 			{
 				   X[i + l*N] =    X_i[l];
