@@ -38,8 +38,8 @@ void CopyGreensFunction(const greens_func_t *restrict src, greens_func_t *restri
 {
 	assert(src->N == dst->N);
 
-	__assume_aligned(src->mat, MEM_DATA_ALIGN);
-	__assume_aligned(dst->mat, MEM_DATA_ALIGN);
+	assume_algned(src->mat);
+	assume_algned(dst->mat);
 	memcpy(dst->mat, src->mat, src->N*src->N * sizeof(double));
 
 	dst->logdet = src->logdet;
@@ -68,16 +68,16 @@ void GreenConstruct(const time_step_matrices_t *restrict tsm, const int slice_sh
 	double *tau = (double *)algn_malloc(N   * sizeof(double));   // scalar factors of the elementary reflectors for the matrix Q
 	double *d   = (double *)algn_malloc(N   * sizeof(double));
 	double *T   = (double *)algn_malloc(N*N * sizeof(double));
-	__assume_aligned(Q,   MEM_DATA_ALIGN);
-	__assume_aligned(tau, MEM_DATA_ALIGN);
-	__assume_aligned(d,   MEM_DATA_ALIGN);
-	__assume_aligned(T,   MEM_DATA_ALIGN);
+	assume_algned(Q);
+	assume_algned(tau);
+	assume_algned(d);
+	assume_algned(T);
 
 	// calculate the imaginary-time flow map
 	TimeFlowMap(tsm, slice_shift, Q, tau, d, T);
 
 	// form the matrix D_b^{-1}
-	__assume_aligned(G->mat, MEM_DATA_ALIGN);
+	assume_algned(G->mat);
 	memset(G->mat, 0, N*N * sizeof(double));
 	int i;
 	#pragma ivdep
@@ -168,13 +168,13 @@ void GreenConstruct(const time_step_matrices_t *restrict tsm, const int slice_sh
 ///
 void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, double *restrict Gmat)
 {
-	__assume_aligned(Gmat, MEM_DATA_ALIGN);
+	assume_algned(Gmat);
 
 	int j;
 
 	// copy i-th row of Gmat
 	double *c = (double *)algn_malloc(N * sizeof(double));
-	__assume_aligned(c, MEM_DATA_ALIGN);
+	assume_algned(c);
 	for (j = 0; j < N; j++)
 	{
 		c[j] = Gmat[i + j*N];
@@ -183,7 +183,7 @@ void GreenShermanMorrisonUpdate(const double delta, const int N, const int i, do
 
 	// copy i-th column of Gmat
 	double *d = (double *)algn_malloc(N * sizeof(double));
-	__assume_aligned(d, MEM_DATA_ALIGN);
+	assume_algned(d);
 	memcpy(d, &Gmat[N*i], N * sizeof(double));
 
 	// subtract outer Kronecker product from Gmat

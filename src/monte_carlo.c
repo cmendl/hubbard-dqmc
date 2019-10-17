@@ -33,7 +33,7 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	greens_func_t *restrict Gu, greens_func_t *restrict Gd, const int neqlt, measurement_data_t *restrict meas_data)
 {
 	Profile_Begin("DQMCIter");
-	__assume_aligned(s, MEM_DATA_ALIGN);
+	assume_algned(s);
 
 	// dimension consistency checks
 	assert(tsm_u->N == kinetic->Ncell * kinetic->Norb);
@@ -51,13 +51,13 @@ void DQMCIteration(const kinetic_t *restrict kinetic, const stratonovich_params_
 	greens_func_t Gu_old, Gd_old;
 	AllocateGreensFunction(N, &Gu_old);
 	AllocateGreensFunction(N, &Gd_old);
-	__assume_aligned(Gu_old.mat, MEM_DATA_ALIGN);
-	__assume_aligned(Gd_old.mat, MEM_DATA_ALIGN);
+	assume_algned(Gu_old.mat);
+	assume_algned(Gd_old.mat);
 	#endif
 
 	// random shuffle of lattice cells and orbitals
 	int *orb_cell_order = algn_malloc(N * sizeof(int));
-	__assume_aligned(orb_cell_order, MEM_DATA_ALIGN);
+	assume_algned(orb_cell_order);
 
 	// iterate over time slices
 	int l;
@@ -203,8 +203,8 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
 	int *n_block_accept, int *n_block_total)
 {
-	__assume_aligned(   X, MEM_DATA_ALIGN);
-	__assume_aligned(expX, MEM_DATA_ALIGN);
+	assume_algned(   X);
+	assume_algned(expX);
 
 	// dimension consistency checks
 	assert(tsm_u->N == kinetic->Ncell * kinetic->Norb);
@@ -222,8 +222,8 @@ void PhononBlockUpdates(const double dt, const kinetic_t *restrict kinetic, cons
 	// store X_{i,l} and corresponding exponential for all 'l'
 	double *X_i    = (double *)algn_malloc(L * sizeof(double));
 	double *expX_i = (double *)algn_malloc(L * sizeof(double));
-	__assume_aligned(X_i,    MEM_DATA_ALIGN);
-	__assume_aligned(expX_i, MEM_DATA_ALIGN);
+	assume_algned(X_i);
+	assume_algned(expX_i);
 
 	// storage for new Green's functions
 	greens_func_t Gu_new, Gd_new;
@@ -352,8 +352,8 @@ void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restri
 	time_step_matrices_t *restrict tsm_u, time_step_matrices_t *restrict tsm_d, greens_func_t *restrict Gu, greens_func_t *restrict Gd,
 	int *n_flip_accept, int *n_flip_total)
 {
-	__assume_aligned(   X, MEM_DATA_ALIGN);
-	__assume_aligned(expX, MEM_DATA_ALIGN);
+	assume_algned(   X);
+	assume_algned(expX);
 
 	// dimension consistency checks
 	assert(tsm_u->N == kinetic->Ncell * kinetic->Norb);
@@ -371,8 +371,8 @@ void PhononFlipUpdates(const double dt, const double mu, const kinetic_t *restri
 	// store X_{i,l} and corresponding exponential for all 'l'
 	double *X_ref    = (double *)algn_malloc(L * sizeof(double));
 	double *expX_ref = (double *)algn_malloc(L * sizeof(double));
-	__assume_aligned(X_ref,    MEM_DATA_ALIGN);
-	__assume_aligned(expX_ref, MEM_DATA_ALIGN);
+	assume_algned(X_ref);
+	assume_algned(expX_ref);
 
 	// storage for new Green's functions
 	greens_func_t Gu_new, Gd_new;
@@ -499,7 +499,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 	const int neqlt, measurement_data_t *restrict meas_data, measurement_data_phonon_t *restrict meas_data_phonon)
 {
 	Profile_Begin("DQMCIter");
-	__assume_aligned(s, MEM_DATA_ALIGN);
+	assume_algned(s);
 
 	// dimension consistency checks
 	assert(tsm_u->N == kinetic->Ncell * kinetic->Norb);
@@ -519,8 +519,8 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 	greens_func_t Gu_old, Gd_old;
 	AllocateGreensFunction(N, &Gu_old);
 	AllocateGreensFunction(N, &Gd_old);
-	__assume_aligned(Gu_old.mat, MEM_DATA_ALIGN);
-	__assume_aligned(Gd_old.mat, MEM_DATA_ALIGN);
+	assume_algned(Gu_old.mat);
+	assume_algned(Gd_old.mat);
 	#endif
 
 	// pre-compute 1/dt^2
@@ -528,7 +528,7 @@ void DQMCPhononIteration(const double dt, const double mu, const kinetic_t *rest
 
 	// random shuffle of lattice cells and orbitals
 	int *orb_cell_order = algn_malloc(N * sizeof(int));
-	 __assume_aligned(orb_cell_order, MEM_DATA_ALIGN);
+	 assume_algned(orb_cell_order);
 
 	// iterate over time slices
 	int l;

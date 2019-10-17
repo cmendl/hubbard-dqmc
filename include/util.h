@@ -46,6 +46,18 @@ static inline void *algn_calloc(size_t num, size_t size)
 #endif
 
 
+#ifdef __INTEL_COMPILER
+
+// Intel compiler specific
+#define assume_algned(ptr) __assume_aligned(ptr, MEM_DATA_ALIGN)
+
+#else
+
+#define assume_algned(ptr) ((void)0)
+
+#endif
+
+
 //________________________________________________________________________________________________________________________
 ///
 /// \brief Square function x -> x^2

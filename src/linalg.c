@@ -46,14 +46,14 @@ void domatcopy(size_t rows, size_t cols, const double alpha, const double *A, si
 ///
 int MatrixExp(const int n, const double *restrict A, double *restrict ret)
 {
-	__assume_aligned(A, MEM_DATA_ALIGN);
+	assume_algned(A);
 
 	// eigenvalues
 	double *w = algn_malloc(n * sizeof(double));
 
 	// copy 'A' matrix (will be overwritten by eigenvectors)
 	double *U = algn_malloc(n*n * sizeof(double));
-	__assume_aligned(U, MEM_DATA_ALIGN);
+	assume_algned(U);
 	memcpy(U, A, n*n * sizeof(double));
 
 	int info = LAPACKE_dsyev(LAPACK_COL_MAJOR, 'V', 'U', n, U, n, w);
@@ -71,7 +71,7 @@ int MatrixExp(const int n, const double *restrict A, double *restrict ret)
 
 	// compute U * diag(exp(lambda_i))
 	double *UexpD = algn_malloc(n*n * sizeof(double));
-	__assume_aligned(UexpD, MEM_DATA_ALIGN);
+	assume_algned(UexpD);
 	memcpy(UexpD, U, n*n * sizeof(double));
 	for (i = 0; i < n; i++)
 	{
@@ -101,7 +101,7 @@ void MatrixProductSequence(const int n, const int num, const double *const *rest
 
 	// temporary matrix for calculating products of the A matrices
 	double *W = (double *)algn_malloc(n*n * sizeof(double));
-	__assume_aligned(W, MEM_DATA_ALIGN);
+	assume_algned(W);
 
 	// use 'W' and 'ret' as temporary matrices for the products of the A matrices,
 	// such that the final results ends up in 'ret'
@@ -116,10 +116,10 @@ void MatrixProductSequence(const int n, const int num, const double *const *rest
 		T1 = ret;
 		T2 = W;
 	}
-	__assume_aligned(T1, MEM_DATA_ALIGN);
-	__assume_aligned(T2, MEM_DATA_ALIGN);
+	assume_algned(T1);
+	assume_algned(T2);
 
-	__assume_aligned(A[0], MEM_DATA_ALIGN);
+	assume_algned(A[0]);
 	memcpy(T1, A[0], n*n * sizeof(double));
 	int i;
 	for (i = 1; i < num; i++)

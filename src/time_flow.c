@@ -14,13 +14,13 @@
 ///
 void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict B)
 {
-	__assume_aligned(B, MEM_DATA_ALIGN);
+	assume_algned(B);
 
 	const int Ncell = kinetic->Ncell;
 	const int N     = kinetic->Ncell * kinetic->Norb;
 
 	// copy kinetic energy matrix
-	__assume_aligned(kinetic->expK, MEM_DATA_ALIGN);
+	assume_algned(kinetic->expK);
 	memcpy(B, kinetic->expK, N*N * sizeof(double));
 
 	// scale the rows by the diagonal potential matrix entries (multiply by diagonal potential matrix from the left)
@@ -39,13 +39,13 @@ void ComputeTimeStepMatrix(const kinetic_t *restrict kinetic, const double *cons
 ///
 void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, double *restrict invB)
 {
-	__assume_aligned(invB, MEM_DATA_ALIGN);
+	assume_algned(invB);
 
 	const int Ncell = kinetic->Ncell;
 	const int N     = kinetic->Ncell * kinetic->Norb;
 
 	// copy inverse kinetic energy matrix
-	__assume_aligned(kinetic->inv_expK, MEM_DATA_ALIGN);
+	assume_algned(kinetic->inv_expK);
 	memcpy(invB, kinetic->inv_expK, N*N * sizeof(double));
 
 	// scale the columns by the inverse diagonal potential matrix entries (multiply by inverse diagonal potential matrix from the right)
@@ -65,13 +65,13 @@ void ComputeInverseTimeStepMatrix(const kinetic_t *restrict kinetic, const doubl
 ///
 void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict B)
 {
-	__assume_aligned(B, MEM_DATA_ALIGN);
+	assume_algned(B);
 
 	const int Ncell = kinetic->Ncell;
 	const int N     = kinetic->Ncell * kinetic->Norb;
 
 	// copy kinetic energy matrix
-	__assume_aligned(kinetic->expK, MEM_DATA_ALIGN);
+	assume_algned(kinetic->expK);
 	memcpy(B, kinetic->expK, N*N * sizeof(double));
 
 	// scale the rows by the diagonal potential matrix entries (multiply by diagonal potential matrix from the left)
@@ -90,13 +90,13 @@ void ComputePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double
 ///
 void ComputeInversePhononTimeStepMatrix(const kinetic_t *restrict kinetic, const double *const expV[2], const spin_field_t *restrict s, const double *restrict expX, double *restrict invB)
 {
-	__assume_aligned(invB, MEM_DATA_ALIGN);
+	assume_algned(invB);
 
 	const int Ncell = kinetic->Ncell;
 	const int N     = kinetic->Ncell * kinetic->Norb;
 
 	// copy inverse kinetic energy matrix
-	__assume_aligned(kinetic->inv_expK, MEM_DATA_ALIGN);
+	assume_algned(kinetic->inv_expK);
 	memcpy(invB, kinetic->inv_expK, N*N * sizeof(double));
 
 	// scale the columns by the inverse diagonal potential matrix entries (multiply by inverse diagonal potential matrix from the right)
@@ -129,7 +129,7 @@ void AllocateTimeStepMatrices(const int N, const int L, const int prodBlen, time
 
 	tsm->Bprod = (double **)algn_malloc(tsm->numBprod * sizeof(double *));
 
-	// ensure that each individual matrix is aligned at a 'MEM_DATA_ALIGN' boundary
+	// ensure that each individual matrix is memory aligned
 	int l;
 	for (l = 0; l < L; l++)
 	{
@@ -190,22 +190,22 @@ void CopyTimeStepMatrices(time_step_matrices_t *restrict src, time_step_matrices
 	{
 		srcM = src->B[l];
 		dstM = dst->B[l];
-		__assume_aligned(srcM, MEM_DATA_ALIGN);
-		__assume_aligned(dstM, MEM_DATA_ALIGN);
+		assume_algned(srcM);
+		assume_algned(dstM);
 		memcpy(dstM, srcM, N*N * sizeof(double));
 
 		srcM = src->invB[l];
 		dstM = dst->invB[l];
-		__assume_aligned(srcM, MEM_DATA_ALIGN);
-		__assume_aligned(dstM, MEM_DATA_ALIGN);
+		assume_algned(srcM);
+		assume_algned(dstM);
 		memcpy(dstM, srcM, N*N * sizeof(double));
 	}
 	for (l = 0; l < src->numBprod; l++)
 	{
 		srcM = src->Bprod[l];
 		dstM = dst->Bprod[l];
-		__assume_aligned(srcM, MEM_DATA_ALIGN);
-		__assume_aligned(dstM, MEM_DATA_ALIGN);
+		assume_algned(srcM);
+		assume_algned(dstM);
 		memcpy(dstM, srcM, N*N * sizeof(double));
 	}
 }
@@ -327,10 +327,10 @@ void UpdatePhononTimeStepMatrices(const kinetic_t *restrict kinetic, const doubl
 void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift, double *restrict Q, double *restrict tau, double *restrict d, double *restrict T)
 {
 	Profile_Begin("TFM");
-	__assume_aligned(Q,   MEM_DATA_ALIGN);
-	__assume_aligned(tau, MEM_DATA_ALIGN);
-	__assume_aligned(d,   MEM_DATA_ALIGN);
-	__assume_aligned(T,   MEM_DATA_ALIGN);
+	assume_algned(Q);
+	assume_algned(tau);
+	assume_algned(d);
+	assume_algned(T);
 
 	int i, j;
 	const int N = tsm->N;
@@ -344,26 +344,26 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 
 	// temporary matrix for calculating QR decompositions and obtaining column norms for pre-pivoting
 	double *W = (double *)algn_malloc(N*N * sizeof(double));
-	__assume_aligned(W, MEM_DATA_ALIGN);
+	assume_algned(W);
 
 	// column norms array for the pre-pivoted QR decompositions
 	double *norms = (double *)algn_malloc(N * sizeof(double));
-	__assume_aligned(norms, MEM_DATA_ALIGN);
+	assume_algned(norms);
 
 	// permutation array for QR decomposition with pivoting
 	lapack_int* jpvt = (lapack_int *)algn_malloc(N * sizeof(lapack_int));
-	__assume_aligned(jpvt, MEM_DATA_ALIGN);
+	assume_algned(jpvt);
 
 	// temporary array storing the inverse entries of 'd' or columns of 'T'
 	double *v = (double *)algn_malloc(N * sizeof(double));
-	__assume_aligned(v, MEM_DATA_ALIGN);
+	assume_algned(v);
 
 	// initial QR decomposition
 	{
 		Profile_Begin("TFM_1stQR");
 		// copy precomputed product of subsequent B matrices
 		const double *srcBprod = tsm->Bprod[prod_slice_shift % tsm->numBprod];
-		__assume_aligned(srcBprod, MEM_DATA_ALIGN);
+		assume_algned(srcBprod);
 		memcpy(Q, srcBprod, N*N * sizeof(double));
 
 		// perform a QR-decomposition with column pivoting of the product of subsequent B matrices
@@ -403,7 +403,7 @@ void TimeFlowMap(const time_step_matrices_t *restrict tsm, const int slice_shift
 		Profile_Begin("TFM_QR_ComputeC");
 		// copy product of the next 'tsm->prodBlen' B matrices
 		const double *srcBprod = tsm->Bprod[(l + prod_slice_shift) % tsm->numBprod];
-		__assume_aligned(srcBprod, MEM_DATA_ALIGN);
+		assume_algned(srcBprod);
 		memcpy(W, srcBprod, N*N * sizeof(double));
 
 		// multiply by previous orthogonal matrix from the right, overwriting the 'W' matrix
