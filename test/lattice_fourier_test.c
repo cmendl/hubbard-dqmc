@@ -100,6 +100,8 @@ int LatticeFourierTest()
 
 int LatticeFourierTest()
 {
+	printf("Skipping Fourier transform on a lattice (current implementation requires MKL)...\n");
+
 	return 0;
 }
 

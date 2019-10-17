@@ -116,5 +116,5 @@ int GreensFuncInitTest1()
 	algn_free(s);
 	DeleteSimulationParameters(&params);
 
-	return (err_rel < 2e-9 && err_abs < 1e-14 && err_det < 2e-13 ? 0 : 1);
+	return (err_rel < 2e-9 && err_abs < 1e-14 && err_det < 1e-12 ? 0 : 1);
 }
