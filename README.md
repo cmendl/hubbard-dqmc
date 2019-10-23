@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.com/cmendl/hubbard-dqmc.svg?branch=master)](https://travis-ci.com/cmendl/hubbard-dqmc)
+
+
 Determinant quantum Monte Carlo implementation
 ==============================================
 
@@ -10,7 +13,7 @@ The code depends on the [CBLAS](http://www.netlib.org/blas/#_cblas) and [LAPACKE
 
 Call `make` to build the project. You might have to adapt some parameters in the *Makefile* beforehand (see the comments there).
 
-To run the code, cd into the *bin* subfolder and call `hubbard_dqmc <paramfile>`; some example parameter files are provided there.
+To run the code, cd into the *bin* subfolder and call `hubbard_dqmc <paramfile>`; some example parameter files are provided there. For unit testing, cd into the *test* subfolder and execute `run_tests`.
 
 The Mathematica unit test notebooks can be opened by [Mathematica](https://www.wolfram.com/mathematica) or the free [CDF player](https://www.wolfram.com/cdf-player).
 
