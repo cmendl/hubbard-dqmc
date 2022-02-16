@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/cmendl/hubbard-dqmc.svg?branch=master)](https://travis-ci.com/cmendl/hubbard-dqmc)
+[![Build Status](https://app.travis-ci.com/cmendl/hubbard-dqmc.svg?branch=master)](https://app.travis-ci.com/cmendl/hubbard-dqmc)
 
 
 Determinant quantum Monte Carlo implementation
